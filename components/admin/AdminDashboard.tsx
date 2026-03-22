@@ -102,6 +102,7 @@ interface AdminDashboardProps {
     onEditTerms: () => void;
     onClearAllData: () => void;
     t: (key: string) => string;
+    adminId: string;
 }
 
 // --- INITIAL STATES ---
@@ -140,7 +141,7 @@ const PieChart: React.FC<{ data: { label: string; value: number; color: string }
 };
 
 // --- MAIN COMPONENT ---
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs, transactions, disputes, notifications, messages, pendingVerifications, onSelectUser, onSelectWorker, onSelectDispute, onSelectSupportConversation, onSelectVerification, onEditTerms, onClearAllData, t }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs, transactions, disputes, notifications, messages, pendingVerifications, onSelectUser, onSelectWorker, onSelectDispute, onSelectSupportConversation, onSelectVerification, onEditTerms, onClearAllData, t, adminId }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('clients');
     const [clientFilters, setClientFilters] = useState<ClientFilters>(initialClientFilters);
     const [workerFilters, setWorkerFilters] = useState<WorkerFilters>(initialWorkerFilters);
@@ -270,20 +271,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
         const convoMap = new Map<string, { user: User, lastMessage: Message, unreadCount: number }>();
 
         // Get all conversations with admin
-        const adminConvos = new Set<string>(messages.filter(m => m.senderId === ADMIN_ID || m.receiverId === ADMIN_ID).map(m => `conv_${[m.senderId, m.receiverId].sort().join('_')}`));
+        const adminConvos = new Set<string>(messages.filter(m => m.senderId === adminId || m.receiverId === adminId).map(m => `conv_${[m.senderId, m.receiverId].sort().join('_')}`));
         
         adminConvos.forEach((conversationId: string) => {
-            const userId = conversationId.replace('conv_', '').replace(ADMIN_ID, '').replace('_', '');
+            const userId = conversationId.replace('conv_', '').replace(adminId, '').replace('_', '');
             const user = userMap.get(userId);
              if (user) {
                 const conversationMessages = messages.filter(m => 
-                    (m.senderId === user.id && m.receiverId === ADMIN_ID) || 
-                    (m.senderId === ADMIN_ID && m.receiverId === user.id)
+                    (m.senderId === user.id && m.receiverId === adminId) || 
+                    (m.senderId === adminId && m.receiverId === user.id)
                 );
                 
                 if (conversationMessages.length > 0) {
                     const lastMessage = conversationMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-                    const unreadCount = conversationMessages.filter(m => m.receiverId === ADMIN_ID && !m.isRead).length;
+                    const unreadCount = conversationMessages.filter(m => m.receiverId === adminId && !m.isRead).length;
                     
                     const existingConvo = convoMap.get(conversationId);
                     if (!existingConvo || new Date(lastMessage.timestamp) > new Date(existingConvo.lastMessage.timestamp)) {
@@ -297,7 +298,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
             .map(([id, data]) => ({ id, ...data }))
             .sort((a, b) => new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime());
 
-    }, [notifications, messages, userMap]);
+    }, [notifications, messages, userMap, adminId]);
 
     // --- HANDLERS ---
     const handleClientSort = (key: ClientSortKey) => setClientSort(prev => ({ key, direction: prev.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending' }));
@@ -640,7 +641,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                                 <span className="text-xs text-black flex-shrink-0">{formatDistanceToNow(convo.lastMessage.timestamp, t)}</span>
                                             </div>
                                             <p className={`text-sm truncate ${convo.unreadCount > 0 ? 'font-semibold text-black' : 'text-black'}`}>
-                                                {convo.lastMessage.senderId === ADMIN_ID && <span>{t('you prefix')}</span>}
+                                                {convo.lastMessage.senderId === adminId && <span>{t('you prefix')}</span>}
                                                 {convo.lastMessage.text}
                                             </p>
                                         </div>

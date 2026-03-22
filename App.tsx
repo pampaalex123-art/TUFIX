@@ -107,6 +107,9 @@ const App: React.FC = () => {
 
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
 
+  const adminUser = users.find(u => u.userType === 'admin' || u.email === 'admin@tufix.com' || u.email === 'pampa.alex123@gmail.com');
+  const currentAdminId = adminUser?.id || ADMIN_ID;
+
   const unreadNotificationsCount = currentUser 
     ? notifications.filter(n => n.userId === currentUser.id && !n.isRead).length 
     : 0;
@@ -316,7 +319,7 @@ const App: React.FC = () => {
         setUserType('user');
         setNotifications(prev => [...prev, {
             id: `notif-reg-user-${Date.now()}`,
-            userId: ADMIN_ID,
+            userId: currentAdminId,
             type: 'new_registration',
             message: `New client signed up: ${newUser.name}.`,
             isRead: false,
@@ -458,7 +461,7 @@ const App: React.FC = () => {
     }));
     setNotifications(prev => [...prev, {
       id: `notif-verify-${Date.now()}`,
-      userId: ADMIN_ID,
+      userId: currentAdminId,
       type: 'new_registration',
       message: `New provider ${workerName} requires identity verification.`,
       isRead: false,
@@ -1378,6 +1381,7 @@ const App: React.FC = () => {
             onEditTerms={() => setView({ screen: 'ADMIN_EDIT_TERMS' })}
             onClearAllData={handleClearAllData}
             t={t}
+            adminId={currentAdminId}
         />
       case 'ADMIN_CLIENT_PROFILE':
         return <ClientProfileAdminView

@@ -56,28 +56,32 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 export function useFirestoreCollection<T extends { id: string }>(collectionName: string, initialValue: T[]): [T[], (value: T[] | ((val: T[]) => T[])) => void] {
   const [data, setData] = useState<T[]>(initialValue);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [user, setUser] = useState(auth.currentUser);
 
   useEffect(() => {
-    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
+    const unsubscribeAuth = auth.onAuthStateChanged((u) => {
+      setUser(u);
       setIsAuthReady(true);
     });
     return () => unsubscribeAuth();
   }, []);
 
   useEffect(() => {
-    if (!isAuthReady || !auth.currentUser) {
+    if (!isAuthReady || !user) {
       setData(initialValue);
       return;
     }
 
     const unsubscribe = onSnapshot(collection(db, collectionName), (snapshot) => {
+      console.log(`Firestore onSnapshot for ${collectionName}: ${snapshot.size} items`);
       if (snapshot.empty && initialValue.length > 0) {
         // Seed initial data
         const batch = writeBatch(db);
+        console.log(`Seeding ${collectionName} with ${initialValue.length} items`);
         initialValue.forEach(item => {
           batch.set(doc(db, collectionName, item.id), item);
         });
-        batch.commit().catch(err => console.error("Error seeding data:", err));
+        batch.commit().catch(err => console.error(`Error seeding ${collectionName}:`, err));
         // The snapshot listener will fire again once seeded
         return;
       }
@@ -87,7 +91,7 @@ export function useFirestoreCollection<T extends { id: string }>(collectionName:
       handleFirestoreError(error, OperationType.LIST, collectionName);
     });
     return () => unsubscribe();
-  }, [collectionName, isAuthReady]);
+  }, [collectionName, isAuthReady, user]);
 
   const setValue = useCallback((value: T[] | ((val: T[]) => T[])) => {
     if (!auth.currentUser) {
@@ -102,22 +106,40 @@ export function useFirestoreCollection<T extends { id: string }>(collectionName:
       (async () => {
         try {
           const batch = writeBatch(db);
+          const currentUser = auth.currentUser;
+          const isAdmin = currentUser?.email === 'admin@tufix.com' || 
+                          currentUser?.email === 'pampa.alex123@gmail.com' ||
+                          currentUser?.email === 'admin@admin';
           
           const newIds = new Set(newData.map((item: T) => item.id));
           prevData.forEach(item => {
             if (!newIds.has(item.id)) {
-              batch.delete(doc(db, collectionName, item.id));
+              // Only delete if we are the owner or admin
+              // We also allow deleting 'admin-1' which is a legacy ID
+              if (isAdmin || item.id === currentUser?.uid || item.id === 'admin-1') {
+                batch.delete(doc(db, collectionName, item.id));
+              }
             }
           });
 
           newData.forEach((item: T) => {
             const prevItem = prevData.find(p => p.id === item.id);
             if (!prevItem || JSON.stringify(prevItem) !== JSON.stringify(item)) {
-              batch.set(doc(db, collectionName, item.id), item);
+              // Only write if:
+              // 1. It's a new item
+              // 2. It's the current user's own item
+              // 3. The current user is the admin
+              const isOwner = item.id === currentUser?.uid || item.id === 'admin-1';
+              
+              if (!prevItem || isOwner || isAdmin) {
+                batch.set(doc(db, collectionName, item.id), item);
+              }
             }
           });
 
+          console.log(`Committing batch for ${collectionName}`);
           await batch.commit();
+          console.log(`Batch committed for ${collectionName}`);
         } catch (error) {
           handleFirestoreError(error, OperationType.WRITE, collectionName);
         }
