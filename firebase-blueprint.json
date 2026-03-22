@@ -1,0 +1,227 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "Represents a client user of the application.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "location": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "signupDate": { "type": "string" },
+        "lastLoginDate": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviews": { "type": "array", "items": { "type": "object" } },
+        "idNumber": { "type": "string" },
+        "phoneNumber": { "type": "object" },
+        "verificationStatus": { "type": "string", "enum": ["pending", "approved", "declined"] },
+        "userType": { "type": "string", "enum": ["user", "worker", "admin"] }
+      },
+      "required": ["id", "name", "email", "userType"]
+    },
+    "Worker": {
+      "title": "Worker",
+      "description": "Represents a service provider.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "service": { "type": "string" },
+        "jobTypes": { "type": "array", "items": { "type": "string" } },
+        "location": { "type": "string" },
+        "regions": { "type": "array", "items": { "type": "string" } },
+        "avgJobCost": { "type": "object" },
+        "bio": { "type": "string" },
+        "avatarUrl": { "type": "string" },
+        "rating": { "type": "number" },
+        "reviews": { "type": "array", "items": { "type": "object" } },
+        "availability": { "type": "object" },
+        "availabilityOverrides": { "type": "object" },
+        "signupDate": { "type": "string" },
+        "lastLoginDate": { "type": "string" },
+        "idNumber": { "type": "string" },
+        "phoneNumber": { "type": "object" },
+        "payoutDetails": { "type": "object" },
+        "verificationStatus": { "type": "string", "enum": ["pending", "approved", "declined"] },
+        "idPhotoUrl": { "type": "string" },
+        "selfiePhotoUrl": { "type": "string" },
+        "declineReason": { "type": "string" },
+        "approvalDate": { "type": "string" },
+        "adminApproverId": { "type": "string" },
+        "userType": { "type": "string", "enum": ["user", "worker", "admin"] }
+      },
+      "required": ["id", "name", "email", "service", "userType"]
+    },
+    "JobRequest": {
+      "title": "JobRequest",
+      "description": "A request for a service.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "user": { "type": "object" },
+        "workerId": { "type": "string" },
+        "service": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined", "in_progress", "worker_completed", "completed", "cancelled"] },
+        "userReview": { "type": "object" },
+        "workerReview": { "type": "object" },
+        "cancellationReason": { "type": "string" },
+        "finalPrice": { "type": "number" },
+        "invoiceId": { "type": "string" },
+        "clientApprovedPayout": { "type": "boolean" },
+        "disputeId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "startedAt": { "type": "string" },
+        "workerCompletedAt": { "type": "string" },
+        "clientConfirmedAt": { "type": "string" }
+      },
+      "required": ["id", "user", "workerId", "service", "description", "date", "time", "status", "createdAt"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "An invoice for a job.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "jobId": { "type": "string" },
+        "workerId": { "type": "string" },
+        "userId": { "type": "string" },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "subtotal": { "type": "number" },
+        "platformFee": { "type": "number" },
+        "total": { "type": "number" },
+        "currency": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "held", "released", "cancelled", "refunded", "partially_refunded"] },
+        "createdAt": { "type": "string" },
+        "paidAt": { "type": "string" },
+        "releasedAt": { "type": "string" },
+        "transactionId": { "type": "string" }
+      },
+      "required": ["id", "jobId", "workerId", "userId", "items", "subtotal", "platformFee", "total", "currency", "status", "createdAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A chat message.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "text": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "invoiceId": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "isRead": { "type": "boolean" }
+      },
+      "required": ["id", "senderId", "receiverId", "timestamp", "isRead"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A system notification.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "type": { "type": "string" },
+        "message": { "type": "string" },
+        "isRead": { "type": "boolean" },
+        "timestamp": { "type": "string" },
+        "relatedEntityId": { "type": "string" }
+      },
+      "required": ["id", "userId", "type", "message", "isRead", "timestamp", "relatedEntityId"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "A financial transaction.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "invoiceId": { "type": "string" },
+        "jobId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "workerId": { "type": "string" },
+        "subtotal": { "type": "number" },
+        "platformFee": { "type": "number" },
+        "total": { "type": "number" },
+        "currency": { "type": "string" },
+        "status": { "type": "string" },
+        "paidAt": { "type": "string" },
+        "releasedAt": { "type": "string" },
+        "refundAmount": { "type": "number" }
+      },
+      "required": ["id", "invoiceId", "jobId", "clientId", "workerId", "subtotal", "platformFee", "total", "currency", "status", "paidAt"]
+    },
+    "Dispute": {
+      "title": "Dispute",
+      "description": "A dispute over a job.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "jobId": { "type": "string" },
+        "raisedById": { "type": "string" },
+        "raisedByType": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string" },
+        "messages": { "type": "array", "items": { "type": "object" } },
+        "resolution": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "resolvedAt": { "type": "string" },
+        "fundResolution": { "type": "object" }
+      },
+      "required": ["id", "jobId", "raisedById", "raisedByType", "reason", "status", "messages", "createdAt"]
+    },
+    "SystemConfig": {
+      "title": "SystemConfig",
+      "description": "System configuration like terms and services.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "termsContent": { "type": "string" }
+      },
+      "required": ["id", "termsContent"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles."
+    },
+    "/workers/{workerId}": {
+      "schema": { "$ref": "#/entities/Worker" },
+      "description": "Stores worker profiles."
+    },
+    "/jobRequests/{jobId}": {
+      "schema": { "$ref": "#/entities/JobRequest" },
+      "description": "Stores job requests."
+    },
+    "/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Stores invoices."
+    },
+    "/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Stores chat messages."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Stores user notifications."
+    },
+    "/transactions/{transactionId}": {
+      "schema": { "$ref": "#/entities/Transaction" },
+      "description": "Stores financial transactions."
+    },
+    "/disputes/{disputeId}": {
+      "schema": { "$ref": "#/entities/Dispute" },
+      "description": "Stores job disputes."
+    },
+    "/systemConfig/{configId}": {
+      "schema": { "$ref": "#/entities/SystemConfig" },
+      "description": "Stores system configuration."
+    }
+  }
+}
