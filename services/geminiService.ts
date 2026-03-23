@@ -1,6 +1,6 @@
 
 
-import { GoogleGenAI, Type, Content, FunctionDeclaration } from "@google/genai";
+import { GoogleGenAI, Type, Content, FunctionDeclaration, ThinkingLevel } from "@google/genai";
 import { ServiceCategory, Worker, User } from '../types';
 
 const getAi = () => {
@@ -110,6 +110,8 @@ export const generateMockWorkers = async (count: number, service: ServiceCategor
       config: {
         responseMimeType: "application/json",
         responseSchema: workerSchema,
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        maxOutputTokens: 8192,
       },
     });
 
@@ -177,61 +179,57 @@ export const getAiSupportResponse = async (
   }));
 
   let userContext = '';
-  if (currentUser) {
-    userContext = `
+  if (currentUser && typeof currentUser === 'object') {
+    try {
+      userContext = `
 Contexto del usuario actual:
-- Tipo de Usuario: ${userType}
-- Nombre: ${currentUser.name}
-- Email: ${currentUser.email}
-- Ubicación: ${currentUser.location}
-- Calificación: ${currentUser.rating}
-- ID: ${currentUser.id}
+- Tipo de Usuario: ${userType || 'N/A'}
+- Nombre: ${currentUser.name || 'N/A'}
+- Email: ${currentUser.email || 'N/A'}
+- Ubicación: ${currentUser.location || 'N/A'}
+- Calificación: ${currentUser.rating || 0}
+- ID: ${currentUser.id || 'N/A'}
 `;
-    if (userType === 'worker') {
-      userContext += `- Servicio: ${currentUser.service}
-- Tipos de Trabajo: ${currentUser.jobTypes?.join(', ')}
-- Costo Promedio: ${currentUser.avgJobCost?.amount} ${currentUser.avgJobCost?.currency}
+      if (userType === 'worker') {
+        userContext += `- Servicio: ${currentUser.service || 'N/A'}
+- Tipos de Trabajo: ${currentUser.jobTypes?.join(', ') || 'N/A'}
+- Costo Promedio: ${currentUser.avgJobCost?.amount || 0} ${currentUser.avgJobCost?.currency || ''}
 `;
-    }
+      }
 
-    if (jobRequests) {
-      const userJobs = jobRequests.filter(j => j.clientId === currentUser.id || j.workerId === currentUser.id || j.user?.id === currentUser.id);
-      userContext += `- Total de Trabajos: ${userJobs.length}\n`;
-      userContext += `- Trabajos Recientes (JSON): ${JSON.stringify(userJobs.slice(0, 20).map(j => {
-        const client = users?.find(u => u.id === (j.user?.id || j.clientId));
-        const worker = workers?.find(w => w.id === j.workerId);
-        return { 
-          id: j.id, 
-          status: j.status, 
-          service: j.service, 
-          date: j.date, 
-          finalPrice: j.finalPrice,
-          clientId: j.user?.id || j.clientId,
-          clientName: j.user?.name || client?.name || j.clientName,
-          workerId: j.workerId,
-          workerName: worker?.name || j.workerName
-        };
-      }))}\n`;
-    }
+      if (Array.isArray(jobRequests)) {
+        const userJobs = jobRequests.filter(j => j.workerId === currentUser.id || j.user?.id === currentUser.id);
+        userContext += `- Total de Trabajos: ${userJobs.length}\n`;
+        if (userJobs.length > 0) {
+          userContext += `- Trabajos Recientes (JSON): ${JSON.stringify(userJobs.slice(0, 10).map(j => ({
+            id: j.id, 
+            status: j.status, 
+            service: j.service, 
+            date: j.date, 
+            finalPrice: j.finalPrice,
+            clientName: j.user?.name || 'N/A',
+            workerName: workers?.find(w => w.id === j.workerId)?.name || 'N/A'
+          })))}\n`;
+        }
+      }
 
-    if (transactions) {
-      const userTransactions = transactions.filter(t => t.clientId === currentUser.id || t.workerId === currentUser.id);
-      userContext += `- Total de Transacciones: ${userTransactions.length}\n`;
-      userContext += `- Datos de Transacciones (JSON): ${JSON.stringify(userTransactions.map(t => {
-        const client = users?.find(u => u.id === t.clientId);
-        const worker = workers?.find(w => w.id === t.workerId);
-        return {
-          id: t.id,
-          amount: t.total,
-          date: t.paidAt,
-          status: t.status,
-          type: t.workerId === currentUser.id ? 'ingreso' : 'gasto',
-          clientId: t.clientId,
-          clientName: client?.name,
-          workerId: t.workerId,
-          workerName: worker?.name
-        };
-      }))}\n`;
+      if (Array.isArray(transactions)) {
+        const userTransactions = transactions.filter(t => t.clientId === currentUser.id || t.workerId === currentUser.id);
+        userContext += `- Total de Transacciones: ${userTransactions.length}\n`;
+        if (userTransactions.length > 0) {
+          userContext += `- Datos de Transacciones (JSON): ${JSON.stringify(userTransactions.slice(0, 10).map(t => ({
+            id: t.id,
+            amount: t.total,
+            date: t.paidAt,
+            status: t.status,
+            type: t.workerId === currentUser.id ? 'ingreso' : 'gasto',
+            clientName: users?.find(u => u.id === t.clientId)?.name || 'N/A',
+            workerName: workers?.find(w => w.id === t.workerId)?.name || 'N/A'
+          })))}\n`;
+        }
+      }
+    } catch (e) {
+      console.error("Error building user context:", e);
     }
   }
 
@@ -271,6 +269,8 @@ Información de contacto de respaldo:
       config: {
         systemInstruction: systemInstruction + "\n\n" + userContext,
         tools: [{ functionDeclarations: [findWorkersFunctionDeclaration, requestHumanSupportFunctionDeclaration] }],
+        thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
+        maxOutputTokens: 8192,
       },
     });
 
