@@ -285,10 +285,10 @@ Información de contacto de respaldo:
 
     return { text: response.text || "Lo siento, no pude generar una respuesta en este momento." };
   } catch (error: any) {
-    console.error("Error getting AI support response:", error);
+    console.error("Detailed Error getting AI support response:", error);
     if (error.message === "API_KEY_MISSING") {
       return { text: "Error: La clave de API de Gemini no está configurada. Por favor, contacta al administrador." };
     }
-    return { text: "Lo siento, estoy teniendo problemas para conectarme en este momento. Por favor, inténtalo de nuevo más tarde." };
+    return { text: `Lo siento, estoy teniendo problemas para conectarme en este momento. Error: ${error.message || 'Desconocido'}` };
   }
 };
