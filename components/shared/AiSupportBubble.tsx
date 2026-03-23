@@ -12,9 +12,10 @@ interface AiSupportBubbleProps {
   transactions: Transaction[];
   workers: Worker[];
   users: User[];
+  simple?: boolean;
 }
 
-const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupport, currentUser, userType, jobRequests, transactions, workers, users }) => {
+const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupport, currentUser, userType, jobRequests, transactions, workers, users, simple = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Content[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +48,7 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
     setIsLoading(true);
 
     try {
-      const aiResponse = await getAiSupportResponse(newMessages, currentUser, userType, jobRequests, transactions, workers, users);
+      const aiResponse = await getAiSupportResponse(newMessages, simple ? undefined : currentUser, simple ? undefined : userType, simple ? undefined : jobRequests, simple ? undefined : transactions, simple ? undefined : workers, simple ? undefined : users);
 
       if (aiResponse.functionCall) {
         if (aiResponse.functionCall === 'requestHumanSupport') {

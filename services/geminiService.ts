@@ -201,7 +201,7 @@ Contexto del usuario actual:
         const userJobs = jobRequests.filter(j => j.workerId === currentUser.id || j.user?.id === currentUser.id);
         userContext += `- Total de Trabajos: ${userJobs.length}\n`;
         if (userJobs.length > 0) {
-          userContext += `- Trabajos Recientes (JSON): ${JSON.stringify(userJobs.slice(0, 10).map(j => ({
+          userContext += `- Trabajos Recientes (JSON): ${JSON.stringify(userJobs.slice(0, 5).map(j => ({
             id: j.id, 
             status: j.status, 
             service: j.service, 
@@ -217,7 +217,7 @@ Contexto del usuario actual:
         const userTransactions = transactions.filter(t => t.clientId === currentUser.id || t.workerId === currentUser.id);
         userContext += `- Total de Transacciones: ${userTransactions.length}\n`;
         if (userTransactions.length > 0) {
-          userContext += `- Datos de Transacciones (JSON): ${JSON.stringify(userTransactions.slice(0, 10).map(t => ({
+          userContext += `- Datos de Transacciones (JSON): ${JSON.stringify(userTransactions.slice(0, 5).map(t => ({
             id: t.id,
             amount: t.total,
             date: t.paidAt,

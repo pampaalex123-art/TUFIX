@@ -1622,6 +1622,7 @@ const App: React.FC = () => {
           transactions={transactions} 
           workers={workers} 
           users={users}
+          simple={true}
         />
       )}
     </div>
