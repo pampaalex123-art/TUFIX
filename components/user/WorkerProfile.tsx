@@ -15,11 +15,11 @@ interface WorkerProfileProps {
 const WorkerProfile: React.FC<WorkerProfileProps> = ({ worker, onBack, onContact, onBookNow, t }) => {
   return (
     <div className="container mx-auto max-w-6xl">
-      <button onClick={onBack} className="flex items-center text-black hover:text-purple-600 font-semibold mb-6 transition-colors">
+        <button onClick={onBack} className="flex items-center text-black hover:text-purple-600 font-semibold mb-6 transition-colors">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 mr-2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
-        {t('back_to_results')}
+        {t('back to results')}
       </button>
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
@@ -37,7 +37,7 @@ const WorkerProfile: React.FC<WorkerProfileProps> = ({ worker, onBack, onContact
                 </div>
                 <span className="text-black">({(worker.reviews || []).length} {t('reviews')})</span>
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-black mt-4">{worker.avgJobCost ? formatCurrency(worker.avgJobCost.amount, worker.avgJobCost.currency) : t('price not available')}<span className="text-sm sm:text-base font-normal text-black"> {t('job_avg')}</span></p>
+              <p className="text-xl sm:text-2xl font-bold text-black mt-4">{worker.avgJobCost ? formatCurrency(worker.avgJobCost.amount, worker.avgJobCost.currency) : t('price not available')}<span className="text-sm sm:text-base font-normal text-black"> {t('job avg')}</span></p>
             </div>
             <div className="flex flex-col space-y-3 w-full md:w-auto self-stretch md:self-center flex-shrink-0">
               <button 
@@ -48,14 +48,14 @@ const WorkerProfile: React.FC<WorkerProfileProps> = ({ worker, onBack, onContact
               </button>
               <button 
                 onClick={() => onBookNow(worker)}
-                className="w-full md:w-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition duration-300">{t('book_now')}</button>
+                className="w-full md:w-auto bg-green-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-green-600 transition duration-300">{t('book now')}</button>
             </div>
           </div>
           
           <div className="mt-8 border-t pt-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Content */}
             <div className="lg:col-span-2">
-                <h2 className="text-2xl font-bold text-black mb-4">{t('about_worker', { name: worker.name })}</h2>
+                <h2 className="text-2xl font-bold text-black mb-4">{t('about worker', { name: worker.name })}</h2>
                 <p className="text-black leading-relaxed whitespace-pre-wrap">{worker.bio}</p>
             </div>
             {/* Sidebar */}
@@ -70,7 +70,7 @@ const WorkerProfile: React.FC<WorkerProfileProps> = ({ worker, onBack, onContact
                 </div>
                 {worker.jobTypes && worker.jobTypes.length > 0 && (
                     <div>
-                        <h3 className="text-xl font-bold text-black mb-3">{t('job_specialties')}</h3>
+                        <h3 className="text-xl font-bold text-black mb-3">{t('job specialties')}</h3>
                         <div className="flex flex-wrap gap-2">
                         {worker.jobTypes.map(jobType => (
                             <span key={jobType} className="bg-purple-100 text-purple-800 text-sm font-medium px-3 py-1 rounded-full">{t(jobType)}</span>
@@ -79,7 +79,7 @@ const WorkerProfile: React.FC<WorkerProfileProps> = ({ worker, onBack, onContact
                     </div>
                 )}
                 <div>
-                    <h3 className="text-xl font-bold text-black mb-3">{t('service_areas')}</h3>
+                    <h3 className="text-xl font-bold text-black mb-3">{t('service areas')}</h3>
                     <div className="flex flex-wrap gap-2">
                     {(worker.regions || []).map(region => (
                         <span key={region} className="bg-slate-200 text-black text-sm font-medium px-3 py-1 rounded-full">{region}</span>

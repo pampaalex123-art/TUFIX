@@ -569,6 +569,7 @@ const translations: Record<Language, Record<string, string>> = {
         "your review": "Tu Reseña",
         "review placeholder worker": "Comparte tu experiencia con {name}. ¿El trabajo estuvo bien hecho? ¿Llegó a tiempo?",
         "submit review": "Enviar Reseña",
+        "reviews": "Reseñas",
         "welcome back": "¡Bienvenido de vuelta, {name}!",
         "incoming jobs": "Trabajos Entrantes",
         "no job requests": "No tienes nuevos trabajos en este momento.",
@@ -1346,7 +1347,7 @@ const translations: Record<Language, Record<string, string>> = {
 
 
 export const useTranslations = () => {
-    const [language, setLanguage] = useLocalStorage<Language>('language', 'en');
+    const [language, setLanguage] = useLocalStorage<Language>('language', 'es');
 
     const t = useCallback(
         (key: string, replacements?: Record<string, string | number>): string => {
