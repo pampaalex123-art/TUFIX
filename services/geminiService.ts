@@ -1,7 +1,7 @@
 
 
 import { GoogleGenAI, Type, Content, FunctionDeclaration } from "@google/genai";
-import { ServiceCategory, Worker } from '../types';
+import { ServiceCategory, Worker, User } from '../types';
 
 const API_KEY = process.env.API_KEY;
 
@@ -127,11 +127,29 @@ export const generateMockWorkers = async (count: number, service: ServiceCategor
   }
 };
 
+const findWorkersFunctionDeclaration: FunctionDeclaration = {
+  name: 'findWorkers',
+  parameters: {
+    type: Type.OBJECT,
+    description: 'Busca trabajadores en la plataforma TUFIX basados en criterios específicos como servicio, calificación mínima o ubicación.',
+    properties: {
+      service: { 
+        type: Type.STRING, 
+        description: 'La categoría de servicio a buscar (ej. Handyman, Electrician, Plumber).',
+        enum: Object.values(ServiceCategory)
+      },
+      minRating: { type: Type.NUMBER, description: 'Calificación mínima de estrellas (0-5).' },
+      location: { type: Type.STRING, description: 'Ciudad o estado para filtrar.' },
+      maxPrice: { type: Type.NUMBER, description: 'Precio máximo promedio por trabajo.' }
+    },
+  },
+};
+
 const requestHumanSupportFunctionDeclaration: FunctionDeclaration = {
   name: 'requestHumanSupport',
   parameters: {
     type: Type.OBJECT,
-    description: 'Escalates the chat to a human support agent when the user explicitly asks to speak with a person, human, or live representative.',
+    description: 'Escala el chat a un agente de soporte humano cuando el usuario lo solicita explícitamente.',
     properties: {},
     required: [],
   },
@@ -142,89 +160,122 @@ export const getAiSupportResponse = async (
   currentUser?: any,
   userType?: any,
   jobRequests?: any[],
-  transactions?: any[]
-): Promise<{ text: string; functionCall?: string }> => {
-  // Only use the last 10 messages to keep the context small and relevant
-  const recentHistory = history.slice(-10);
+  transactions?: any[],
+  workers?: Worker[],
+  users?: User[]
+): Promise<{ text: string; functionCall?: string; functionArgs?: any }> => {
+  // Only use the last 15 messages to keep the context relevant
+  const recentHistory = history.slice(-15);
 
   let userContext = '';
   if (currentUser) {
     userContext = `
-Here is the context about the current user you are talking to:
-- User Type: ${userType}
-- Name: ${currentUser.name}
+Contexto del usuario actual:
+- Tipo de Usuario: ${userType}
+- Nombre: ${currentUser.name}
 - Email: ${currentUser.email}
-- Location: ${currentUser.location}
-- Rating: ${currentUser.rating}
+- Ubicación: ${currentUser.location}
+- Calificación: ${currentUser.rating}
 - ID: ${currentUser.id}
 `;
     if (userType === 'worker') {
-      userContext += `- Service: ${currentUser.service}
-- Job Types: ${currentUser.jobTypes?.join(', ')}
-- Average Job Cost: ${currentUser.avgJobCost?.amount} ${currentUser.avgJobCost?.currency}
+      userContext += `- Servicio: ${currentUser.service}
+- Tipos de Trabajo: ${currentUser.jobTypes?.join(', ')}
+- Costo Promedio: ${currentUser.avgJobCost?.amount} ${currentUser.avgJobCost?.currency}
 `;
     }
 
     if (jobRequests) {
-      const userJobs = jobRequests.filter(j => j.clientId === currentUser.id || j.workerId === currentUser.id);
-      userContext += `- Total Jobs: ${userJobs.length}\n`;
-      userContext += `- Recent Jobs: ${JSON.stringify(userJobs.slice(0, 3).map(j => ({ id: j.id, status: j.status, title: j.title, date: j.date, finalPrice: j.finalPrice })))}\n`;
+      const userJobs = jobRequests.filter(j => j.clientId === currentUser.id || j.workerId === currentUser.id || j.user?.id === currentUser.id);
+      userContext += `- Total de Trabajos: ${userJobs.length}\n`;
+      userContext += `- Trabajos Recientes (JSON): ${JSON.stringify(userJobs.slice(0, 20).map(j => {
+        const client = users?.find(u => u.id === (j.user?.id || j.clientId));
+        const worker = workers?.find(w => w.id === j.workerId);
+        return { 
+          id: j.id, 
+          status: j.status, 
+          service: j.service, 
+          date: j.date, 
+          finalPrice: j.finalPrice,
+          clientId: j.user?.id || j.clientId,
+          clientName: j.user?.name || client?.name || j.clientName,
+          workerId: j.workerId,
+          workerName: worker?.name || j.workerName
+        };
+      }))}\n`;
     }
 
     if (transactions) {
-      const userTransactions = transactions.filter(t => t.fromUserId === currentUser.id || t.toUserId === currentUser.id);
-      userContext += `- Total Transactions: ${userTransactions.length}\n`;
-      if (userType === 'worker') {
-        const earnings = userTransactions.filter(t => t.toUserId === currentUser.id && t.status === 'completed').reduce((sum, t) => sum + t.amount, 0);
-        userContext += `- Total Earnings: $${earnings.toFixed(2)}\n`;
-      }
+      const userTransactions = transactions.filter(t => t.clientId === currentUser.id || t.workerId === currentUser.id);
+      userContext += `- Total de Transacciones: ${userTransactions.length}\n`;
+      userContext += `- Datos de Transacciones (JSON): ${JSON.stringify(userTransactions.map(t => {
+        const client = users?.find(u => u.id === t.clientId);
+        const worker = workers?.find(w => w.id === t.workerId);
+        return {
+          id: t.id,
+          amount: t.total,
+          date: t.paidAt,
+          status: t.status,
+          type: t.workerId === currentUser.id ? 'ingreso' : 'gasto',
+          clientId: t.clientId,
+          clientName: client?.name,
+          workerId: t.workerId,
+          workerName: worker?.name
+        };
+      }))}\n`;
     }
   }
 
-  const systemInstruction = `You are TUFIX AI Support, a friendly and helpful assistant for the TUFIX platform.
-TUFIX is an application that connects users with local service professionals like handymen, electricians, and cleaners.
-Your role is to answer user questions about how the platform works.
-Topics you can explain:
-- How to find and book a professional.
-- How the payment process works (we use an escrow system where funds are held until the job is confirmed complete by the client).
-- How to leave reviews for workers or clients.
-- How workers can manage job requests.
-- The dispute resolution process.
+  const systemInstruction = `Eres TUFIX AI Support, un asistente experto y amigable para la plataforma TUFIX.
+TUFIX conecta a usuarios con profesionales locales (handymen, electricistas, plomeros, etc.).
 
-${userContext}
+REGLAS CRÍTICAS:
+1. RESPONDE SIEMPRE EN ESPAÑOL.
+2. Eres capaz de realizar tareas complejas analizando los datos proporcionados en el contexto (JSON de trabajos y transacciones).
+3. Si el usuario pregunta por gastos o ingresos en un periodo (ej. "este mes", "el año pasado"), filtra las transacciones por fecha y suma los montos.
+4. Si el usuario busca un trabajador para un trabajo específico, usa la función 'findWorkers'. Si ya tienes información en el contexto sobre trabajadores previos, puedes mencionarlos.
+5. Si el usuario pregunta por sus "clientes más valiosos" (si es trabajador) o "trabajadores preferidos" (si es cliente), analiza quién aparece más veces en la lista de trabajos o quién ha generado más volumen de dinero.
+6. Traduce las categorías de servicio (ej. 'Handyman' -> 'Personal de mantenimiento', 'Electrician' -> 'Electricista') al responder al usuario.
+7. Mantén un tono profesional, servicial y cercano.
 
-If a user needs to contact a human support agent for issues you cannot resolve (like account-specific problems, payment errors, or urgent matters), provide the following contact information:
+TAREAS COMPLEJAS - GUÍA DE RESPUESTA:
+- "Encontrar a la persona adecuada": Pregunta detalles si faltan (servicio, ubicación, presupuesto). Luego usa 'findWorkers'.
+- "Gasto/Ingreso en un periodo": Revisa las fechas en el JSON de transacciones. Si no hay transacciones en ese periodo, indícalo claramente.
+- "Clientes más valorados": Cuenta cuántos trabajos has hecho con cada cliente (clientId/clientName) y suma los montos. Menciona nombres específicos si están disponibles.
+- "Resumen de actividad": Da un resumen de trabajos completados, pendientes y el balance financiero total basado en los datos.
+
+DATOS DISPONIBLES:
+- Tienes acceso a los trabajos y transacciones del usuario actual en el contexto.
+- Para buscar trabajadores que NO están en el contexto inmediato, DEBES usar 'findWorkers'.
+
+Si el usuario pide hablar con un humano, usa 'requestHumanSupport'.
+
+Información de contacto de respaldo:
 - Email: support@tufix.app
-- Phone: +1 (555) 123-4567
-
-If the user explicitly asks to 'speak to a person', 'talk to a human', or 'contact a live representative', you MUST use the 'requestHumanSupport' function. Do not provide the contact information in this case, just use the function.
-
-Keep your answers concise, friendly, and easy to understand. Format responses with markdown for clarity (e.g., using bullet points for lists).
-Do not answer questions unrelated to the TUFIX platform. If asked an off-topic question, politely steer the conversation back to TUFIX.`;
+- Teléfono: +1 (555) 123-4567`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: recentHistory,
       config: {
-        systemInstruction: systemInstruction,
-        tools: [{ functionDeclarations: [requestHumanSupportFunctionDeclaration] }],
+        systemInstruction: systemInstruction + "\n\n" + userContext,
+        tools: [{ functionDeclarations: [findWorkersFunctionDeclaration, requestHumanSupportFunctionDeclaration] }],
       },
     });
 
     if (response.functionCalls && response.functionCalls.length > 0) {
       const functionCall = response.functionCalls[0];
-      if (functionCall.name === 'requestHumanSupport') {
-        return {
-          text: "I'm connecting you with a support agent now. Please wait a moment.",
-          functionCall: 'requestHumanSupport'
-        };
-      }
+      return {
+        text: "", 
+        functionCall: functionCall.name,
+        functionArgs: functionCall.args
+      };
     }
 
     return { text: response.text };
   } catch (error) {
     console.error("Error getting AI support response:", error);
-    return { text: "I'm sorry, I'm having trouble connecting right now. Please try again later." };
+    return { text: "Lo siento, estoy teniendo problemas para conectarme en este momento. Por favor, inténtalo de nuevo más tarde." };
   }
 };

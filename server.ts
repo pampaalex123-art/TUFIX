@@ -4,9 +4,22 @@ import twilio from 'twilio';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import admin from 'firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
+import firebaseConfigJson from './firebase-applet-config.json' assert { type: 'json' };
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Initialize Firebase Admin
+const adminApp = !admin.apps.length 
+  ? admin.initializeApp({
+      projectId: firebaseConfigJson.projectId,
+    })
+  : admin.app();
+
+const db = getFirestore(adminApp, firebaseConfigJson.firestoreDatabaseId);
+const messaging = admin.messaging();
 
 async function startServer() {
   const app = express();
@@ -14,6 +27,46 @@ async function startServer() {
 
   app.use(cors());
   app.use(express.json());
+
+  // Firestore Listener for Notifications
+  db.collection('notifications').onSnapshot((snapshot) => {
+    snapshot.docChanges().forEach(async (change) => {
+      if (change.type === 'added') {
+        const notification = change.doc.data();
+        console.log('New notification added:', notification);
+
+        try {
+          // Find the user/worker to get their FCM token
+          let recipientDoc = await db.collection('users').doc(notification.userId).get();
+          if (!recipientDoc.exists) {
+            recipientDoc = await db.collection('workers').doc(notification.userId).get();
+          }
+
+          if (recipientDoc.exists) {
+            const recipientData = recipientDoc.data();
+            const fcmToken = recipientData?.fcmToken;
+
+            if (fcmToken) {
+              const message = {
+                notification: {
+                  title: 'TUFIX Notification',
+                  body: notification.message,
+                },
+                token: fcmToken,
+              };
+
+              await messaging.send(message);
+              console.log('Push notification sent successfully to:', notification.userId);
+            } else {
+              console.log('No FCM token found for user:', notification.userId);
+            }
+          }
+        } catch (error) {
+          console.error('Error sending push notification:', error);
+        }
+      }
+    });
+  });
 
   // Twilio Client (Lazy Initialization)
   let twilioClient: twilio.Twilio | null = null;

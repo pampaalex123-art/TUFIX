@@ -297,6 +297,12 @@ const translations: Record<Language, Record<string, string>> = {
         "payment information": "Payment Information (BOB)",
         "bank account number": "Bank Account Number",
         "payout info subtitle": "Please provide your Bolivian bank account number for payouts.",
+        "tufix_ai_support": "TUFIX AI Support",
+        "ai_support_welcome": "Hello! I am TUFIX AI Support. How can I help you today?",
+        "ai_support_error": "I'm sorry, an error occurred. Please try again.",
+        "ask_placeholder": "Type your question here...",
+        "close_ai_support_chat": "Close AI Support Chat",
+        "open_ai_support_chat": "Open AI Support Chat",
         // FIX: Added missing translation keys.
         "back to job details": "Back to Job Details",
         "reviews from providers": "Reviews from Providers",

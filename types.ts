@@ -133,6 +133,7 @@ export interface Worker {
   approvalDate?: string;
   adminApproverId?: string;
   userType?: 'worker' | 'admin';
+  fcmToken?: string;
 }
 
 export interface User {
@@ -150,6 +151,7 @@ export interface User {
   phoneNumber: PhoneNumber;
   verificationStatus?: 'pending' | 'approved' | 'declined';
   userType?: 'user' | 'admin';
+  fcmToken?: string;
 }
 
 export interface JobRequest {
@@ -214,7 +216,7 @@ export interface Conversation {
   lastMessage: Message;
 }
 
-export interface Notification {
+export interface AppNotification {
   id: string;
   userId: string;
   type: 'new_job' | 'status_update' | 'new_message' | 'new_registration' | 'new_dispute' | 'dispute_update' | 'new_support_chat';

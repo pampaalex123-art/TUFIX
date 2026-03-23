@@ -10,12 +10,14 @@ interface AiSupportBubbleProps {
   userType: UserType | null;
   jobRequests: JobRequest[];
   transactions: Transaction[];
+  workers: Worker[];
+  users: User[];
 }
 
-const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupport, currentUser, userType, jobRequests, transactions }) => {
+const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupport, currentUser, userType, jobRequests, transactions, workers, users }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Content[]>([
-    { role: 'model', parts: [{ text: t('ai_support_welcome') }] }
+    { role: 'model', parts: [{ text: t('ai support welcome') }] }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [userInput, setUserInput] = useState('');
@@ -25,30 +27,55 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!userInput.trim() || isLoading) return;
+  const handleSendMessage = async (e?: React.FormEvent, customInput?: string) => {
+    if (e) e.preventDefault();
+    const input = customInput || userInput;
+    if (!input.trim() || isLoading) return;
 
-    const userMessage: Content = { role: 'user', parts: [{ text: userInput.trim() }] };
+    const userMessage: Content = { role: 'user', parts: [{ text: input.trim() }] };
     const newMessages = [...messages, userMessage];
     
-    setMessages(newMessages);
-    setUserInput('');
+    if (!customInput) {
+      setMessages(newMessages);
+      setUserInput('');
+    }
     setIsLoading(true);
 
     try {
-      const aiResponse = await getAiSupportResponse(newMessages, currentUser, userType, jobRequests, transactions);
+      const aiResponse = await getAiSupportResponse(newMessages, currentUser, userType, jobRequests, transactions, workers, users);
 
-      const modelMessage: Content = { role: 'model', parts: [{ text: aiResponse.text }] };
-      setMessages(prev => [...prev, modelMessage]);
+      if (aiResponse.functionCall) {
+        if (aiResponse.functionCall === 'requestHumanSupport') {
+          const modelMessage: Content = { role: 'model', parts: [{ text: "Te estoy conectando con un agente de soporte. Por favor espera un momento." }] };
+          setMessages(prev => [...prev, modelMessage]);
+          onRequestHumanSupport([...newMessages, modelMessage]);
+          setTimeout(() => setIsOpen(false), 2000);
+        } else if (aiResponse.functionCall === 'findWorkers') {
+          const { service, minRating, location, maxPrice } = aiResponse.functionArgs;
+          let filteredWorkers = workers;
+          if (service) filteredWorkers = filteredWorkers.filter(w => w.service === service);
+          if (minRating) filteredWorkers = filteredWorkers.filter(w => w.rating >= minRating);
+          if (location) filteredWorkers = filteredWorkers.filter(w => w.location.toLowerCase().includes(location.toLowerCase()));
+          if (maxPrice) filteredWorkers = filteredWorkers.filter(w => w.avgJobCost.amount <= maxPrice);
 
-      if (aiResponse.functionCall === 'requestHumanSupport') {
-        onRequestHumanSupport([...newMessages, modelMessage]);
-        setTimeout(() => setIsOpen(false), 2000); // Close after a delay to allow user to read message
+          const resultText = filteredWorkers.length > 0 
+            ? `He encontrado ${filteredWorkers.length} trabajadores que coinciden con tu búsqueda:\n` + 
+              filteredWorkers.slice(0, 3).map(w => `- **${w.name}**: ${t(w.service)} en ${w.location}, Calificación: ${w.rating}, Precio aprox: ${w.avgJobCost.amount} ${w.avgJobCost.currency}`).join('\n')
+            : "No encontré trabajadores que coincidan exactamente con esos criterios.";
+
+          const functionResponseMessage: Content = { 
+            role: 'model', 
+            parts: [{ text: resultText }] 
+          };
+          setMessages(prev => [...prev, functionResponseMessage]);
+        }
+      } else {
+        const modelMessage: Content = { role: 'model', parts: [{ text: aiResponse.text }] };
+        setMessages(prev => [...prev, modelMessage]);
       }
     } catch (error) {
       console.error(error);
-      const errorMessage: Content = { role: 'model', parts: [{ text: t('ai_support_error') }] };
+      const errorMessage: Content = { role: 'model', parts: [{ text: t('ai support error') }] };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -74,7 +101,7 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
           <>
             {/* Header */}
             <div className="flex-shrink-0 p-3 flex justify-between items-center border-b border-white/30">
-              <h3 className="text-sm font-bold text-white">{t('tufix_ai_support')}</h3>
+              <h3 className="text-sm font-bold text-white">{t('tufix ai support')}</h3>
             </div>
 
             {/* Messages */}
@@ -112,7 +139,7 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
                 type="text"
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                placeholder={t('ask_placeholder')}
+                placeholder={t('ask placeholder')}
                 className="flex-1 p-2 bg-white/10 border border-white/30 rounded-full text-xs text-white placeholder-gray-400 focus:ring-2 focus:ring-white/50 focus:border-white/50 transition"
                 disabled={isLoading}
               />
@@ -127,7 +154,7 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
       <button 
         onClick={() => setIsOpen(!isOpen)} 
         className="fixed top-20 right-4 z-50 w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-700 shadow-2xl flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent focus:ring-white transition-transform hover:scale-110"
-        aria-label={isOpen ? t('close_ai_support_chat') : t('open_ai_support_chat')}
+        aria-label={isOpen ? t('close ai support chat') : t('open ai support chat')}
       >
         <div className="transition-transform duration-300 ease-in-out" style={{ transform: isOpen ? 'rotate(180deg) scale(0.75)' : 'rotate(0deg)' }}>
             {isOpen ? closeIcon : bubbleIcon}

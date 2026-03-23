@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { User, Worker, JobRequest, ServiceCategory, Transaction, Dispute, Notification, Message } from '../../types';
+import { User, Worker, JobRequest, ServiceCategory, Transaction, Dispute, AppNotification, Message } from '../../types';
 import { SERVICE_CATEGORIES } from '../../constants';
 import AdminTransactionsScreen from './AdminTransactionsScreen';
 import AdminDisputesScreen from '../new/AdminDisputesScreen';
@@ -91,7 +91,7 @@ interface AdminDashboardProps {
     allJobs: JobRequest[];
     transactions: Transaction[];
     disputes: Dispute[];
-    notifications: Notification[];
+    notifications: AppNotification[];
     messages: Message[];
     pendingVerifications: Worker[];
     onSelectUser: (user: User) => void;

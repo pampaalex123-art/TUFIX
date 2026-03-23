@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getMessaging } from 'firebase/messaging';
 import firebaseConfigJson from './firebase-applet-config.json';
 
 // Support environment variable overrides for Vercel/Production
@@ -16,4 +17,28 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+
+// Initialize Firestore with a fallback mechanism
+let firestoreDb;
+try {
+  firestoreDb = getFirestore(app, firebaseConfig.firestoreDatabaseId || undefined);
+} catch (e) {
+  console.warn("Failed to initialize Firestore with named database, falling back to default.", e);
+  firestoreDb = getFirestore(app);
+}
+export const db = firestoreDb;
+
+export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
+
+// Validate connection to Firestore
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if(error instanceof Error && error.message.includes('the client is offline')) {
+      console.error("Please check your Firebase configuration. The client is offline.");
+    }
+    // Skip logging for other errors, as this is simply a connection test.
+  }
+}
+testConnection();

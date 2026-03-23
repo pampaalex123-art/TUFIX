@@ -1,6 +1,6 @@
 // FIX: Replaced placeholder content with a functional Header component.
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Worker, UserType, Notification } from '../../types';
+import { User, Worker, UserType, AppNotification } from '../../types';
 // FIX: The file 'components/shared/LoginScreen.tsx' was missing. It has been created with the 'useTranslations' hook.
 import { Language } from '../shared/LoginScreen';
 import { Globe } from 'lucide-react';
@@ -10,8 +10,8 @@ interface HeaderProps {
   user: User | Worker | null;
   userType: UserType | null;
   onLogout: () => void;
-  notifications: Notification[];
-  onNotificationClick: (notification: Notification) => void;
+  notifications: AppNotification[];
+  onNotificationClick: (notification: AppNotification) => void;
   onMarkAllAsRead: () => void;
   onNavigate: (screen: 'dashboard') => void;
   language: Language;

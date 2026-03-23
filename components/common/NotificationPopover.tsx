@@ -1,15 +1,15 @@
 import React from 'react';
-import { Notification } from '../../types';
+import { AppNotification } from '../../types';
 import { formatDistanceToNow } from '../../utils/time';
 
 interface NotificationPopoverProps {
-  notifications: Notification[];
-  onNotificationClick: (notification: Notification) => void;
+  notifications: AppNotification[];
+  onNotificationClick: (notification: AppNotification) => void;
   onMarkAllAsRead: () => void;
   t: (key: string) => string;
 }
 
-const NotificationIcon: React.FC<{ type: Notification['type'] }> = ({ type }) => {
+const NotificationIcon: React.FC<{ type: AppNotification['type'] }> = ({ type }) => {
   const baseClasses = "h-6 w-6 text-white";
   let iconPath;
   let bgClass;

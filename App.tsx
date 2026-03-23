@@ -30,10 +30,12 @@ import PasswordRecoveryScreen from './components/new/PasswordRecoveryScreen';
 import ClientProfileForWorkerView from './components/new/ClientProfileForWorkerView';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import { useFirestoreCollection } from './hooks/useFirestoreCollection';
-import { auth } from './firebase';
+import { auth, db, messaging } from './firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { getToken, onMessage } from 'firebase/messaging';
+import { doc, updateDoc } from 'firebase/firestore';
 import { useTranslations, Language } from './components/shared/LoginScreen';
-import { Worker, User, JobRequest, ServiceCategory, UserType, Notification, Message, Conversation, Invoice, Review, InvoiceLineItem, Transaction, Dispute, DisputeMessage } from './types';
+import { Worker, User, JobRequest, ServiceCategory, UserType, AppNotification, Message, Conversation, Invoice, Review, InvoiceLineItem, Transaction, Dispute, DisputeMessage } from './types';
 import AiSupportBubble from './components/shared/AiSupportBubble';
 import { Content } from '@google/genai';
 import WorkerVerificationScreen from './components/worker/WorkerVerificationScreen';
@@ -45,7 +47,7 @@ const DUMMY_USERS: User[] = [];
 
 const DUMMY_JOB_REQUESTS: JobRequest[] = [];
 
-const DUMMY_NOTIFICATIONS: Notification[] = [];
+const DUMMY_NOTIFICATIONS: AppNotification[] = [];
 
 const DUMMY_MESSAGES: Message[] = [];
 
@@ -91,7 +93,7 @@ const App: React.FC = () => {
   const [workers, setWorkers] = useFirestoreCollection<Worker>('workers', []);
   const [jobRequests, setJobRequests] = useFirestoreCollection<JobRequest>('jobRequests', DUMMY_JOB_REQUESTS);
   const [users, setUsers] = useFirestoreCollection<User>('users', DUMMY_USERS);
-  const [notifications, setNotifications] = useFirestoreCollection<Notification>('notifications', DUMMY_NOTIFICATIONS);
+  const [notifications, setNotifications] = useFirestoreCollection<AppNotification>('notifications', DUMMY_NOTIFICATIONS);
   const [messages, setMessages] = useFirestoreCollection<Message>('messages', DUMMY_MESSAGES);
   const [invoices, setInvoices] = useFirestoreCollection<Invoice>('invoices', []);
   const [transactions, setTransactions] = useFirestoreCollection<Transaction>('transactions', []);
@@ -142,6 +144,39 @@ const App: React.FC = () => {
     }
     prevUnreadCountRef.current = unreadNotificationsCount;
   }, [unreadNotificationsCount]);
+
+  useEffect(() => {
+    if (currentUser && messaging) {
+      const requestPermission = async () => {
+        try {
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            const token = await getToken(messaging, {
+              vapidKey: 'BD9c686d3e552385458f1c' // This is a placeholder, usually provided by Firebase Console
+            });
+            if (token) {
+              console.log('FCM Token:', token);
+              // Update user/worker document with the token
+              const collectionName = userType === 'worker' ? 'workers' : 'users';
+              const userRef = doc(db, collectionName, currentUser.id);
+              await updateDoc(userRef, { fcmToken: token });
+            }
+          }
+        } catch (error) {
+          console.error('Error getting FCM token:', error);
+        }
+      };
+
+      requestPermission();
+
+      const unsubscribe = onMessage(messaging, (payload) => {
+        console.log('Foreground message received:', payload);
+        // You could show a toast here if you want
+      });
+
+      return () => unsubscribe();
+    }
+  }, [currentUser, userType]);
 
   useEffect(() => {
     if (currentUser && userType) {
@@ -785,7 +820,7 @@ const App: React.FC = () => {
     setNotifications(prev => prev.map(n => n.userId === currentUser?.id ? { ...n, isRead: true } : n));
   };
   
-  const handleNotificationClick = (notification: Notification) => {
+  const handleNotificationClick = (notification: AppNotification) => {
      setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
      
      if (notification.type === 'new_message') {
@@ -1577,7 +1612,18 @@ const App: React.FC = () => {
         }}
         t={t}
       />
-      {currentUser && userType !== 'admin' && <AiSupportBubble t={t} onRequestHumanSupport={handleRequestHumanSupport} currentUser={currentUser} userType={userType} jobRequests={jobRequests} transactions={transactions} />}
+      {currentUser && userType !== 'admin' && (
+        <AiSupportBubble 
+          t={t} 
+          onRequestHumanSupport={handleRequestHumanSupport} 
+          currentUser={currentUser} 
+          userType={userType} 
+          jobRequests={jobRequests} 
+          transactions={transactions} 
+          workers={workers} 
+          users={users}
+        />
+      )}
     </div>
   );
 };
