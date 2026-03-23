@@ -376,7 +376,7 @@ const App: React.FC = () => {
           location: 'New City, NC',
           regions: ['Downtown'],
           avgJobCost: { amount: 100, currency: 'USD' },
-          bio: 'Newly registered service provider.',
+          bio: t('newly registered service provider'),
           avatarUrl: `https://picsum.photos/seed/${formData.email}/200`,
           rating: 0,
           reviews: [],

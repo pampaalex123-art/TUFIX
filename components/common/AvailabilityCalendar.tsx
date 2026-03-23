@@ -44,7 +44,7 @@ const DailyScheduleView: React.FC<{ date: Date; availability: { start: string; e
 
   return (
     <div className="w-full lg:w-1/3 pl-0 lg:pl-6 mt-8 lg:mt-0">
-      <h3 className="text-lg font-semibold text-center mb-2 text-black">{date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</h3>
+      <h3 className="text-lg font-semibold text-center mb-2 text-black">{t(date.toLocaleDateString(undefined, { weekday: 'long' }).toLowerCase())}, {t(date.toLocaleDateString(undefined, { month: 'long' }).toLowerCase())} {date.getDate()}</h3>
       <div className="relative bg-white border border-slate-200 p-2 rounded-lg h-96 overflow-y-auto scrollbar-hide">
         {hours.map(hour => (
           <div key={hour} className="h-10 border-b border-gray-200 flex items-start">
@@ -131,7 +131,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({ availabilit
       <div className="w-full lg:w-2/3">
         <div className="flex items-center justify-between mb-4">
           <button onClick={() => changeMonth(-1)} aria-label="Previous month" className="p-2 rounded-full hover:bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg></button>
-          <h3 className="text-lg font-bold text-pink-500">{currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
+          <h3 className="text-lg font-bold text-pink-500">{t(currentDate.toLocaleString('default', { month: 'long' }).toLowerCase())} {currentDate.getFullYear()}</h3>
           <button onClick={() => changeMonth(1)} aria-label="Next month" className="p-2 rounded-full hover:bg-gray-100"><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg></button>
         </div>
         <div className="grid grid-cols-7 gap-1 text-center text-sm text-black mb-2">{DAY_ABBREVIATIONS.map(day => <div key={day}>{day}</div>)}</div>
