@@ -15,7 +15,7 @@ interface AiSupportBubbleProps {
 const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupport, currentUser, userType, jobRequests, transactions }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Content[]>([
-    { role: 'model', parts: [{ text: "Hi! I'm your TUFIX AI assistant. How can I help you understand our platform?" }] }
+    { role: 'model', parts: [{ text: t('ai_support_welcome') }] }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const [userInput, setUserInput] = useState('');
@@ -48,7 +48,7 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
       }
     } catch (error) {
       console.error(error);
-      const errorMessage: Content = { role: 'model', parts: [{ text: "I'm sorry, something went wrong. Please try again." }] };
+      const errorMessage: Content = { role: 'model', parts: [{ text: t('ai_support_error') }] };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
@@ -74,7 +74,7 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
           <>
             {/* Header */}
             <div className="flex-shrink-0 p-3 flex justify-between items-center border-b border-white/30">
-              <h3 className="text-sm font-bold text-white">TUFIX AI Support</h3>
+              <h3 className="text-sm font-bold text-white">{t('tufix_ai_support')}</h3>
             </div>
 
             {/* Messages */}
@@ -112,7 +112,7 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
                 type="text"
                 value={userInput}
                 onChange={(e) => setUserInput(e.target.value)}
-                placeholder="Ask..."
+                placeholder={t('ask_placeholder')}
                 className="flex-1 p-2 bg-white/10 border border-white/30 rounded-full text-xs text-white placeholder-gray-400 focus:ring-2 focus:ring-white/50 focus:border-white/50 transition"
                 disabled={isLoading}
               />
@@ -127,7 +127,7 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
       <button 
         onClick={() => setIsOpen(!isOpen)} 
         className="fixed top-20 right-4 z-50 w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-purple-700 shadow-2xl flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-transparent focus:ring-white transition-transform hover:scale-110"
-        aria-label={isOpen ? "Close AI support chat" : "Open AI support chat"}
+        aria-label={isOpen ? t('close_ai_support_chat') : t('open_ai_support_chat')}
       >
         <div className="transition-transform duration-300 ease-in-out" style={{ transform: isOpen ? 'rotate(180deg) scale(0.75)' : 'rotate(0deg)' }}>
             {isOpen ? closeIcon : bubbleIcon}

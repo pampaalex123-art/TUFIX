@@ -44,12 +44,12 @@ const CreateJobInvoice: React.FC<CreateJobInvoiceProps> = ({ job, worker, onBack
         setError('');
         for (const item of items) {
             if (!item.description.trim() || item.amount <= 0) {
-                setError('All items must have a description and an amount greater than zero.');
+                setError(t('all items must have a description and an amount greater than zero'));
                 return;
             }
         }
         if (items.length === 0) {
-            setError('You must add at least one item to the invoice.');
+            setError(t('you must add at least one item to the invoice'));
             return;
         }
         onSubmit(job.id, { items, subtotal, platformFee, total });
@@ -77,7 +77,7 @@ const CreateJobInvoice: React.FC<CreateJobInvoiceProps> = ({ job, worker, onBack
                 <div key={index} className="flex items-center space-x-2">
                     <input
                         type="text"
-                        placeholder="Item Description (e.g., Labor, Materials)"
+                        placeholder={t('item description placeholder')}
                         value={item.description}
                         onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                         className="flex-grow p-2 border border-gray-300 rounded-md shadow-sm sm:text-sm bg-white text-black"
@@ -86,7 +86,7 @@ const CreateJobInvoice: React.FC<CreateJobInvoiceProps> = ({ job, worker, onBack
                         <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-500">{currency}</span>
                         <input
                             type="number"
-                            placeholder="Amount"
+                            placeholder={t('amount')}
                             value={item.amount || ''}
                             onChange={(e) => handleItemChange(index, 'amount', e.target.value)}
                             className="w-32 p-2 pl-10 border border-gray-300 rounded-md shadow-sm sm:text-sm bg-white text-black"

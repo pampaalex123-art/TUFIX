@@ -91,7 +91,7 @@ const WorkerProfileAdminView: React.FC<WorkerProfileAdminViewProps> = ({ worker,
                                     {getStatusBadge(job.status, t)}
                                 </div>
                                 <p className="text-sm text-black opacity-60">
-                                   {t('client_label')} <span className="font-semibold text-black">{userMap.get(job.user.id)?.name || 'N/A'}</span>
+                                   {t('client_label')} <span className="font-semibold text-black">{userMap.get(job.user.id)?.name || t('not available')}</span>
                                 </p>
                             </div>
                             <div className="mt-2 sm:mt-0 text-right">

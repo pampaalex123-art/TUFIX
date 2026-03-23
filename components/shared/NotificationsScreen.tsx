@@ -61,7 +61,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ notifications
           <button 
             onClick={onMarkAllAsRead} 
             className="text-sm bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition">
-            {t('mark all as read')}
+            {t('mark_all_as_read')}
           </button>
         )}
       </div>
@@ -69,7 +69,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ notifications
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
         {notifications.length === 0 ? (
           <div className="p-12 text-center">
-            <p className="text-black">{t('no notifications')}</p>
+            <p className="text-black">{t('no_notifications')}</p>
           </div>
         ) : (
           <ul className="divide-y divide-slate-100">

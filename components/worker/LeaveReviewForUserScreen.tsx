@@ -17,11 +17,11 @@ const LeaveReviewForUserScreen: React.FC<LeaveReviewForUserScreenProps> = ({ job
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (rating === 0) {
-      alert(t('select rating alert'));
+      alert(t('select_rating_alert'));
       return;
     }
     if (comment.trim() === '') {
-      alert(t('leave comment alert'));
+      alert(t('leave_comment_alert'));
       return;
     }
     onSubmit(job.id, { rating, comment });
@@ -39,19 +39,19 @@ const LeaveReviewForUserScreen: React.FC<LeaveReviewForUserScreenProps> = ({ job
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 mr-2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
-        {t('back to dashboard')}
+        {t('back_to_dashboard')}
       </button>
 
       <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8 space-y-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">{t('leave review title')}</h1>
+          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">{t('leave_review_title')}</h1>
           <p className="text-gray-600 dark:text-gray-300 mt-2">
-            {t('review for user subtitle', { name: user.name, service: t(job.service) })}
+            {t('review_for_user_subtitle', { name: user.name, service: t(job.service) })}
           </p>
         </div>
 
         <div className="border-t dark:border-gray-700 pt-6">
-          <label className="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">{t('client rating')}</label>
+          <label className="block text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">{t('client_rating')}</label>
           <div className="flex items-center space-x-1 text-yellow-400" onMouseLeave={() => setHoverRating(0)}>
             {[1, 2, 3, 4, 5].map((star) => (
               <button
@@ -75,7 +75,7 @@ const LeaveReviewForUserScreen: React.FC<LeaveReviewForUserScreenProps> = ({ job
             rows={6}
             value={comment}
             onChange={(e) => setComment(e.target.value)}
-            placeholder={t('review placeholder user', { name: user.name })}
+            placeholder={t('review_placeholder_user', { name: user.name })}
             required
             className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 dark:text-white"
           ></textarea>
@@ -86,7 +86,7 @@ const LeaveReviewForUserScreen: React.FC<LeaveReviewForUserScreenProps> = ({ job
             {t('cancel')}
           </button>
           <button type="submit" className="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700 transition">
-            {t('submit review')}
+            {t('submit_review')}
           </button>
         </div>
       </form>

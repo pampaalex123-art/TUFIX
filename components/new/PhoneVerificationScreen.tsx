@@ -59,7 +59,7 @@ const PhoneVerificationScreen: React.FC<PhoneVerificationScreenProps> = ({ onVer
       <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-slate-900 mb-4">{t('verify_phone')}</h1>
           <p className="text-slate-600 text-base leading-relaxed max-w-sm mx-auto">
-            Please verify your phone number, we have sent you a 4 digit code to <span className="font-bold text-purple-700 whitespace-nowrap block mt-1">{phoneNumber}</span>
+            {t('verify_phone_description')} <span className="font-bold text-purple-700 whitespace-nowrap block mt-1">{phoneNumber}</span>
           </p>
       </div>
       <form onSubmit={handleSubmit} className="space-y-8">

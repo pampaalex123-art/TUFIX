@@ -93,7 +93,7 @@ const ClientProfileAdminView: React.FC<ClientProfileAdminViewProps> = ({ user, j
                                     {t('requested_for')} {new Date(`${job.date}T${job.time}`).toLocaleString(undefined, { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: 'numeric' })}
                                 </p>
                                 <p className="text-sm text-black opacity-60">
-                                    {t('provider_label')} <span className="font-semibold text-black">{workerMap.get(job.workerId)?.name || 'N/A'}</span>
+                                    {t('provider_label')} <span className="font-semibold text-black">{workerMap.get(job.workerId)?.name || t('not available')}</span>
                                 </p>
                             </div>
                             <div className="mt-2 sm:mt-0 text-right">

@@ -88,7 +88,7 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
     }
     if (message.invoiceId) {
         const invoice = invoices.find(inv => inv.id === message.invoiceId);
-        if (!invoice) return <div className="italic text-gray-400">Invoice not found.</div>;
+        if (!invoice) return <div className="italic text-gray-400">{t('invoice not found')}</div>;
         return <InvoiceCard 
                     invoice={invoice} 
                     userType={isCurrentUserWorker ? 'worker' : 'user'}
@@ -116,7 +116,7 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
           {isReadOnly && (
             <div className="bg-yellow-100 text-yellow-800 text-sm font-semibold p-2 text-center flex items-center justify-center space-x-2">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z" /><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.022 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" /></svg>
-              <span>{t('viewing_as_admin')}</span>
+              <span>{t('viewing as admin')}</span>
             </div>
           )}
           {/* Header */}
@@ -128,7 +128,7 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
               <img className="w-10 h-10 rounded-full object-cover mr-4" src={otherParticipant.avatarUrl} alt={otherParticipant.name} />
               <div>
                 <h2 className="text-xl font-bold text-black">{otherParticipant.name}</h2>
-                {isReadOnly && <p className="text-xs text-black">In conversation with {currentUser.name}</p>}
+                {isReadOnly && <p className="text-xs text-black">{t('in conversation with', { name: currentUser.name })}</p>}
               </div>
             </div>
             {!isReadOnly && hasUnreadMessages && (
@@ -170,10 +170,10 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
                   <div className="flex items-center space-x-3 mb-2">
                       <img src={imagePreview} alt="preview" className="w-20 h-20 object-cover rounded-lg" />
                       <div className="flex-grow">
-                          <p className="text-sm text-black">Image selected. Ready to send.</p>
+                          <p className="text-sm text-black">{t('image selected ready to send')}</p>
                           <div className="flex space-x-2 mt-2">
-                            <button onClick={handleSendImage} className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition text-sm">Send Image</button>
-                            <button onClick={() => setImagePreview(null)} className="bg-slate-200 text-black font-bold py-2 px-4 rounded-lg hover:bg-slate-300 transition text-sm">Cancel</button>
+                            <button onClick={handleSendImage} className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition text-sm">{t('send image')}</button>
+                            <button onClick={() => setImagePreview(null)} className="bg-slate-200 text-black font-bold py-2 px-4 rounded-lg hover:bg-slate-300 transition text-sm">{t('cancel')}</button>
                           </div>
                       </div>
                   </div>
@@ -187,7 +187,7 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
                       type="text"
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder="Type your message..."
+                      placeholder={t('ask placeholder')}
                       className="flex-1 p-3 border border-slate-300 rounded-full focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition bg-white text-black placeholder-slate-400"
                     />
                     <button type="submit" className="bg-purple-600 text-white font-bold p-3 rounded-full hover:bg-purple-700 transition flex-shrink-0">
@@ -216,6 +216,7 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
             clientName={isCurrentUserWorker ? otherParticipant.name : currentUser.name}
             workerName={isCurrentUserWorker ? currentUser.name : otherParticipant.name}
             onClose={() => { setReceiptModalOpen(false); setSelectedInvoice(null); }}
+            t={t}
         />
       )}
     </>

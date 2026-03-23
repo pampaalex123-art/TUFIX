@@ -12,7 +12,7 @@ interface EarningsChartProps {
 
 export const EarningsChart: React.FC<EarningsChartProps> = ({ data, t }) => {
   if (!data || data.length === 0) {
-    return <div className="flex items-center justify-center h-full text-slate-500">{t('no earnings data')}</div>;
+    return <div className="flex items-center justify-center h-full text-slate-500">{t('no_earnings_data')}</div>;
   }
 
   const maxValue = Math.max(0, ...data.map(d => d.value));

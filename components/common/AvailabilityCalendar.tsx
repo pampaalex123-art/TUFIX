@@ -5,22 +5,22 @@ import { formatTime12hr } from '../../utils/time';
 interface AvailabilityCalendarProps {
   availability: Availability;
   availabilityOverrides?: { [date: string]: { start: string; end: string } | null };
+  t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
 const DAYS_OF_WEEK_NAMES: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const DAY_ABBREVIATIONS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // --- Sub-components ---
 
-const CalendarLegend: React.FC = () => (
+const CalendarLegend: React.FC<{ t: (key: string) => string }> = ({ t }) => (
     <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs mt-4 border-t pt-4">
-        <div className="flex items-center text-black"><span className="w-3 h-3 rounded-full bg-green-100 mr-2 border border-green-200"></span>Regular</div>
-        <div className="flex items-center text-black"><span className="w-3 h-3 rounded-full bg-yellow-100 mr-2 border border-yellow-200"></span>Custom</div>
-        <div className="flex items-center text-black"><span className="w-3 h-3 rounded-full bg-red-100 mr-2 border border-red-200"></span>Day Off</div>
+        <div className="flex items-center text-black"><span className="w-3 h-3 rounded-full bg-green-100 mr-2 border border-green-200"></span>{t('regular')}</div>
+        <div className="flex items-center text-black"><span className="w-3 h-3 rounded-full bg-yellow-100 mr-2 border border-yellow-200"></span>{t('custom')}</div>
+        <div className="flex items-center text-black"><span className="w-3 h-3 rounded-full bg-red-100 mr-2 border border-red-200"></span>{t('day_off')}</div>
     </div>
 );
 
-const DailyScheduleView: React.FC<{ date: Date; availability: { start: string; end: string } | null }> = ({ date, availability }) => {
+const DailyScheduleView: React.FC<{ date: Date; availability: { start: string; end: string } | null; t: (key: string) => string }> = ({ date, availability, t }) => {
   const hours = Array.from({ length: 17 }, (_, i) => i + 6); // 6 AM to 10 PM
 
   const calculateStyle = () => {
@@ -54,12 +54,12 @@ const DailyScheduleView: React.FC<{ date: Date; availability: { start: string; e
          {availability && (
             <div className="absolute left-12 right-2 rounded-lg bg-purple-50 border border-purple-200 p-2 shadow-sm" style={calculateStyle()}>
                  <p className="text-xs font-bold text-black">{formatTime12hr(availability.start)} - {formatTime12hr(availability.end)}</p>
-                 <p className="text-xs text-black">Available</p>
+                 <p className="text-xs text-black">{t('available')}</p>
             </div>
          )}
          {!availability && (
              <div className="absolute inset-0 flex items-center justify-center">
-                 <p className="text-black font-semibold">Unavailable</p>
+                 <p className="text-black font-semibold">{t('unavailable')}</p>
              </div>
          )}
       </div>
@@ -70,9 +70,11 @@ const DailyScheduleView: React.FC<{ date: Date; availability: { start: string; e
 
 // --- Main Component ---
 
-const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({ availability, availabilityOverrides }) => {
+const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({ availability, availabilityOverrides, t }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+
+  const DAY_ABBREVIATIONS = [t('sun'), t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat')];
 
   const getDayAvailabilityStatus = (date: Date): { available: boolean; isOverride: boolean; times: { start: string; end: string } | null } => {
     const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD
@@ -160,9 +162,9 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({ availabilit
             );
           })}
         </div>
-        <CalendarLegend />
+        <CalendarLegend t={t} />
       </div>
-      <DailyScheduleView date={selectedDate} availability={selectedDayStatus.times} />
+      <DailyScheduleView date={selectedDate} availability={selectedDayStatus.times} t={t} />
     </div>
   );
 };

@@ -86,7 +86,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ worker, user, allJobReque
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDate || !selectedTime || !description.trim()) {
-      alert('Please select a date, time, and provide a description.');
+      alert(t('please select a date time and provide a description'));
       return;
     }
     onSubmit({ worker, date: formatDateForInput(selectedDate), time: selectedTime, description });

@@ -402,7 +402,7 @@ const App: React.FC = () => {
         setRecoveryUser(foundUser);
         setRecoveryCode(code);
         // Simulate sending code via alert
-        setTimeout(() => alert(`Your TUFIX recovery code is: ${code}`), 100);
+        setTimeout(() => alert(t('your tufix recovery code is', {code: code})), 100);
         return true;
     } else {
         setRecoveryError(t('user not found'));
@@ -504,7 +504,7 @@ const App: React.FC = () => {
     }]);
     
     if (approvedWorkerForSpreadsheet) {
-        alert(`${approvedWorkerForSpreadsheet.name}'s account has been approved.`);
+        alert(t('account has been approved', {name: approvedWorkerForSpreadsheet.name}));
         updateSpreadsheetVerificationStatus(approvedWorkerForSpreadsheet).catch(error => {
             console.error("Failed to update spreadsheet for approved worker:", error);
         });
@@ -547,7 +547,7 @@ const App: React.FC = () => {
     }]);
     
     if (declinedWorkerForSpreadsheet) {
-        alert(`${declinedWorkerForSpreadsheet.name}'s account has been declined.`);
+        alert(t('account has been declined', {name: declinedWorkerForSpreadsheet.name}));
         updateSpreadsheetVerificationStatus(declinedWorkerForSpreadsheet).catch(error => {
             console.error("Failed to update spreadsheet for declined worker:", error);
         });
@@ -561,7 +561,7 @@ const App: React.FC = () => {
     if (userType === 'user') {
       setView({ screen: 'BOOKING', worker });
     } else {
-      alert("Please log in as a user to book a service.");
+      alert(t('please log in as a user to book a service'));
     }
   };
 
@@ -589,7 +589,7 @@ const App: React.FC = () => {
       relatedEntityId: newJob.id
     }]);
     setView({ screen: 'MY_JOBS' });
-    alert('Booking request submitted successfully!');
+    alert(t('booking request submitted successfully'));
   };
 
   const handleLeaveUserReview = (job: JobRequest) => {
@@ -730,14 +730,14 @@ const App: React.FC = () => {
     if (job.disputeId) {
         const dispute = disputes.find(d => d.id === job.disputeId);
         if (dispute && dispute.status !== 'resolved') {
-            alert('Cannot release payment while a dispute is active. Please wait for the dispute to be resolved by an administrator.');
+            alert(t('cannot release payment while dispute is active'));
             return;
         }
     }
 
     const invoice = invoices.find(inv => inv.id === job.invoiceId);
     if (!invoice || invoice.status !== 'held') {
-        alert('Error: Invoice is not in a payable state.');
+        alert(t('error invoice is not in a payable state'));
         return;
     }
 
@@ -764,21 +764,21 @@ const App: React.FC = () => {
         timestamp: now,
         relatedEntityId: invoice.jobId,
     }]);
-    alert('Job confirmed and payment released! The service provider has been paid.');
+    alert(t('job confirmed and payment released'));
   };
 
   const handleSaveWorkerProfile = (updatedWorker: Worker) => {
     setWorkers(prev => prev.map(w => w.id === updatedWorker.id ? updatedWorker : w));
     setCurrentUser(updatedWorker);
     setView({ screen: 'WORKER_DASHBOARD' });
-    alert('Profile updated successfully!');
+    alert(t('profile updated successfully'));
   };
   
   const handleSaveUserProfile = (updatedUser: User) => {
     setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
     setCurrentUser(updatedUser);
     setView({ screen: 'USER_DASHBOARD' });
-    alert('Profile updated successfully!');
+    alert(t('profile updated successfully'));
   };
 
   const handleMarkAllAsRead = () => {
@@ -952,7 +952,7 @@ const App: React.FC = () => {
     } else {
         setView({ screen: 'WORKER_DASHBOARD' });
     }
-    alert('Invoice sent! You can now start the job.');
+    alert(t('invoice sent you can now start the job'));
   };
   
   const handlePayInvoice = (invoiceId: string) => {
@@ -997,7 +997,7 @@ const App: React.FC = () => {
           relatedEntityId: paidInvoice!.jobId,
       }]);
     }
-    alert('Payment successful! Funds are held securely until you approve the payout.');
+    alert(t('payment successful funds held securely'));
   };
 
   const handleRaiseDispute = (jobId: string, reason: string) => {
@@ -1077,7 +1077,7 @@ const App: React.FC = () => {
       const job = jobRequests.find(j => j.id === dispute?.jobId);
       const invoice = invoices.find(i => i.id === job?.invoiceId);
       if (!dispute || !job || !invoice) {
-          alert("Error: Could not find all related records for this dispute.");
+          alert(t('error could not find all related records for this dispute'));
           return;
       }
       
@@ -1130,7 +1130,7 @@ const App: React.FC = () => {
         }]);
       });
       
-      alert('Dispute has been resolved and funds have been processed.');
+      alert(t('dispute has been resolved and funds have been processed'));
       setView({ screen: 'ADMIN_DASHBOARD' });
   };
 
@@ -1147,7 +1147,7 @@ const App: React.FC = () => {
   const handleSaveTerms = (newContent: string) => {
     setTermsContent(newContent);
     setView({ screen: 'ADMIN_DASHBOARD' });
-    alert('Terms and Services updated successfully!');
+    alert(t('terms and services updated successfully'));
   };
 
   const handleRequestHumanSupport = (chatHistory: Content[]) => {
@@ -1183,7 +1183,7 @@ const App: React.FC = () => {
     }]);
 
     // Alert user and redirect to conversation
-    alert("You have been connected to a live support agent. You can find the chat in your messages.");
+    alert(t('you have been connected to a live support agent'));
     setView({ screen: 'MESSAGING', conversationId });
   };
 
@@ -1530,7 +1530,7 @@ const App: React.FC = () => {
           />
         );
       default:
-        return <div>Not Found</div>;
+        return <div>{t('not_found')}</div>;
     }
   };
 

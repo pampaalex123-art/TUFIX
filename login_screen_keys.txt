@@ -1,0 +1,860 @@
+3D Modeling
+about me bio
+about worker
+Academic Advising
+Academic Writing
+accepted status
+accept job
+accept_terms
+Accountant
+account has been approved
+account has been declined
+add line item
+admin accounts cannot be created
+admin dashboard
+administrator
+Administrator
+admin_login
+admin_signup
+Airport Transfer
+ai support error
+ai support welcome
+all
+all items must have a description and an amount greater than zero
+all items must have description and amount
+all regions
+all services
+all statuses
+already_have_account
+ALTA/NSPS Surveys
+Alterations
+amount
+amount earned
+amount in escrow
+amount label
+Annual Check-up
+any rating
+API Integration
+Apostille Services
+Appointment Scheduling
+approve
+Arbitration Services
+Architect
+a receipt for your transaction
+Article Writing
+Artisan Breads
+ask placeholder
+Auditing
+auth subtitle
+availability
+available
+available this day
+average job value
+avg job cost
+B2B Sales
+Backend Development
+back to admin dashboard
+back to categories
+back to home
+back to job details
+back to jobs
+back to profile
+back to results
+back to verifications
+Baker
+Baking & Pastry
+bank account number
+Banquets
+Barber
+Bartending
+Bathroom Cleaning
+Battery Replacement
+Beard Trim
+Bed Making
+Big Data Solutions
+Blacksmith
+Blade Smithing
+Blueprint Creation
+booking request submitted successfully
+booking subtitle
+Bookkeeping
+book now
+book service with
+Boundary Survey
+Brake Repair
+Branding Package
+Bread Baking
+Bricklaying
+Budgeting
+Bulk Mail Handling
+Butler
+Cabinet Installation
+Cabinet Painting
+camera access error
+cancel
+cancellation reason prompt
+cancelled
+cancel request
+cannot release payment while dispute is active
+card number
+Career Counseling
+Car Key Replacement
+Carpenter
+Carpet Cleaning
+Case Review
+Cash Management
+Cataloging Services
+category
+change method
+change photo
+Charging Port Repair
+Check-up & X-Ray
+Child Development Assessment
+Childhood Vaccinations
+Chimney Repair
+choose recovery method
+choose recovery method subtitle
+City Tours
+Civil Engineering Consultation
+Classic Haircut
+Cleaner
+clear all data
+clear all data description
+clear all data warning
+click to upload id
+client
+client abbr label
+client information
+client management
+client rating
+clients
+close
+close ai support chat
+CMS Setup
+College Application Help
+College Guidance
+Color Grading
+Coloring
+Commercial Office Cleaning
+Commercial Planning
+completed status
+complete job send invoice
+Concrete Pouring
+Concrete Work
+confirm and resolve
+confirm clear all data
+confirm completion
+confirm decline
+confirm_password
+confirm payment transfer
+confirm release action
+confirm release body
+confirm release title
+connect with skilled workers
+Construction Staking
+Construction Worker
+contact
+contact client
+Content Creation
+Contract Review
+conversations
+Cook
+Copywriting
+Corporate Finance
+Corporate Transport
+Corporate Videos
+country_code
+Couples Counseling
+create_account
+create invoice
+Criminal Defense
+currently in escrow
+current overrides
+Curriculum Development
+custom
+custom availability calendar
+custom availability desc
+Custom Cakes
+Custom Clothing
+Custom Ironwork
+Custom Shelving
+Custom Software
+Cut & Style
+cvc
+danger zone
+Data Analysis
+Database Design
+Data Entry
+Data Recovery
+Data Scientist
+Data Visualization
+date available
+date completed
+date label
+date paid
+date raised
+day off
+Deck Building
+Deck Staining
+decline
+decline application
+decline application description
+decline reason placeholder
+decline reason prompt
+Decorative Pieces
+Deep Cleaning
+Delicate Garment Care
+Demolition
+Dental Cleaning
+Dentist
+describe job
+Didactic Strategies
+Diet Planning
+Digital Archive Management
+dispute details
+disputed status
+dispute for job
+dispute has been resolved and funds have been processed
+dispute id label
+dispute management
+dispute reason placeholder
+dispute reason subtitle
+dispute resolution
+dispute resolved
+disputes
+dispute status open
+dispute status resolved
+dispute status under review
+Doctor
+Document Courier
+Document Notarization
+dont_have_account
+Door Installation
+download csv
+Drain Cleaning
+Dressmaking
+Dry Cleaning Drop-off/Pickup
+Drywall Installation
+Drywall Repair
+Dusting & Polishing
+Early Childhood Education
+earnings label
+E-commerce Site
+Economic Forecasting
+Economist
+edit availability
+edit terms and services
+edit your profile
+Educational Consulting
+Educational Material Design
+Electrical Engineering
+Electrician
+Elementary Tutoring
+email_address
+end_time
+Engine Diagnostics
+Engineer
+english
+enter email
+enter phone
+Errand Running
+error could not find all related records for this dispute
+error invoice is not in a payable state
+EV Charger Installation
+Event Catering
+Event Cleanup
+Event Photography
+Event Security
+Event Serving
+Event Serving & Management
+Event Standby
+Executive Assistance
+expiry date
+Exterior Painting
+Fades & Tapers
+failed to send verification code
+Family Law
+Family Therapy
+fee
+fee prefix
+fill_all_fields
+Fillings
+filters
+final resolution
+final resolution details
+final resolution summary
+Financial Analyst
+Financial Modeling
+Financial Reporting
+Financial Risk Management
+Financial Statements
+find a professional
+find a service
+find clients and manage jobs
+find the perfect professional
+Fine Dining Service
+finish request confirmation
+Firefighter
+Fire Safety Inspection
+First Aid Training
+Fixture Installation
+Flood Elevation Certificates
+Floor Buffing & Waxing
+for client
+forgot_password
+Foundation Work
+Frame Repair
+Framing
+Fri
+Friday
+Frontend Development
+full name
+full_name
+Full-Stack Development
+fund action label
+Furniture Assembly
+Garbage Disposal
+Garden Design
+Gardener
+Gate & Railing Fabrication
+General Consultation
+General Labor
+General Maintenance
+General Repairs
+Graphic Designer
+Grocery Shopping
+grow your business
+Guest Reception & Valet
+Hairdresser
+Hair Treatments
+Handyman
+Hardware Repair
+Head Shave
+Health Advice
+Health Monitoring
+Health Screening
+Hedge Trimming
+held
+held in escrow
+Highlights
+Home Assistant
+Home Care
+Homework Assistance
+Hot Towel Shave
+Household Staff Supervision
+Housekeeper
+i am admin
+id document
+identity verification
+identity verification subtitle
+id_number
+id number label
+id photo
+id prefix
+image selected ready to send
+incoming jobs
+in conversation with
+Individual Therapy
+Information Literacy Workshops
+initial claim
+Injury Rehabilitation
+Interior Painting
+Interviewing
+invalid verification code
+Investigative Reporting
+Investment Advice
+Investment Analysis
+invoice
+invoice for
+invoice not found
+invoice sent
+invoice sent you can now start the job
+Ironing & Pressing
+Irrigation Systems
+item description example
+item description placeholder
+IT Support
+Janitor
+job avg
+job confirmed and payment released
+job created
+job description
+job description placeholder
+job details
+job finished by worker
+job history
+job id label
+job is complete
+job progress
+job requests
+jobs
+jobs completed
+jobs completed all time
+jobs done
+jobs label
+job specialties
+job started
+job summary
+joined
+joined between
+joined label
+Journalist
+Judge
+Key Duplication
+Kitchen Cleaning
+Land Surveying
+Language Lessons
+last login between
+last seen label
+Launderer
+Lawn Mowing
+Lawyer
+Lead Generation
+Leak Repair
+Learning Plan Development
+leave comment alert
+leave_comment_alert
+leave review
+leave review title
+Legal Consultation
+Legal Mediation
+Librarian
+Light Housekeeping
+Linen Service
+Literature Review
+Loan Signing Agent
+Local Package Delivery
+Local Rides
+location
+Lock Installation
+Lockout Service
+Locksmith
+login
+Logo Design
+Machine Learning Models
+Mail Carrier
+Manager
+manage the platform
+Market Analysis
+Marketing Materials
+Market Orders
+Mason
+max
+max jobs
+max price
+max reviews
+Meal Prep
+Meal Preparation
+Meal Prep Guidance
+Mechanic
+Mechanical Design
+mediation chat
+mediation history
+Medication Administration
+Medication Review
+Metal Fabrication
+Metal Repair
+MIG Welding
+min
+min jobs
+Minor Illness Treatment
+Minor Outpatient Procedures
+Minor Plumbing
+min price
+min rating
+min reviews
+Mobile App Development
+Mobile Notary
+Mobile Patrol
+Mobility Improvement
+Mon
+Monday
+monthly
+Move-in/Move-out
+Music Lessons
+must_accept_terms
+must add at least one item
+my conversations
+my earnings
+my jobs
+name on card
+name or email
+need service
+Network Setup
+Newborn Care
+new status
+next step phone
+next step selfie
+no admin comment
+no client jobs
+no completed jobs
+no conversations
+no conversations found
+no earnings data
+no id photo submitted
+no job requests
+no jobs found
+no matching disputes
+no matching transactions
+no mediation messages
+no overrides set
+no pending verifications
+no professionals found
+no provider jobs
+no reviews yet
+no selfie submitted
+no slots available
+no specific services listed
+no support requests
+Notary
+not available
+not_found
+no worker data
+number of reviews
+Nurse
+Nutritional Assessment
+Nutritionist
+Office Cleaning
+Office Management
+Oil Change
+open ai support chat
+open disputes
+Operations Management
+original claim
+Outlet & Switch Repair
+oversee users workers and platform
+Over-the-counter Consultation
+Package Delivery
+paid between
+paid by
+paid out
+paid out to providers
+paid to
+Painter
+Panel Upgrades
+Parental Guidance
+partial refund must be greater than 0 and less than total
+parties involved
+password
+password recovery
+password recovery subtitle
+passwords_do_not_match
+Pastries & Desserts
+pay
+pay invoice
+payment held
+payment information
+payment made
+payment released
+payment secured
+payment successful
+payment successful funds held securely
+pay now
+payout info subtitle
+Pedagogue
+Pediatrician
+pending verifications
+period earnings
+Permit Applications
+Personal Bodyguard
+Personal Shopping
+Pet Care
+Pharmacist
+phone_number
+Phone Repair
+Photographer
+Physical Therapist
+Picture Hanging
+Pipe Fitting
+Pipe Welding
+platform fee
+please complete all verification steps
+please enter a valid 16-digit card number
+please enter a valid cvc
+please fill in all card details
+please log in as a user to book a service
+please provide a final resolution summary
+please provide a reason for declining
+please select a date time and provide a description
+please select date
+please use mm/yy format for expiry date
+Plumber
+Police Officer
+Policy Research
+Policy Review
+Portfolio Management
+Portrait Photoshoot
+Post-operative Care
+Post-surgery Rehab
+Post-Surgical Follow-up
+potentially unavailable
+Predictive Analytics
+Prescription Filling
+price not available
+price range
+Primary School Teacher
+Private Chef
+Private Security
+Product Demonstration
+Product Photography
+profile updated successfully
+Programmer
+Project Management
+Property Surveillance
+Prosecutor
+provide dispute reason alert
+provider
+provider details
+provider management
+providers
+provide service
+Psychological Assessment
+Psychologist
+Qualitative Research
+raised by
+raised by label
+raise dispute
+raise dispute title
+raised on
+rating
+rating label
+Reading & Writing Help
+Real Estate Photography
+reason for dispute
+recover_email_subtitle
+recover_phone_subtitle
+recover via email
+recover via phone
+recovery code
+recovery code sent
+refund amount
+refund full to client
+refund partial to client
+region
+regular
+Rekeying
+released
+release full to worker
+remove region
+Repairs & Mending
+requested for
+requested on
+Research Assistance
+Researcher
+reset filters
+Residential Design
+resolution label
+resolve dispute
+resolved on
+Restaurant Staffing
+Restroom Sanitization
+Retail Sales
+Retaining Walls
+retake
+review client
+review for user subtitle
+review for worker subtitle
+review placeholder user
+review placeholder worker
+reviews from providers
+Risk Assessment
+Salesperson
+Sat
+Saturday
+save changes
+scan qr instruction
+scan qr to pay
+Scheduled Pickups
+Scheduling
+School Administration Advice
+School Counselor
+School Principal
+Screen Replacement
+Scripting & Automation
+search by name
+search by name email id
+search for a service
+secure payment
+Security Consulting
+Security Guard
+select date
+select fund action
+select rating alert
+select_rating_alert
+select specialty prompt
+select time
+selfie
+selfie photo
+send image
+send invoice
+Server Maintenance
+service
+service areas
+service category
+service label
+service provider
+Short Films
+Sick Child Diagnosis
+signup
+Site Analysis
+Site Cleanup
+Smart Home Setup
+Smart Lock Setup
+sms error
+Social-Emotional Learning
+Social Media Content
+Social Media Graphics
+Software Engineering
+Software Installation
+Software Troubleshooting
+spanish
+Special Needs Support
+specialty
+Specialty Cuisine
+Sports Therapy
+Stain Removal
+Standard Cleaning
+start job
+start_time
+Stick Welding
+Stockbroker
+Stock Trading
+Stone Masonry
+Story Time Sessions
+Strategic Planning
+Structural Welding
+Student Support Sessions
+Subject Tutoring (Math, Science, etc.)
+submit dispute
+submit request
+submit review
+submitted
+submit verification
+subtotal
+Suit Fitting
+summarize resolution placeholder
+summary
+Sun
+Sunday
+support
+supported formats
+support requests
+Surgeon
+Surgical Consultation
+Survey Design
+Surveyor
+Systems Engineering
+Systems Technician
+Tailor
+take a selfie
+take photo
+Taxi Driver
+Tax Preparation
+Teacher
+Teacher Training Workshops
+Team Leadership
+Teeth Whitening
+terms_and_services
+terms and services updated successfully
+terms edit subtitle
+Test Preparation (SAT, ACT)
+this client has no reviews
+Thu
+Thursday
+Tidying & Organizing
+TIG Welding
+Tire Rotation
+toggle filters
+Toilet Installation
+Tool Forging
+Tooth Extraction
+Topographic Mapping
+total
+total amount
+total clients
+total earnings all time
+total paid
+total platform revenue
+total volume
+total workers
+transaction id
+transactions
+Trash Removal
+Travel Arrangements
+Treasurer
+Tree Pruning
+Trim & Molding
+Trim Painting
+Tue
+Tuesday
+tufix ai support
+TV Mounting
+type mediation message
+type region enter
+UI/UX Design
+unavailable
+Updos & Styling
+upload id photo
+user_login
+user role label
+user_signup
+Vaccinations
+Vacuuming & Mopping
+verification_code
+verifications
+verification submitted
+verification submitted subtitle
+verify
+verify_phone
+verify_phone_description
+verify_phone_subtitle
+Video Editor
+view details
+view dispute
+viewing as admin
+view messages
+view profile
+view receipt
+Waiter
+waiting for payment
+Wallpaper Removal
+Wardrobe Management
+Wash & Fold Service
+Water Damage Repair
+Water Heater Repair
+Wealth Management
+Web Developer
+Wed
+Wedding Cakes
+Wedding Photography
+Wedding Videos
+Wednesday
+Weeding & Planting
+weekly
+weekly availability
+Weight Management Counseling
+welcome back
+welcome to
+welcome to tufix
+Welder
+Well-child Visits
+Window Cleaning
+Window Washing
+Wiring & Rewiring
+worker abbr label
+worker_login
+worker role label
+workers
+worker_signup
+worker verification
+worker verification description
+Wound Dressing
+yearly
+yes clear all
+you are paying a total of
+you have been connected to a live support agent
+you must add at least one item to the invoice
+you prefix
+your rating
+your review
+your tufix recovery code is

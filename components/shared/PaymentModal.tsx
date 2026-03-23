@@ -25,20 +25,20 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
     setError('');
     const { number, expiry, cvc, name } = cardDetails;
     if (!number.trim() || !expiry.trim() || !cvc.trim() || !name.trim()) {
-      setError('Please fill in all card details.');
+      setError(t('please fill in all card details'));
       return;
     }
     // Basic validation simulation
     if (number.replace(/\s/g, '').length !== 16) {
-        setError('Please enter a valid 16-digit card number.');
+        setError(t('please enter a valid 16-digit card number'));
         return;
     }
     if (!/^\d{2}\/\d{2}$/.test(expiry)) {
-        setError('Please use MM/YY format for expiry date.');
+        setError(t('please use mm/yy format for expiry date'));
         return;
     }
      if (cvc.length < 3 || cvc.length > 4) {
-        setError('Please enter a valid CVC.');
+        setError(t('please enter a valid cvc'));
         return;
     }
     onConfirm();
@@ -67,8 +67,8 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
         <button type="button" onClick={onClose} className="absolute top-3 right-3 p-1 rounded-full text-black hover:bg-slate-200">
            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
-        <h2 id="payment-modal-title" className="text-2xl font-bold text-black mb-2">{isBOB ? t('scan qr to pay') : 'Secure Payment'}</h2>
-        <p className="text-black mb-6">You are paying a total of <span className="font-bold text-purple-600">{formatCurrency(invoice.total, invoice.currency)}</span>.</p>
+        <h2 id="payment-modal-title" className="text-2xl font-bold text-black mb-2">{isBOB ? t('scan qr to pay') : t('secure payment')}</h2>
+        <p className="text-black mb-6">{t('you are paying a total of')} <span className="font-bold text-purple-600">{formatCurrency(invoice.total, invoice.currency)}</span>.</p>
         
         {isBOB ? (
             <div className="text-center">
@@ -78,20 +78,20 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
         ) : (
             <div className="space-y-4">
                 <div>
-                    <label htmlFor="card-name" className="block text-sm font-medium text-black">Name on Card</label>
+                    <label htmlFor="card-name" className="block text-sm font-medium text-black">{t('name on card')}</label>
                     <input type="text" id="card-name" value={cardDetails.name} onChange={e => setCardDetails(p => ({...p, name: e.target.value}))} className={inputStyles} />
                 </div>
                  <div>
-                    <label htmlFor="card-number" className="block text-sm font-medium text-black">Card Number</label>
+                    <label htmlFor="card-number" className="block text-sm font-medium text-black">{t('card number')}</label>
                     <input type="text" id="card-number" value={cardDetails.number} onChange={handleCardNumberChange} placeholder="0000 0000 0000 0000" className={inputStyles} />
                 </div>
                 <div className="flex space-x-4">
                     <div className="flex-1">
-                        <label htmlFor="card-expiry" className="block text-sm font-medium text-black">Expiry Date</label>
+                        <label htmlFor="card-expiry" className="block text-sm font-medium text-black">{t('expiry date')}</label>
                         <input type="text" id="card-expiry" value={cardDetails.expiry} onChange={e => setCardDetails(p => ({...p, expiry: e.target.value}))} placeholder="MM/YY" className={inputStyles} />
                     </div>
                     <div className="flex-1">
-                        <label htmlFor="card-cvc" className="block text-sm font-medium text-black">CVC</label>
+                        <label htmlFor="card-cvc" className="block text-sm font-medium text-black">{t('cvc')}</label>
                         <input type="text" id="card-cvc" value={cardDetails.cvc} onChange={e => setCardDetails(p => ({...p, cvc: e.target.value.replace(/\D/g, '').substring(0, 4)}))} placeholder="123" className={inputStyles} />
                     </div>
                 </div>
@@ -107,7 +107,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
                 ) : (
                     <>
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>
-                    <span>Pay {formatCurrency(invoice.total, invoice.currency)}</span>
+                    <span>{t('pay')} {formatCurrency(invoice.total, invoice.currency)}</span>
                     </>
                 )}
             </button>

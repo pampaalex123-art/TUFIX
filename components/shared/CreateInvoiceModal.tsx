@@ -6,9 +6,10 @@ interface CreateInvoiceModalProps {
   clientName: string;
   onClose: () => void;
   onSend: (items: InvoiceLineItem[]) => void;
+  t: (key: string) => string;
 }
 
-const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ clientName, onClose, onSend }) => {
+const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ clientName, onClose, onSend, t }) => {
   const [items, setItems] = useState<InvoiceLineItem[]>([{ description: '', amount: 0 }]);
   const [error, setError] = useState('');
 
@@ -37,12 +38,12 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ clientName, onC
     setError('');
     for (const item of items) {
         if (!item.description.trim() || item.amount <= 0) {
-            setError('All items must have a description and a valid amount greater than zero.');
+            setError(t('all items must have description and amount'));
             return;
         }
     }
     if (items.length === 0) {
-        setError('You must add at least one item to the invoice.');
+        setError(t('must add at least one item'));
         return;
     }
     onSend(items);
@@ -54,22 +55,22 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ clientName, onC
         <button onClick={onClose} className="absolute top-3 right-3 p-1 rounded-full text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700">
            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
-        <h2 id="invoice-modal-title" className="text-2xl font-bold text-gray-800 dark:text-white mb-1">Create Invoice</h2>
-        <p className="text-gray-600 dark:text-gray-300 mb-6">For: {clientName}</p>
+        <h2 id="invoice-modal-title" className="text-2xl font-bold text-gray-800 dark:text-white mb-1">{t('create invoice')}</h2>
+        <p className="text-gray-600 dark:text-gray-300 mb-6">{t('for client')} {clientName}</p>
 
         <div className="space-y-3 max-h-64 overflow-y-auto pr-2">
             {items.map((item, index) => (
                 <div key={index} className="flex items-center space-x-2">
                     <input
                         type="text"
-                        placeholder="Item Description (e.g., Labor)"
+                        placeholder={t('item description example')}
                         value={item.description}
                         onChange={(e) => handleItemChange(index, 'description', e.target.value)}
                         className="flex-grow p-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm bg-white dark:bg-gray-700 dark:text-white"
                     />
                     <input
                         type="number"
-                        placeholder="Amount"
+                        placeholder={t('amount')}
                         value={item.amount || ''}
                         onChange={(e) => handleItemChange(index, 'amount', e.target.value)}
                         className="w-28 p-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm sm:text-sm bg-white dark:bg-gray-700 dark:text-white"
@@ -82,18 +83,18 @@ const CreateInvoiceModal: React.FC<CreateInvoiceModalProps> = ({ clientName, onC
                 </div>
             ))}
         </div>
-        <button onClick={addItem} className="mt-3 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">+ Add Line Item</button>
+        <button onClick={addItem} className="mt-3 text-sm font-semibold text-blue-600 dark:text-blue-400 hover:underline">{t('add line item')}</button>
         
         <div className="mt-6 border-t dark:border-gray-700 pt-4 flex justify-between items-center">
-            <span className="text-lg font-bold text-gray-800 dark:text-white">Total:</span>
+            <span className="text-lg font-bold text-gray-800 dark:text-white">{t('total')}</span>
             <span className="text-2xl font-bold text-gray-900 dark:text-white">${total.toFixed(2)}</span>
         </div>
 
         {error && <p className="text-sm text-red-500 mt-4 text-center">{error}</p>}
 
         <div className="mt-6 flex justify-end space-x-3">
-          <button onClick={onClose} className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition">Cancel</button>
-          <button onClick={handleSubmit} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">Send Invoice</button>
+          <button onClick={onClose} className="bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100 font-bold py-2 px-4 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition">{t('cancel')}</button>
+          <button onClick={handleSubmit} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition">{t('send invoice')}</button>
         </div>
       </div>
     </div>

@@ -2,15 +2,17 @@
 
 import React from 'react';
 import { Invoice } from '../../types';
+import { formatCurrency } from '../../constants';
 
 interface ReceiptModalProps {
   invoice: Invoice;
   clientName: string;
   workerName: string;
   onClose: () => void;
+  t: (key: string) => string;
 }
 
-const ReceiptModal: React.FC<ReceiptModalProps> = ({ invoice, clientName, workerName, onClose }) => {
+const ReceiptModal: React.FC<ReceiptModalProps> = ({ invoice, clientName, workerName, onClose, t }) => {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="receipt-modal-title">
       <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6 relative">
@@ -21,57 +23,57 @@ const ReceiptModal: React.FC<ReceiptModalProps> = ({ invoice, clientName, worker
             <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center bg-green-100 mb-4">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
             </div>
-            <h2 id="receipt-modal-title" className="text-2xl font-bold text-black">Payment Successful</h2>
-            <p className="text-black mt-1">A receipt for your transaction</p>
+            <h2 id="receipt-modal-title" className="text-2xl font-bold text-black">{t('payment successful')}</h2>
+            <p className="text-black mt-1">{t('a receipt for your transaction')}</p>
         </div>
 
         <div className="mt-6 border-t border-b divide-y">
             <div className="py-3 flex justify-between text-sm">
-                <span className="text-black">Paid by:</span>
+                <span className="text-black">{t('paid by')}:</span>
                 <span className="font-medium text-black">{clientName}</span>
             </div>
              <div className="py-3 flex justify-between text-sm">
-                <span className="text-black">Paid to:</span>
+                <span className="text-black">{t('paid to')}:</span>
                 <span className="font-medium text-black">{workerName}</span>
             </div>
             <div className="py-3 flex justify-between text-sm">
-                <span className="text-black">Date Paid:</span>
-                <span className="font-medium text-black">{invoice.paidAt ? new Date(invoice.paidAt).toLocaleString() : 'N/A'}</span>
+                <span className="text-black">{t('date paid')}:</span>
+                <span className="font-medium text-black">{invoice.paidAt ? new Date(invoice.paidAt).toLocaleString() : t('not available')}</span>
             </div>
             <div className="py-3 flex justify-between text-sm">
-                <span className="text-black">Transaction ID:</span>
+                <span className="text-black">{t('transaction id')}:</span>
                 <span className="font-mono text-xs text-black">{invoice.transactionId}</span>
             </div>
         </div>
 
         <div className="mt-4">
-            <h3 className="font-semibold mb-2 text-black">Summary:</h3>
+            <h3 className="font-semibold mb-2 text-black">{t('summary')}:</h3>
             <div className="space-y-1 text-sm border-b pb-2">
                 {invoice.items.map((item, index) => (
                     <div key={index} className="flex justify-between">
                         <span className="text-black">{item.description}</span>
-                        <span className="text-black">${item.amount.toFixed(2)}</span>
+                        <span className="text-black">{formatCurrency(item.amount, invoice.currency)}</span>
                     </div>
                 ))}
             </div>
              <div className="mt-2 pt-2 border-t space-y-1 text-sm">
                 <div className="flex justify-between">
-                    <span className="text-black">Subtotal</span>
-                    <span className="text-black">${invoice.subtotal.toFixed(2)}</span>
+                    <span className="text-black">{t('subtotal')}</span>
+                    <span className="text-black">{formatCurrency(invoice.subtotal, invoice.currency)}</span>
                 </div>
                 <div className="flex justify-between">
-                    <span className="text-black">Platform Fee (10%)</span>
-                    <span className="text-black">${invoice.platformFee.toFixed(2)}</span>
+                    <span className="text-black">{t('platform fee')}</span>
+                    <span className="text-black">{formatCurrency(invoice.platformFee, invoice.currency)}</span>
                 </div>
             </div>
             <div className="mt-2 flex justify-between items-center font-bold">
-                 <span className="text-black">Total Paid</span>
-                 <span className="text-xl text-green-600">${invoice.total.toFixed(2)}</span>
+                 <span className="text-black">{t('total paid')}</span>
+                 <span className="text-xl text-green-600">{formatCurrency(invoice.total, invoice.currency)}</span>
             </div>
         </div>
 
         <div className="mt-6">
-          <button onClick={onClose} className="w-full bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition">Close</button>
+          <button onClick={onClose} className="w-full bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition">{t('close')}</button>
         </div>
       </div>
     </div>

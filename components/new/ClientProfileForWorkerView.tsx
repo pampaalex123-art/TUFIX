@@ -15,7 +15,7 @@ const ClientProfileForWorkerView: React.FC<ClientProfileForWorkerViewProps> = ({
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 mr-2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
-        {t('back to job details')}
+        {t('back_to_job_details')}
       </button>
 
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
@@ -30,14 +30,14 @@ const ClientProfileForWorkerView: React.FC<ClientProfileForWorkerViewProps> = ({
                   <StarRating rating={client.rating} />
                   <span className="text-black ml-2 font-semibold">{client.rating.toFixed(1)}</span>
                 </div>
-                <span className="text-black">({(client.reviews || []).length} {t('reviews')})</span>
+                <span className="text-black">({(client.reviews || []).length} {t('reviews_count')})</span>
               </div>
             </div>
           </div>
         </div>
 
         <div className="bg-slate-50 p-8">
-          <h2 className="text-2xl font-bold text-black mb-6">{t('reviews from providers')}</h2>
+          <h2 className="text-2xl font-bold text-black mb-6">{t('reviews_from_providers')}</h2>
           <div className="space-y-6">
             {(client.reviews || []).length > 0 ? client.reviews.map((review, index) => (
               <div key={index} className="flex space-x-4">

@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { User, Worker, UserType, Notification } from '../../types';
 // FIX: The file 'components/shared/LoginScreen.tsx' was missing. It has been created with the 'useTranslations' hook.
 import { Language } from '../shared/LoginScreen';
+import { Globe } from 'lucide-react';
 import NotificationPopover from './NotificationPopover';
 
 interface HeaderProps {
@@ -81,14 +82,15 @@ const Header: React.FC<HeaderProps> = ({ user, userType, onLogout, notifications
             <div className="relative" ref={langMenuRef}>
               <button 
                 onClick={() => setLangMenuOpen(!isLangMenuOpen)} 
-                className="w-8 h-8 flex items-center justify-center rounded-md border border-slate-300 text-black hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
+                className="px-3 h-8 flex items-center space-x-2 rounded-md border border-slate-300 text-black hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 transition-colors"
               >
-                <span className="font-bold text-sm tracking-wider">{language === 'en' ? 'E' : 'S'}</span>
+                <Globe className="h-4 w-4" />
+                <span className="text-sm font-medium">{t('language')}</span>
               </button>
                {isLangMenuOpen && (
                   <div className="origin-top-right absolute right-0 mt-2 w-36 rounded-xl shadow-lg py-1 bg-white border border-slate-200 focus:outline-none">
-                      <button onClick={() => { setLanguage('en'); setLangMenuOpen(false); }} className={`w-full text-left block px-4 py-2 text-sm ${language === 'en' ? 'bg-purple-50 text-purple-700 font-semibold' : 'text-slate-700'} hover:bg-slate-50`}>English (EN)</button>
-                      <button onClick={() => { setLanguage('es'); setLangMenuOpen(false); }} className={`w-full text-left block px-4 py-2 text-sm ${language === 'es' ? 'bg-purple-50 text-purple-700 font-semibold' : 'text-slate-700'} hover:bg-slate-50`}>Español (ES)</button>
+                      <button onClick={() => { setLanguage('en'); setLangMenuOpen(false); }} className={`w-full text-left block px-4 py-2 text-sm ${language === 'en' ? 'bg-purple-50 text-purple-700 font-semibold' : 'text-slate-700'} hover:bg-slate-50`}>{t('english')}</button>
+                      <button onClick={() => { setLanguage('es'); setLangMenuOpen(false); }} className={`w-full text-left block px-4 py-2 text-sm ${language === 'es' ? 'bg-purple-50 text-purple-700 font-semibold' : 'text-slate-700'} hover:bg-slate-50`}>{t('spanish')}</button>
                   </div>
               )}
             </div>

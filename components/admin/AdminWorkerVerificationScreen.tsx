@@ -22,7 +22,7 @@ const AdminWorkerVerificationScreen: React.FC<AdminWorkerVerificationScreenProps
 
     const handleDecline = () => {
         if (!declineReason.trim()) {
-            alert('Please provide a reason for declining.');
+            alert(t('please provide a reason for declining'));
             return;
         }
         onDecline(worker.id, declineReason);
@@ -36,12 +36,12 @@ const AdminWorkerVerificationScreen: React.FC<AdminWorkerVerificationScreenProps
             </button>
             <div className="bg-white rounded-xl shadow-lg border border-slate-200">
                 <div className="p-6 border-b border-slate-200">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-black">Worker Verification</h1>
-                    <p className="text-black opacity-70">Review the submitted documents to approve or decline the new service provider.</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-black">{t('worker verification')}</h1>
+                    <p className="text-black opacity-70">{t('worker verification description')}</p>
                 </div>
                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div>
-                        <h2 className="text-xl font-bold text-black mb-4">Provider Details</h2>
+                        <h2 className="text-xl font-bold text-black mb-4">{t('provider details')}</h2>
                         <div className="space-y-4">
                             <InfoRow label={t('full_name')} value={worker.name} />
                             <InfoRow label={t('email_address')} value={worker.email} />
@@ -55,17 +55,17 @@ const AdminWorkerVerificationScreen: React.FC<AdminWorkerVerificationScreenProps
                         <div>
                             <h3 className="font-semibold text-black mb-2">{t('id_photo')}</h3>
                             {worker.idPhotoUrl ? (
-                                <img src={worker.idPhotoUrl} alt="ID Document" className="w-full rounded-lg border shadow-sm" />
+                                <img src={worker.idPhotoUrl} alt={t('id document')} className="w-full rounded-lg border shadow-sm" />
                             ) : (
-                                <p className="text-black opacity-50 italic">No ID photo submitted.</p>
+                                <p className="text-black opacity-50 italic">{t('no id photo submitted')}</p>
                             )}
                         </div>
                          <div>
                             <h3 className="font-semibold text-black mb-2">{t('selfie_photo')}</h3>
                             {worker.selfiePhotoUrl ? (
-                                <img src={worker.selfiePhotoUrl} alt="Selfie" className="w-full rounded-lg border shadow-sm" />
+                                <img src={worker.selfiePhotoUrl} alt={t('selfie')} className="w-full rounded-lg border shadow-sm" />
                             ) : (
-                                <p className="text-black opacity-50 italic">No selfie submitted.</p>
+                                <p className="text-black opacity-50 italic">{t('no selfie submitted')}</p>
                             )}
                         </div>
                     </div>
@@ -83,14 +83,14 @@ const AdminWorkerVerificationScreen: React.FC<AdminWorkerVerificationScreenProps
             {showDeclineModal && (
                 <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-xl shadow-lg w-full max-w-md p-6">
-                        <h2 className="text-xl font-bold mb-4 text-black">Decline Application</h2>
-                        <p className="text-sm text-black opacity-70 mb-4">Please provide a clear reason for declining this application. This reason will be shared with the applicant.</p>
+                        <h2 className="text-xl font-bold mb-4 text-black">{t('decline application')}</h2>
+                        <p className="text-sm text-black opacity-70 mb-4">{t('decline application description')}</p>
                         <textarea 
                             value={declineReason}
                             onChange={(e) => setDeclineReason(e.target.value)}
                             rows={4}
                             className="w-full p-2 border rounded-md bg-white text-black"
-                            placeholder="e.g., ID photo is unclear, selfie does not match ID..."
+                            placeholder={t('decline reason placeholder')}
                         />
                         <div className="mt-6 flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
                             <button onClick={() => setShowDeclineModal(false)} className="bg-slate-100 text-black font-bold py-2 px-4 rounded-lg w-full sm:w-auto">

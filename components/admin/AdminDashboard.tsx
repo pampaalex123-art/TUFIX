@@ -120,9 +120,9 @@ const StatCard: React.FC<{ title: string; value: string | number; icon: React.Re
     </div>
 );
 
-const PieChart: React.FC<{ data: { label: string; value: number; color: string }[] }> = ({ data }) => {
+const PieChart: React.FC<{ data: { label: string; value: number; color: string }[]; t: (key: string) => string }> = ({ data, t }) => {
     const total = data.reduce((acc, d) => acc + d.value, 0);
-    if (total === 0) return <div className="flex items-center justify-center h-full text-black">No worker data.</div>;
+    if (total === 0) return <div className="flex items-center justify-center h-full text-black">{t('no worker data')}</div>;
     let cumulative = 0;
     return (
         <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
@@ -591,7 +591,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                             <p className="text-sm text-black">{worker.email}</p>
                                         </div>
                                         <div className="text-sm text-black">
-                                            <p>Submitted: {formatDistanceToNow(worker.signupDate, t)}</p>
+                                            <p>{t('submitted')} {formatDistanceToNow(worker.signupDate, t)}</p>
                                         </div>
                                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                                     </button>

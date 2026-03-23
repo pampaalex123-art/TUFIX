@@ -102,7 +102,15 @@ const AdminTransactionsScreen: React.FC<AdminTransactionsScreenProps> = ({ trans
         </th>;
     };
 
-    const formatDate = (isoString?: string) => isoString ? new Date(isoString).toLocaleString() : 'N/A';
+    const formatDate = (isoString?: string) => isoString ? new Date(isoString).toLocaleString() : t('not available');
+
+    const getStatusLabel = (status: string) => {
+        switch (status) {
+            case 'held': return t('held');
+            case 'released': return t('released');
+            default: return status;
+        }
+    };
 
     return (
         <div className="space-y-6 mt-6">
@@ -143,39 +151,39 @@ const AdminTransactionsScreen: React.FC<AdminTransactionsScreenProps> = ({ trans
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredAndSortedTransactions.map(t => (
-                                <tr key={t.id} className="bg-white border-b border-slate-200 hover:bg-slate-50">
-                                    <td className="px-4 py-3 font-mono text-xs text-black">{t.id}</td>
+                            {filteredAndSortedTransactions.map(t_item => (
+                                <tr key={t_item.id} className="bg-white border-b border-slate-200 hover:bg-slate-50">
+                                    <td className="px-4 py-3 font-mono text-xs text-black">{t_item.id}</td>
                                     <td className="px-4 py-3">
-                                        <p className="font-semibold text-black">{userMap.get(t.clientId)?.name || 'N/A'}</p>
-                                        <p className="text-xs text-black">&rarr; {workerMap.get(t.workerId)?.name || 'N/A'}</p>
+                                        <p className="font-semibold text-black">{userMap.get(t_item.clientId)?.name || t('not available')}</p>
+                                        <p className="text-xs text-black">&rarr; {workerMap.get(t_item.workerId)?.name || t('not available')}</p>
                                     </td>
-                                    <td className="px-4 py-3 text-black">{formatDate(t.paidAt)}</td>
-                                    <td className="px-4 py-3 font-semibold text-black">{formatCurrency(t.total, t.currency)}</td>
-                                    <td className="px-4 py-3 text-black">{formatCurrency(t.platformFee, t.currency)}</td>
-                                    <td className="px-4 py-3 text-black"><span className="capitalize">{t.status}</span></td>
+                                    <td className="px-4 py-3 text-black">{formatDate(t_item.paidAt)}</td>
+                                    <td className="px-4 py-3 font-semibold text-black">{formatCurrency(t_item.total, t_item.currency)}</td>
+                                    <td className="px-4 py-3 text-black">{formatCurrency(t_item.platformFee, t_item.currency)}</td>
+                                    <td className="px-4 py-3 text-black"><span className="capitalize">{getStatusLabel(t_item.status)}</span></td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
                 </div>
                 <div className="sm:hidden divide-y divide-slate-200">
-                    {filteredAndSortedTransactions.map(t => (
-                        <div key={t.id} className="p-4 space-y-2">
+                    {filteredAndSortedTransactions.map(t_item => (
+                        <div key={t_item.id} className="p-4 space-y-2">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <p className="font-semibold text-black">{userMap.get(t.clientId)?.name || 'N/A'}</p>
-                                    <p className="text-xs text-black">&rarr; {workerMap.get(t.workerId)?.name || 'N/A'}</p>
+                                    <p className="font-semibold text-black">{userMap.get(t_item.clientId)?.name || t('not available')}</p>
+                                    <p className="text-xs text-black">&rarr; {workerMap.get(t_item.workerId)?.name || t('not available')}</p>
                                 </div>
-                                <span className="text-xs font-bold px-2 py-1 rounded-full bg-slate-100 text-black capitalize">{t.status}</span>
+                                <span className="text-xs font-bold px-2 py-1 rounded-full bg-slate-100 text-black capitalize">{getStatusLabel(t_item.status)}</span>
                             </div>
                             <div className="flex justify-between text-sm">
-                                <span className="text-black opacity-60">{formatDate(t.paidAt)}</span>
-                                <span className="font-bold text-black">{formatCurrency(t.total, t.currency)}</span>
+                                <span className="text-black opacity-60">{formatDate(t_item.paidAt)}</span>
+                                <span className="font-bold text-black">{formatCurrency(t_item.total, t_item.currency)}</span>
                             </div>
                             <div className="flex justify-between text-xs text-black opacity-60">
-                                <span>ID: {t.id.slice(-8)}</span>
-                                <span>Fee: {formatCurrency(t.platformFee, t.currency)}</span>
+                                <span>{t('id prefix')} {t_item.id.slice(-8)}</span>
+                                <span>{t('fee prefix')} {formatCurrency(t_item.platformFee, t_item.currency)}</span>
                             </div>
                         </div>
                     ))}

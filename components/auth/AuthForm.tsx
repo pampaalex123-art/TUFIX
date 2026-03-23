@@ -32,15 +32,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ userType, onLogin, onSignUp, onForg
 
   const config = {
     user: {
-      title: 'Client',
+      title: t('client'),
       iconUrl: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?q=80&w=800&auto=format&fit=crop'
     },
     worker: {
-      title: 'Service Provider',
+      title: t('service provider'),
       iconUrl: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=800&auto=format&fit=crop'
     },
     admin: {
-      title: 'Administrator',
+      title: t('administrator'),
       iconUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=800&auto=format&fit=crop'
     }
   };
@@ -57,7 +57,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ userType, onLogin, onSignUp, onForg
     try {
       if (mode === 'signup') {
         if(userType === 'admin') {
-            setError("Admin accounts cannot be created from the sign-up form.");
+            setError(t('admin accounts cannot be created'));
             return;
         }
         if (!acceptedTerms) {
@@ -108,10 +108,10 @@ const AuthForm: React.FC<AuthFormProps> = ({ userType, onLogin, onSignUp, onForg
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
             <div className="absolute bottom-0 left-0 p-8 text-white">
                 <h3 className="text-3xl font-bold mb-2">
-                    {userType === 'user' ? 'Find the perfect professional' : userType === 'worker' ? 'Grow your business' : 'Manage the platform'}
+                    {userType === 'user' ? t('find the perfect professional') : userType === 'worker' ? t('grow your business') : t('manage the platform')}
                 </h3>
                 <p className="text-white/80">
-                    {userType === 'user' ? 'Connect with skilled workers in your area for any job.' : userType === 'worker' ? 'Find clients and manage your jobs all in one place.' : 'Oversee users, workers, and platform activity.'}
+                    {userType === 'user' ? t('connect with skilled workers') : userType === 'worker' ? t('find clients and manage jobs') : t('oversee users workers and platform')}
                 </p>
             </div>
         </div>

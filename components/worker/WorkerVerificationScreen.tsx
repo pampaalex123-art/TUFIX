@@ -54,7 +54,7 @@ const WorkerVerificationScreen: React.FC<WorkerVerificationScreenProps> = ({ wor
                 .catch(err => {
                     console.error("Camera error:", err);
                     if (active) {
-                        setError("Could not access camera. Please check permissions and try again.");
+                        setError(t('camera access error'));
                     }
                 });
         }
@@ -110,13 +110,13 @@ const WorkerVerificationScreen: React.FC<WorkerVerificationScreenProps> = ({ wor
 
                 if (!response.ok) {
                     const data = await response.json();
-                    throw new Error(data.error || 'Failed to send verification code');
+                    throw new Error(data.error || t('failed to send verification code'));
                 }
 
                 setStep('phone');
             } catch (err: any) {
                 console.error('SMS Error:', err);
-                setPhoneError(`Could not send SMS: ${err.message}. Please check your Twilio configuration.`);
+                setPhoneError(t('sms error', { error: err.message }));
                 // Fallback for demo purposes if not configured
                 setTimeout(() => alert(`DEMO: TUFIX Verification Code: ${code}`), 500);
                 setStep('phone');
@@ -128,7 +128,7 @@ const WorkerVerificationScreen: React.FC<WorkerVerificationScreenProps> = ({ wor
         if (code === verificationCode) {
             handleSubmit();
         } else {
-            setPhoneError('Invalid verification code. Please try again.');
+            setPhoneError(t('invalid verification code'));
         }
     };
     
@@ -141,7 +141,7 @@ const WorkerVerificationScreen: React.FC<WorkerVerificationScreenProps> = ({ wor
                 setIsSubmitting(false);
             }
         } else {
-            alert('Please complete all verification steps.');
+            alert(t('please complete all verification steps'));
         }
     };
 
@@ -185,7 +185,7 @@ const WorkerVerificationScreen: React.FC<WorkerVerificationScreenProps> = ({ wor
                                     </svg>
                                 </div>
                                 <span className="text-sm font-medium text-slate-600">{t('click to upload id')}</span>
-                                <span className="text-xs text-slate-400 mt-1">JPG, PNG or PDF</span>
+                                <span className="text-xs text-slate-400 mt-1">{t('supported formats')}</span>
                             </div>
                         )}
                     </button>

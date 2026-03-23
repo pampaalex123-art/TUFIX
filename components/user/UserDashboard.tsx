@@ -249,7 +249,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
                                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>{serviceCategoryDetails.get(subCatName)?.icon}</svg>
                                     <span>{t(subCatName)}</span>
                                 </button>
-                           )) : ( <p className="text-black text-sm">No specific services listed in this category yet.</p> )}
+                           )) : ( <p className="text-black text-sm">{t('no specific services listed')}</p> )}
                         </div>
                     </div>
                 )}

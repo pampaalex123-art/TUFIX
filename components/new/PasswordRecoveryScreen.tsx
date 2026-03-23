@@ -138,7 +138,7 @@ const PasswordRecoveryScreen: React.FC<PasswordRecoveryScreenProps> = ({ error, 
   const subtitles = {
       selection: t('choose recovery method subtitle'),
       input: method === 'email' ? t('recover_email_subtitle') : t('recover_phone_subtitle'),
-      code: 'A recovery code was sent to you. Please enter it below.',
+      code: t('recovery code sent'),
       reset: t('reset password subtitle'),
   }
 

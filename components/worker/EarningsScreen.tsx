@@ -107,11 +107,11 @@ const EarningsScreen: React.FC<EarningsScreenProps> = ({ worker, jobRequests, on
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 mr-2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
-        {t('back to dashboard')}
+        {t('back_to_dashboard')}
       </button>
 
       <div className="flex flex-col md:flex-row justify-between md:items-center mb-6">
-        <h1 className="text-3xl font-bold text-black">{t('my earnings')}</h1>
+        <h1 className="text-3xl font-bold text-black">{t('my_earnings')}</h1>
         <div className="bg-slate-100 p-1 rounded-lg mt-4 md:mt-0 flex items-center space-x-1">
           {(['Weekly', 'Monthly', 'Yearly'] as TimePeriod[]).map(period => (
             <button
@@ -126,28 +126,28 @@ const EarningsScreen: React.FC<EarningsScreenProps> = ({ worker, jobRequests, on
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatCard title={t('total earnings all time')} value={`$${stats.totalEarnings.toFixed(2)}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>} />
-        <StatCard title={t('jobs completed all time')} value={stats.jobsCompleted.toString()} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>} />
-        <StatCard title={t('average job value')} value={`$${stats.avgJobValue.toFixed(2)}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>} />
+        <StatCard title={t('total_earnings_all_time')} value={`$${stats.totalEarnings.toFixed(2)}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>} />
+        <StatCard title={t('jobs_completed_all_time')} value={stats.jobsCompleted.toString()} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>} />
+        <StatCard title={t('average_job_value')} value={`$${stats.avgJobValue.toFixed(2)}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>} />
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-lg mb-8">
-        <h2 className="text-xl font-bold text-black mb-4">{t('period earnings', { period: t(timePeriod.toLowerCase()) })}</h2>
+        <h2 className="text-xl font-bold text-black mb-4">{t('period_earnings', { period: t(timePeriod.toLowerCase()) })}</h2>
         <div style={{ height: '350px' }}>
           <EarningsChart data={chartData} t={t} />
         </div>
       </div>
       
       <div className="bg-white rounded-xl shadow-lg">
-        <h2 className="text-xl font-bold text-black p-6 border-b border-slate-200">{t('job history')}</h2>
+        <h2 className="text-xl font-bold text-black p-6 border-b border-slate-200">{t('job_history')}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left text-black">
             <thead className="text-xs text-black uppercase bg-slate-50">
               <tr>
                 <th scope="col" className="px-6 py-3">{t('client')}</th>
                 <th scope="col" className="px-6 py-3">{t('service')}</th>
-                <th scope="col" className="px-6 py-3">{t('date completed')}</th>
-                <th scope="col" className="px-6 py-3 text-right">{t('amount earned')}</th>
+                <th scope="col" className="px-6 py-3">{t('date_completed')}</th>
+                <th scope="col" className="px-6 py-3 text-right">{t('amount_earned')}</th>
               </tr>
             </thead>
             <tbody>
@@ -160,7 +160,7 @@ const EarningsScreen: React.FC<EarningsScreenProps> = ({ worker, jobRequests, on
                 </tr>
               )) : (
                 <tr>
-                    <td colSpan={4} className="text-center py-8 text-black">{t('no completed jobs')}</td>
+                    <td colSpan={4} className="text-center py-8 text-black">{t('no_completed_jobs')}</td>
                 </tr>
               )}
             </tbody>

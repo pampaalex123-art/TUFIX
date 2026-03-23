@@ -18,16 +18,16 @@ const ConversationsScreen: React.FC<ConversationsScreenProps> = ({ currentUser, 
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 mr-2">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
         </svg>
-        {t('back to dashboard')}
+        {t('back_to_dashboard')}
       </button>
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden">
         <div className="p-4 border-b border-slate-200">
-            <h1 className="text-2xl font-bold text-black">{t('my conversations')}</h1>
+            <h1 className="text-2xl font-bold text-black">{t('my_conversations')}</h1>
         </div>
         <div className="divide-y divide-slate-200">
           {conversations.length === 0 ? (
-            <p className="p-6 text-black text-center">{t('no conversations')}</p>
+            <p className="p-6 text-black text-center">{t('no_conversations')}</p>
           ) : (
             conversations
               .sort((a, b) => new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime())
@@ -48,7 +48,7 @@ const ConversationsScreen: React.FC<ConversationsScreenProps> = ({ currentUser, 
                         <span className="text-xs text-black">{formatDistanceToNow(conv.lastMessage.timestamp, t)}</span>
                       </div>
                       <p className={`text-sm text-black truncate ${isUnread ? 'font-semibold' : ''}`}>
-                         {conv.lastMessage.senderId === currentUser.id && t('you prefix')}
+                         {conv.lastMessage.senderId === currentUser.id && t('you_prefix')}
                          {conv.lastMessage.text}
                       </p>
                     </div>

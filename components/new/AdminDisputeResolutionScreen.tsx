@@ -38,11 +38,11 @@ const AdminDisputeResolutionScreen: React.FC<AdminDisputeResolutionScreenProps> 
 
     const handleResolve = () => {
         if (!resolutionText.trim()) {
-            alert('Please provide a final resolution summary.');
+            alert(t('please provide a final resolution summary'));
             return;
         }
         if (fundAction === 'refund_partial' && (partialAmount <= 0 || partialAmount >= invoice.total)) {
-            alert(`Partial refund must be greater than $0 and less than the total of $${invoice.total.toFixed(2)}.`);
+            alert(t('partial refund must be greater than 0 and less than total', {total: invoice.total.toFixed(2)}));
             return;
         }
         onResolve(dispute.id, resolutionText, fundAction, partialAmount);

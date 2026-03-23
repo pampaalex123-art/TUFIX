@@ -37,7 +37,7 @@ const WorkerProfile: React.FC<WorkerProfileProps> = ({ worker, onBack, onContact
                 </div>
                 <span className="text-black">({(worker.reviews || []).length} {t('reviews')})</span>
               </div>
-              <p className="text-xl sm:text-2xl font-bold text-black mt-4">{worker.avgJobCost ? formatCurrency(worker.avgJobCost.amount, worker.avgJobCost.currency) : 'Price not available'}<span className="text-sm sm:text-base font-normal text-black"> {t('job_avg')}</span></p>
+              <p className="text-xl sm:text-2xl font-bold text-black mt-4">{worker.avgJobCost ? formatCurrency(worker.avgJobCost.amount, worker.avgJobCost.currency) : t('price not available')}<span className="text-sm sm:text-base font-normal text-black"> {t('job_avg')}</span></p>
             </div>
             <div className="flex flex-col space-y-3 w-full md:w-auto self-stretch md:self-center flex-shrink-0">
               <button 
@@ -65,6 +65,7 @@ const WorkerProfile: React.FC<WorkerProfileProps> = ({ worker, onBack, onContact
                     <AvailabilityCalendar 
                         availability={worker.availability} 
                         availabilityOverrides={worker.availabilityOverrides}
+                        t={t}
                     />
                 </div>
                 {worker.jobTypes && worker.jobTypes.length > 0 && (
@@ -105,7 +106,7 @@ const WorkerProfile: React.FC<WorkerProfileProps> = ({ worker, onBack, onContact
                 </div>
               </div>
             )) : (
-                <p className="text-black">This professional has no reviews yet.</p>
+                <p className="text-black">{t('no reviews yet')}</p>
             )}
           </div>
         </div>
