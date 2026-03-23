@@ -74,7 +74,7 @@ const AvailabilityCalendar: React.FC<AvailabilityCalendarProps> = ({ availabilit
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
 
-  const DAY_ABBREVIATIONS = [t('sun'), t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat')];
+  const DAY_ABBREVIATIONS = useMemo(() => [t('sun'), t('mon'), t('tue'), t('wed'), t('thu'), t('fri'), t('sat')], [t]);
 
   const getDayAvailabilityStatus = (date: Date): { available: boolean; isOverride: boolean; times: { start: string; end: string } | null } => {
     const dateString = date.toISOString().split('T')[0]; // YYYY-MM-DD

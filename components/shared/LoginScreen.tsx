@@ -1361,7 +1361,7 @@ const translations: Record<Language, Record<string, string>> = {
         "friday": "Viernes",
         "saturday": "Sábado",
         "sunday": "Domingo",
-        "newly registered service provider": "Nuevo proveedor de servicios registrado",
+        "newly registered service provider": "Trabajador nuevo en la plataforma.",
         "general menu": "Menú general",
         "sun": "Dom",
         "mon": "Lun",

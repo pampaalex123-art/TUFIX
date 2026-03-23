@@ -1596,6 +1596,7 @@ const App: React.FC = () => {
         userType={userType}
         activeScreen={view.screen}
         unreadNotificationsCount={unreadNotificationsCount}
+        t={t}
         onNavigate={(screen) => {
             if (screen === 'messages') setView({ screen: 'CONVERSATIONS' });
             else if (screen === 'profile') {
