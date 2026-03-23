@@ -1612,7 +1612,7 @@ const App: React.FC = () => {
         }}
         t={t}
       />
-      {currentUser && userType !== 'admin' && (
+      {userType !== 'admin' && (
         <AiSupportBubble 
           t={t} 
           onRequestHumanSupport={handleRequestHumanSupport} 

@@ -7,8 +7,9 @@ const getAi = () => {
   const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
   if (!apiKey) {
     console.error("Gemini API key not found in environment variables.");
+    throw new Error("API_KEY_MISSING");
   }
-  return new GoogleGenAI({ apiKey: apiKey || '' });
+  return new GoogleGenAI({ apiKey });
 };
 
 const dayAvailabilitySchema = {
@@ -164,8 +165,16 @@ export const getAiSupportResponse = async (
   workers?: Worker[],
   users?: User[]
 ): Promise<{ text: string; functionCall?: string; functionArgs?: any }> => {
-  // Only use the last 15 messages to keep the context relevant
-  const recentHistory = history.slice(-15);
+  // Clean up history to ensure it's in the correct format for the API
+  const recentHistory = history.slice(-15).map(msg => ({
+    role: msg.role,
+    parts: msg.parts.map(part => {
+      if (part.text) return { text: part.text };
+      if (part.functionCall) return { functionCall: part.functionCall };
+      if (part.functionResponse) return { functionResponse: part.functionResponse };
+      return { text: "" };
+    })
+  }));
 
   let userContext = '';
   if (currentUser) {
@@ -255,8 +264,9 @@ Información de contacto de respaldo:
 - Teléfono: +1 (555) 123-4567`;
 
   try {
-    const response = await getAi().models.generateContent({
-      model: "gemini-3.1-pro-preview",
+    const ai = getAi();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
       contents: recentHistory,
       config: {
         systemInstruction: systemInstruction + "\n\n" + userContext,
@@ -274,8 +284,11 @@ Información de contacto de respaldo:
     }
 
     return { text: response.text || "Lo siento, no pude generar una respuesta en este momento." };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error getting AI support response:", error);
+    if (error.message === "API_KEY_MISSING") {
+      return { text: "Error: La clave de API de Gemini no está configurada. Por favor, contacta al administrador." };
+    }
     return { text: "Lo siento, estoy teniendo problemas para conectarme en este momento. Por favor, inténtalo de nuevo más tarde." };
   }
 };

@@ -16,12 +16,17 @@ interface AiSupportBubbleProps {
 
 const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupport, currentUser, userType, jobRequests, transactions, workers, users }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Content[]>([
-    { role: 'model', parts: [{ text: t('ai support welcome') }] }
-  ]);
+  const [messages, setMessages] = useState<Content[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [userInput, setUserInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const welcomeMessage = currentUser 
+      ? t('ai support welcome') 
+      : "¡Hola! Soy tu asistente de IA de TUFIX. Por favor, inicia sesión para que pueda ayudarte con tus trabajos y finanzas. ¿En qué puedo ayudarte hoy?";
+    setMessages([{ role: 'model', parts: [{ text: welcomeMessage }] }]);
+  }, [currentUser, t]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -73,9 +78,12 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
         const modelMessage: Content = { role: 'model', parts: [{ text: aiResponse.text }] };
         setMessages(prev => [...prev, modelMessage]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      const errorMessage: Content = { role: 'model', parts: [{ text: t('ai support error') }] };
+      const errorText = error.message === "API_KEY_MISSING" 
+        ? "Error: La clave de API no está configurada. Por favor, contacta al administrador."
+        : t('ai support error');
+      const errorMessage: Content = { role: 'model', parts: [{ text: errorText }] };
       setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
