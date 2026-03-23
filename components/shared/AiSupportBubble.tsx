@@ -51,7 +51,7 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
           onRequestHumanSupport([...newMessages, modelMessage]);
           setTimeout(() => setIsOpen(false), 2000);
         } else if (aiResponse.functionCall === 'findWorkers') {
-          const { service, minRating, location, maxPrice } = aiResponse.functionArgs;
+          const { service, minRating, location, maxPrice } = (aiResponse.functionArgs as any) || {};
           let filteredWorkers = workers;
           if (service) filteredWorkers = filteredWorkers.filter(w => w.service === service);
           if (minRating) filteredWorkers = filteredWorkers.filter(w => w.rating >= minRating);
@@ -114,7 +114,7 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
                     </div>
                   )}
                   <div className={`max-w-[85%] p-2 rounded-lg ${msg.role === 'user' ? 'bg-white/20 text-white' : 'bg-white/10 text-gray-200'}`}>
-                    <p className="text-xs" dangerouslySetInnerHTML={{ __html: msg.parts[0].text.replace(/\n/g, '<br />') }}></p>
+                    <p className="text-xs" dangerouslySetInnerHTML={{ __html: (msg.parts[0].text || '').replace(/\n/g, '<br />') }}></p>
                   </div>
                 </div>
               ))}

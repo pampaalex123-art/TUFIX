@@ -3,24 +3,21 @@
 import { GoogleGenAI, Type, Content, FunctionDeclaration } from "@google/genai";
 import { ServiceCategory, Worker, User } from '../types';
 
-const API_KEY = process.env.API_KEY;
-
-if (!API_KEY) {
-  // In a real app, you'd want to handle this more gracefully.
-  // For this example, we'll proceed, but API calls will fail.
-  console.error("API_KEY environment variable not set. Gemini API calls will fail.");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY! });
+const getAi = () => {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  if (!apiKey) {
+    console.error("Gemini API key not found in environment variables.");
+  }
+  return new GoogleGenAI({ apiKey: apiKey || '' });
+};
 
 const dayAvailabilitySchema = {
   type: Type.OBJECT,
-  description: "Working hours for this day. This property should be `null` if the worker is unavailable on this day.",
+  description: "Working hours for this day. If the worker is unavailable, this object should be omitted or contain empty strings.",
   properties: {
       start: { type: Type.STRING, description: "Start time in 24-hour format, e.g., '09:00'." },
       end: { type: Type.STRING, description: "End time in 24-hour format, e.g., '17:00'." },
   },
-  nullable: true,
 };
 
 const currencyCodes = ['USD', 'ARS', 'BOB', 'BRL', 'CLP', 'COP', 'GYD', 'PYG', 'PEN', 'SRD', 'UYU', 'VES'];
@@ -106,8 +103,8 @@ export const generateMockWorkers = async (count: number, service: ServiceCategor
   try {
     const prompt = `Generate a list of ${count} realistic profiles for ${service} professionals. The final output must be a JSON object with a single key "workers" which contains the array of profiles. Include email, a simple but secure-looking password (like "pass123WORD" or "MySecureP@ss!"), signup date, last login date, an average job cost as an object with an 'amount' and a 'currency' (from this list: ${currencyCodes.join(', ')}), and 2-4 specific job types they specialize in from the following list if relevant: [Furniture Assembly, TV Mounting, Wiring, Fixture Installation, Leak Repair, Drain Cleaning, Interior Painting, Exterior Painting, Custom Shelving, Deck Building, Standard Cleaning, Deep Cleaning, Lockout Service, Rekeying, Lawn Mowing, Weeding & Planting]. Ensure diverse names, locations within the USA, and detailed, plausible bios and reviews. For some workers, add an 'availabilityOverrides' object to demonstrate taking a day off (e.g., '2024-12-25': null) or adding a special shift on a weekend. IMPORTANT: The output must be a valid JSON object adhering to the provided schema. All string values within the JSON must be properly escaped. For instance, any double quote characters inside a string value (like in a bio or review) must be preceded by a backslash (e.g., "He said, \\"hello there\\"."). Do not include unescaped newline characters within strings.`;
     
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+    const response = await getAi().models.generateContent({
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -115,7 +112,10 @@ export const generateMockWorkers = async (count: number, service: ServiceCategor
       },
     });
 
-    const jsonString = response.text.trim();
+    const jsonString = (response.text || '').trim();
+    if (!jsonString) {
+      throw new Error("Empty response from Gemini API");
+    }
     // The Gemini API returns a JSON string, which needs to be parsed.
     const responseObject = JSON.parse(jsonString);
     return responseObject.workers as Worker[];
@@ -231,7 +231,7 @@ TUFIX conecta a usuarios con profesionales locales (handymen, electricistas, plo
 
 REGLAS CRÍTICAS:
 1. RESPONDE SIEMPRE EN ESPAÑOL.
-2. Eres capaz de realizar tareas complejas analizando los datos proporcionados en el contexto (JSON de trabajos y transacciones).
+2. Eres capaz de realizar tareas complejas analizando los datos proporcionados en el contexto (JSON de trabajos y transacciones). Mantén tus respuestas concisas y útiles.
 3. Si el usuario pregunta por gastos o ingresos en un periodo (ej. "este mes", "el año pasado"), filtra las transacciones por fecha y suma los montos.
 4. Si el usuario busca un trabajador para un trabajo específico, usa la función 'findWorkers'. Si ya tienes información en el contexto sobre trabajadores previos, puedes mencionarlos.
 5. Si el usuario pregunta por sus "clientes más valiosos" (si es trabajador) o "trabajadores preferidos" (si es cliente), analiza quién aparece más veces en la lista de trabajos o quién ha generado más volumen de dinero.
@@ -255,8 +255,8 @@ Información de contacto de respaldo:
 - Teléfono: +1 (555) 123-4567`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+    const response = await getAi().models.generateContent({
+      model: "gemini-3.1-pro-preview",
       contents: recentHistory,
       config: {
         systemInstruction: systemInstruction + "\n\n" + userContext,
@@ -273,7 +273,7 @@ Información de contacto de respaldo:
       };
     }
 
-    return { text: response.text };
+    return { text: response.text || "Lo siento, no pude generar una respuesta en este momento." };
   } catch (error) {
     console.error("Error getting AI support response:", error);
     return { text: "Lo siento, estoy teniendo problemas para conectarme en este momento. Por favor, inténtalo de nuevo más tarde." };
