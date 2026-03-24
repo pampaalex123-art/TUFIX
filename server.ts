@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import twilio from 'twilio';
+import { MercadoPagoConfig, OAuth } from 'mercadopago';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -108,6 +109,74 @@ async function startServer() {
     } catch (error: any) {
       console.error('Twilio Error:', error);
       res.status(500).json({ error: error.message || 'Failed to send SMS' });
+    }
+  });
+
+  // API Route to get Mercado Pago Auth URL
+  app.get('/api/auth/mercadopago/url', (req, res) => {
+    const clientId = process.env.MERCADO_PAGO_CLIENT_ID;
+    const redirectUri = process.env.MERCADO_PAGO_REDIRECT_URI;
+
+    if (!clientId || !redirectUri) {
+      return res.status(500).json({ error: 'Mercado Pago configuration missing' });
+    }
+
+    const authUrl = `https://auth.mercadopago.com.ar/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    res.json({ url: authUrl });
+  });
+
+  // API Route to handle Mercado Pago Callback
+  app.get('/api/auth/mercadopago/callback', async (req, res) => {
+    const { code } = req.query;
+    const clientId = process.env.MERCADO_PAGO_CLIENT_ID;
+    const clientSecret = process.env.MERCADO_PAGO_CLIENT_SECRET;
+    const redirectUri = process.env.MERCADO_PAGO_REDIRECT_URI;
+
+    if (!code || !clientId || !clientSecret || !redirectUri) {
+      return res.status(400).json({ error: 'Invalid request' });
+    }
+
+    try {
+      const response = await fetch('https://api.mercadopago.com/oauth/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          client_secret: clientSecret,
+          code: code as string,
+          redirect_uri: redirectUri,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to exchange code for token');
+      }
+
+      // TODO: Store data.access_token and data.refresh_token in the database associated with the worker
+      console.log('Mercado Pago tokens:', data);
+
+      res.send(`
+        <html>
+          <body>
+            <script>
+              if (window.opener) {
+                window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
+                window.close();
+              } else {
+                window.location.href = '/';
+              }
+            </script>
+            <p>Authentication successful. This window should close automatically.</p>
+          </body>
+        </html>
+      `);
+    } catch (error: any) {
+      console.error('Mercado Pago Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to link Mercado Pago' });
     }
   });
 

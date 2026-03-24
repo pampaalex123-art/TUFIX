@@ -361,15 +361,6 @@ export const CURRENCIES = [
   { code: 'USD', name: 'United States Dollar' },
   { code: 'ARS', name: 'Argentine Peso' },
   { code: 'BOB', name: 'Bolivian Boliviano' },
-  { code: 'BRL', name: 'Brazilian Real' },
-  { code: 'CLP', name: 'Chilean Peso' },
-  { code: 'COP', name: 'Colombian Peso' },
-  { code: 'GYD', name: 'Guyanese Dollar' },
-  { code: 'PYG', name: 'Paraguayan Guaraní' },
-  { code: 'PEN', name: 'Peruvian Sol' },
-  { code: 'SRD', name: 'Surinamese Dollar' },
-  { code: 'UYU', name: 'Uruguayan Peso' },
-  { code: 'VES', name: 'Venezuelan Bolívar' },
 ];
 
 export const COUNTRY_CODES = [
@@ -391,7 +382,7 @@ export const COUNTRY_CODES = [
 export const formatCurrency = (amount: number, currency: string) => {
   try {
     // Use 'symbol' for known currencies, fallback to 'code'
-    const display = ['USD', 'BRL'].includes(currency) ? 'symbol' : 'code';
+    const display = ['USD', 'ARS', 'BOB'].includes(currency) ? 'symbol' : 'code';
     return new Intl.NumberFormat('en-US', { style: 'currency', currency, currencyDisplay: display }).format(amount);
   } catch (e) {
     // Fallback for unsupported currency codes or other errors

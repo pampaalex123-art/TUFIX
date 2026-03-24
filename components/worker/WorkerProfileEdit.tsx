@@ -1,5 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { Worker, ServiceCategory, DayOfWeek } from '../../types';
+import { Worker, ServiceCategory, DayOfWeek, PaymentMethods } from '../../types';
 import { JOB_TYPE_OPTIONS, CURRENCIES } from '../../constants';
 // FIX: The file 'components/shared/LoginScreen.tsx' was missing. It has been created with the 'useTranslations' hook.
 import { Language } from '../shared/LoginScreen';
@@ -85,6 +85,7 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
   const [formData, setFormData] = useState<Worker>({
     ...worker,
     avgJobCost: worker.avgJobCost || { amount: 0, currency: 'USD' },
+    paymentMethods: worker.paymentMethods || {},
     regions: worker.regions || [],
     jobTypes: worker.jobTypes || [],
     availabilityOverrides: worker.availabilityOverrides || {},
@@ -135,6 +136,9 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
     if (name === 'avgJobCostAmount' || name === 'avgJobCostCurrency') {
       const field = name === 'avgJobCostAmount' ? 'amount' : 'currency';
       setFormData(prev => ({ ...prev, avgJobCost: { ...prev.avgJobCost, [field]: field === 'amount' ? Number(value) : value }}));
+    } else if (name.startsWith('paymentMethod_')) {
+      const field = name.replace('paymentMethod_', '') as keyof PaymentMethods;
+      setFormData(prev => ({ ...prev, paymentMethods: { ...(prev.paymentMethods || {}), [field]: value }}));
     } else {
       setFormData(prev => ({ ...prev, [name]: value, ...(name === 'service' && { jobTypes: [] }) }));
     }
@@ -272,6 +276,15 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
                     <input type="text" id="regions" value={newRegion} onChange={(e) => setNewRegion(e.target.value)} onKeyDown={handleAddRegion} placeholder={t('type region enter')} className={inputStyles} />
                     <div className="flex flex-wrap gap-2 mt-2">
                         {formData.regions.map(region => (<span key={region} className="flex items-center bg-purple-100 text-purple-800 text-sm font-medium px-3 py-1 rounded-full">{region}<button type="button" onClick={() => handleRemoveRegion(region)} className="ml-2" aria-label={t('remove region', { region })}>&times;</button></span>))}
+                    </div>
+                </div>
+                <div className="md:col-span-2 mt-4">
+                    <label className="block text-sm font-medium text-slate-600 mb-2">Payment Methods (UI Placeholder)</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <input type="text" name="paymentMethod_bankAccount" value={formData.paymentMethods?.bankAccount || ''} onChange={handleChange} placeholder="Bank Account Number" className={inputStyles} />
+                        <input type="text" name="paymentMethod_stripeAccountId" value={formData.paymentMethods?.stripeAccountId || ''} onChange={handleChange} placeholder="Stripe Account ID" className={inputStyles} />
+                        <input type="text" name="paymentMethod_yapeNumber" value={formData.paymentMethods?.yapeNumber || ''} onChange={handleChange} placeholder="Yape Number" className={inputStyles} />
+                        <input type="text" name="paymentMethod_mercadoPagoAccount" value={formData.paymentMethods?.mercadoPagoAccount || ''} onChange={handleChange} placeholder="Mercado Pago Account" className={inputStyles} />
                     </div>
                 </div>
             </div>

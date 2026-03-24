@@ -1611,7 +1611,6 @@ const App: React.FC = () => {
             }
             else if (screen === 'notifications') setView({ screen: 'NOTIFICATIONS' });
         }}
-        t={t}
       />
       {userType !== 'admin' && (
         <AiSupportBubble 

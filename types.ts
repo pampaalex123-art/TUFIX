@@ -103,6 +103,13 @@ export interface PhoneNumber {
     number: string;
 }
 
+export interface PaymentMethods {
+  bankAccount?: string;
+  stripeAccountId?: string;
+  yapeNumber?: string;
+  mercadoPagoAccount?: string;
+}
+
 export interface Worker {
   id: string;
   name: string;
@@ -123,9 +130,7 @@ export interface Worker {
   lastLoginDate: string; // ISO 8601 string
   idNumber: string;
   phoneNumber: PhoneNumber;
-  payoutDetails?: {
-    bob_account?: string;
-  };
+  paymentMethods?: PaymentMethods;
   verificationStatus: 'pending' | 'approved' | 'declined';
   idPhotoUrl?: string;
   selfiePhotoUrl?: string;
