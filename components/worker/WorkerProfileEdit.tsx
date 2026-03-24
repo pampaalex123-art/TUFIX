@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Worker, ServiceCategory, DayOfWeek, PaymentMethods } from '../../types';
 import { JOB_TYPE_OPTIONS, CURRENCIES } from '../../constants';
 // FIX: The file 'components/shared/LoginScreen.tsx' was missing. It has been created with the 'useTranslations' hook.
@@ -173,6 +173,39 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
     });
   };
 
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      // Validate origin is from AI Studio preview or localhost
+      const origin = event.origin;
+      if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+        return;
+      }
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+        console.log('Mercado Pago linked successfully');
+        alert('Mercado Pago linked successfully');
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  const handleLinkMercadoPago = async () => {
+    try {
+      const response = await fetch(`/api/auth/mercadopago/url?workerId=${worker.id}`);
+      if (!response.ok) {
+        throw new Error('Failed to get auth URL');
+      }
+      const { url } = await response.json();
+      const authWindow = window.open(url, 'oauth_popup', 'width=600,height=700');
+      if (!authWindow) {
+        alert('Please allow popups for this site to connect your account.');
+      }
+    } catch (error) {
+      console.error('OAuth error:', error);
+      alert('Failed to initiate Mercado Pago linking.');
+    }
+  };
+
   const handleAvailabilityToggle = (day: DayOfWeek, checked: boolean) => {
     setFormData(prev => ({ ...prev, availability: { ...prev.availability, [day]: checked ? { start: '09:00', end: '17:00' } : null } }));
   };
@@ -285,6 +318,7 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
                         <input type="text" name="paymentMethod_stripeAccountId" value={formData.paymentMethods?.stripeAccountId || ''} onChange={handleChange} placeholder="Stripe Account ID" className={inputStyles} />
                         <input type="text" name="paymentMethod_yapeNumber" value={formData.paymentMethods?.yapeNumber || ''} onChange={handleChange} placeholder="Yape Number" className={inputStyles} />
                         <input type="text" name="paymentMethod_mercadoPagoAccount" value={formData.paymentMethods?.mercadoPagoAccount || ''} onChange={handleChange} placeholder="Mercado Pago Account" className={inputStyles} />
+                        <button type="button" onClick={handleLinkMercadoPago} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Link Mercado Pago</button>
                     </div>
                 </div>
             </div>

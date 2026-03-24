@@ -41,6 +41,7 @@ import { Content } from '@google/genai';
 import WorkerVerificationScreen from './components/worker/WorkerVerificationScreen';
 import VerificationPendingScreen from './components/auth/VerificationPendingScreen';
 import AdminWorkerVerificationScreen from './components/admin/AdminWorkerVerificationScreen';
+import ConfirmationPage from './components/shared/ConfirmationPage';
 import { addWorkerToSpreadsheet, updateSpreadsheetVerificationStatus } from './services/spreadsheetService';
 
 const DUMMY_USERS: User[] = [];
@@ -82,13 +83,21 @@ type View =
   | { screen: 'WORKER_VERIFICATION'; workerId: string }
   | { screen: 'VERIFICATION_PENDING' }
   | { screen: 'NOTIFICATIONS' }
-  | { screen: 'ADMIN_WORKER_VERIFICATION'; worker: Worker };
+  | { screen: 'ADMIN_WORKER_VERIFICATION'; worker: Worker }
+  | { screen: 'CONFIRMATION' };
 
 const App: React.FC = () => {
   const { language, setLanguage, t } = useTranslations();
   const [currentUser, setCurrentUser] = useLocalStorage<User | Worker | null>('currentUser_v5', null);
   const [userType, setUserType] = useLocalStorage<UserType | null>('userType_v5', null);
   const [view, setView] = useState<View>({ screen: 'AUTH' });
+
+  useEffect(() => {
+    // Handle Mercado Pago confirmation redirect
+    if (window.location.pathname === '/confirmation') {
+      setView({ screen: 'CONFIRMATION' });
+    }
+  }, []);
   
   const [workers, setWorkers] = useFirestoreCollection<Worker>('workers', []);
   const [jobRequests, setJobRequests] = useFirestoreCollection<JobRequest>('jobRequests', DUMMY_JOB_REQUESTS);
@@ -1562,6 +1571,17 @@ const App: React.FC = () => {
             }}
             onMarkAllAsRead={() => setNotifications(prev => prev.map(n => n.userId === currentUser?.id ? { ...n, isRead: true } : n))}
             t={t}
+          />
+        );
+      case 'CONFIRMATION':
+        return (
+          <ConfirmationPage 
+            onBack={() => {
+              window.history.replaceState({}, '', '/');
+              if (userType === 'user') setView({ screen: 'USER_DASHBOARD' });
+              else if (userType === 'worker') setView({ screen: 'WORKER_DASHBOARD' });
+              else setView({ screen: 'AUTH' });
+            }}
           />
         );
       default:

@@ -114,6 +114,7 @@ async function startServer() {
 
   // API Route to get Mercado Pago Auth URL
   app.get('/api/auth/mercadopago/url', (req, res) => {
+    const { workerId } = req.query;
     const clientId = process.env.MERCADO_PAGO_CLIENT_ID;
     const redirectUri = process.env.MERCADO_PAGO_REDIRECT_URI;
 
@@ -121,8 +122,56 @@ async function startServer() {
       return res.status(500).json({ error: 'Mercado Pago configuration missing' });
     }
 
-    const authUrl = `https://auth.mercadopago.com.ar/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    const state = workerId ? `workerId=${workerId}` : '';
+    const authUrl = `https://auth.mercadopago.com.ar/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
     res.json({ url: authUrl });
+  });
+
+  // API Route to create Mercado Pago Preference
+  app.post('/api/create-preference', async (req, res) => {
+    const { itemId, price, title, description } = req.body;
+    const accessToken = process.env.MP_ACCESS_TOKEN;
+    const appUrl = process.env.APP_URL || 'http://localhost:3000';
+
+    if (!accessToken) {
+      return res.status(500).json({ error: 'Mercado Pago access token missing' });
+    }
+
+    try {
+      const client = new MercadoPagoConfig({ accessToken });
+      const { Preference } = await import('mercadopago');
+      const preferenceClient = new Preference(client);
+
+      const result = await preferenceClient.create({
+        body: {
+          items: [
+            {
+              id: itemId,
+              title: title || 'Service Payment',
+              description: description || 'Payment for service via TUFIX',
+              quantity: 1,
+              unit_price: Number(price),
+              currency_id: 'ARS', // Defaulting to ARS for Mercado Pago Argentina, can be adjusted
+            },
+          ],
+          back_urls: {
+            success: `${appUrl}/confirmation?status=success&itemId=${itemId}`,
+            failure: `${appUrl}/confirmation?status=failure&itemId=${itemId}`,
+            pending: `${appUrl}/confirmation?status=pending&itemId=${itemId}`,
+          },
+          auto_return: 'approved',
+          statement_descriptor: 'TUFIX SERVICE',
+        },
+      });
+
+      res.json({ 
+        id: result.id,
+        init_point: result.init_point 
+      });
+    } catch (error: any) {
+      console.error('Mercado Pago Preference Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to create preference' });
+    }
   });
 
   // API Route to handle Mercado Pago Callback
@@ -156,8 +205,18 @@ async function startServer() {
         throw new Error(data.message || 'Failed to exchange code for token');
       }
 
-      // TODO: Store data.access_token and data.refresh_token in the database associated with the worker
-      console.log('Mercado Pago tokens:', data);
+      // Store data.access_token and data.refresh_token in the database associated with the worker
+      const workerId = (req.query.state as string)?.split('=')[1];
+      if (workerId) {
+        await db.collection('workers').doc(workerId).update({
+          'payoutDetails.mercadoPago': {
+            accessToken: data.access_token,
+            refreshToken: data.refresh_token,
+            updatedAt: new Date().toISOString(),
+          },
+        });
+      }
+      console.log('Mercado Pago tokens stored for worker:', workerId);
 
       res.send(`
         <html>
