@@ -146,12 +146,16 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
             <div className="space-y-4">
               {messages.sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()).map(message => {
                 const isCurrentUserSender = message.senderId === currentUser.id;
+                const isMessageFromAdmin = isCurrentUserSender 
+                  ? currentUser.userType === 'admin' 
+                  : otherParticipant.userType === 'admin';
+
                 return (
                   <div key={message.id} className={`flex items-end gap-2 ${isCurrentUserSender ? 'justify-end' : 'justify-start'}`}>
                     {!isCurrentUserSender && <img src={otherParticipant.avatarUrl} className="w-6 h-6 rounded-full" alt="" />}
-                    <div className={`max-w-md p-3 rounded-lg ${isCurrentUserSender ? 'bg-purple-600 text-white' : 'bg-slate-200 text-black'}`}>
+                    <div className={`max-w-md p-3 rounded-lg ${isMessageFromAdmin ? 'bg-purple-600 text-white' : 'bg-slate-200 text-black'}`}>
                       {renderMessageContent(message)}
-                      <p className={`text-xs mt-1 ${isCurrentUserSender ? 'text-purple-200' : 'text-black'}`}>
+                      <p className={`text-xs mt-1 ${isMessageFromAdmin ? 'text-purple-200' : 'text-slate-500'}`}>
                         {formatDistanceToNow(message.timestamp, t)}
                       </p>
                     </div>

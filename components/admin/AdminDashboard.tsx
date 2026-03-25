@@ -272,32 +272,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
     }, [workersWithStats, workerFilters, workerSort]);
 
     const supportConversations = useMemo(() => {
-        const supportNotifs = notifications.filter(n => n.type === 'new_support_chat');
-        const supportConvoIds = new Set(supportNotifs.map(n => n.relatedEntityId));
-        const convoMap = new Map<string, { user: User, lastMessage: Message, unreadCount: number }>();
+        const convoMap = new Map<string, { user: User | Worker, lastMessage: Message, unreadCount: number }>();
 
-        // Get all conversations with admin that have a support notification
-        const adminConvos = new Set<string>(
+        // Get all unique conversation IDs involving the admin (including the legacy admin-1 ID)
+        const adminConvoIds = new Set<string>(
             messages
-                .filter(m => m.senderId === adminId || m.receiverId === adminId)
-                .map(m => `conv_${[m.senderId, m.receiverId].sort().join('_')}`)
-                .filter(id => supportConvoIds.has(id))
+                .filter(m => m.senderId === adminId || m.receiverId === adminId || m.senderId === 'admin-1' || m.receiverId === 'admin-1')
+                .map(m => {
+                    const otherId = [m.senderId, m.receiverId].find(id => id !== adminId && id !== 'admin-1');
+                    return otherId ? `conv_${[otherId, adminId].sort().join('_')}` : null;
+                })
+                .filter((id): id is string => !!id)
         );
         
-        adminConvos.forEach((conversationId: string) => {
-            const userId = conversationId.replace('conv_', '').split('_').find(id => id !== adminId);
-            if (!userId) return;
+        adminConvoIds.forEach((conversationId: string) => {
+            const otherParticipantId = conversationId.replace('conv_', '').split('_').find(id => id !== adminId);
+            if (!otherParticipantId) return;
             
-            const participant = participantMap.get(userId);
+            const participant = participantMap.get(otherParticipantId);
              if (participant) {
                 const conversationMessages = messages.filter(m => 
-                    (m.senderId === participant.id && m.receiverId === adminId) || 
-                    (m.senderId === adminId && m.receiverId === participant.id)
+                    (m.senderId === participant.id && (m.receiverId === adminId || m.receiverId === 'admin-1')) || 
+                    ((m.senderId === adminId || m.senderId === 'admin-1') && m.receiverId === participant.id)
                 );
                 
                 if (conversationMessages.length > 0) {
                     const lastMessage = conversationMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-                    const unreadCount = conversationMessages.filter(m => m.receiverId === adminId && !m.isRead).length;
+                    const unreadCount = conversationMessages.filter(m => (m.receiverId === adminId || m.receiverId === 'admin-1') && !m.isRead).length;
                     
                     convoMap.set(conversationId, { user: participant, lastMessage, unreadCount });
                 }
@@ -307,7 +308,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
         return Array.from(convoMap.entries())
             .map(([id, data]) => ({ id, ...data }))
             .sort((a, b) => new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime());
-    }, [notifications, messages, participantMap, adminId]);
+    }, [messages, participantMap, adminId]);
 
     // --- HANDLERS ---
     const handleClientSort = (key: ClientSortKey) => setClientSort(prev => ({ key, direction: prev.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending' }));

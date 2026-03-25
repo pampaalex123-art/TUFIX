@@ -119,7 +119,7 @@ const App: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
 
   const adminUser = users.find(u => u.userType === 'admin' || u.email === 'admin@tufix.com' || u.email === 'pampa.alex123@gmail.com');
-  const currentAdminId = adminUser?.id || ADMIN_ID;
+  const currentAdminId = (currentUser?.email === 'pampa.alex123@gmail.com' || currentUser?.email === 'admin@tufix.com' || currentUser?.userType === 'admin' ? currentUser.id : null) || adminUser?.id || ADMIN_ID;
 
   const unreadNotificationsCount = currentUser 
     ? notifications.filter(n => n.userId === currentUser.id && !n.isRead).length 
@@ -255,6 +255,7 @@ const App: React.FC = () => {
         let user = users.find(u => u.email.toLowerCase() === formData.email.toLowerCase());
         if (!user) {
           // Recreate user if missing from local storage but exists in Supabase
+          const isAdminEmail = formData.email.toLowerCase() === 'pampa.alex123@gmail.com' || formData.email.toLowerCase() === 'admin@tufix.com';
           user = {
             id: data.user?.uid || `user-${Date.now()}`,
             name: formData.email.split('@')[0], // Fallback name
@@ -269,12 +270,12 @@ const App: React.FC = () => {
             idNumber: '000-00-0000',
             phoneNumber: { code: '+1', number: '555-555-5555' },
             verificationStatus: 'approved',
-            userType: 'user',
+            userType: isAdminEmail ? 'admin' : 'user',
           };
           setUsers(prev => [...prev, user!]);
         }
         setCurrentUser(user);
-        setUserType('user');
+        setUserType(user.userType as UserType);
         return null;
       } else if (type === 'worker') {
         let worker = workers.find(w => w.email.toLowerCase() === formData.email.toLowerCase());
@@ -340,6 +341,7 @@ const App: React.FC = () => {
         if (users.some(u => u.email.toLowerCase() === formData.email.toLowerCase())) {
           return 'An account with this email already exists. Please log in.';
         }
+        const isAdminEmail = formData.email.toLowerCase() === 'pampa.alex123@gmail.com' || formData.email.toLowerCase() === 'admin@tufix.com';
         const newUser: User = {
           id: data.user?.uid || `user-${Date.now()}`,
           name: formData.name,
@@ -350,17 +352,15 @@ const App: React.FC = () => {
           signupDate: new Date().toISOString(),
           lastLoginDate: new Date().toISOString(),
           rating: 0,
-// FIX: Add missing idNumber and phoneNumber properties to satisfy the User type.
           reviews: [],
           idNumber: formData.idNumber,
-// FIX: Changed phoneNumber from a string to a PhoneNumber object to match the type definition and use form data.
           phoneNumber: { code: formData.countryCode, number: formData.phoneNumber },
           verificationStatus: 'approved',
-          userType: 'user',
+          userType: isAdminEmail ? 'admin' : 'user',
         };
         setUsers(prev => [...prev, newUser]);
         setCurrentUser(newUser);
-        setUserType('user');
+        setUserType(newUser.userType as UserType);
         setNotifications(prev => [...prev, {
             id: `notif-reg-user-${Date.now()}`,
             userId: currentAdminId,
@@ -848,7 +848,12 @@ const App: React.FC = () => {
         }
      }
      
-     if (notification.type === 'new_dispute') {
+      if (notification.type === 'new_support_chat' && userType === 'admin') {
+        setView({ screen: 'MESSAGING', conversationId: notification.relatedEntityId });
+        return;
+      }
+
+      if (notification.type === 'new_dispute') {
         const dispute = disputes.find(d => d.id === notification.relatedEntityId);
         if (dispute && userType === 'admin') {
             setView({ screen: 'ADMIN_DISPUTE_DETAILS', dispute });
@@ -1197,12 +1202,12 @@ const App: React.FC = () => {
   const handleRequestHumanSupport = (chatHistory: Content[]) => {
     if (!currentUser) return;
 
-    const conversationId = `conv_${[currentUser.id, ADMIN_ID].sort().join('_')}`;
+    const conversationId = `conv_${[currentUser.id, currentAdminId].sort().join('_')}`;
 
     // Transform chat history and prepend it to the conversation
     const newMessages: Message[] = chatHistory.map((content, index) => {
-        const senderId = content.role === 'user' ? currentUser.id : ADMIN_ID;
-        const receiverId = content.role === 'user' ? ADMIN_ID : currentUser.id;
+        const senderId = content.role === 'user' ? currentUser.id : currentAdminId;
+        const receiverId = content.role === 'user' ? currentAdminId : currentUser.id;
         return {
             id: `support-msg-${Date.now()}-${index}`,
             senderId: senderId,
@@ -1218,7 +1223,7 @@ const App: React.FC = () => {
     // Create notification for admin
     setNotifications(prev => [...prev, {
         id: `notif-support-${Date.now()}`,
-        userId: ADMIN_ID,
+        userId: currentAdminId,
         type: 'new_support_chat',
         message: `New live support request from ${currentUser.name}.`,
         isRead: false,
@@ -1363,14 +1368,27 @@ const App: React.FC = () => {
             t={t}
         />
       case 'MESSAGING': {
-        const otherParticipantId = view.conversationId.replace('conv_', '').replace(currentUser!.id, '').replace('_', '');
-        const allUsersAndWorkers = [...users, ...workers, {id: ADMIN_ID, name: 'Support', avatarUrl: 'https://picsum.photos/seed/admin/200'}];
+        const conversationParticipants = view.conversationId.replace('conv_', '').split('_');
+        const otherParticipantId = conversationParticipants.find(id => id !== currentUser!.id && id !== 'admin-1' && id !== currentAdminId) || conversationParticipants.find(id => id !== currentUser!.id);
+        const allUsersAndWorkers = [...users, ...workers, {id: currentAdminId, name: 'Support', avatarUrl: 'https://picsum.photos/seed/admin/200', userType: 'admin'}, {id: 'admin-1', name: 'Support', avatarUrl: 'https://picsum.photos/seed/admin/200', userType: 'admin'}];
         const otherParticipant = allUsersAndWorkers.find(p => p.id === otherParticipantId);
         if(!otherParticipant) return <div>Participant not found.</div>;
+        
+        // Filter messages for this conversation, including legacy admin ID
+        const conversationMessages = messages.filter(m => {
+            const isMe = m.senderId === currentUser!.id || (userType === 'admin' && (m.senderId === currentAdminId || m.senderId === 'admin-1'));
+            const isOther = m.receiverId === otherParticipant.id || (otherParticipant.id === currentAdminId && (m.receiverId === currentAdminId || m.receiverId === 'admin-1')) || (otherParticipant.id === 'admin-1' && (m.receiverId === currentAdminId || m.receiverId === 'admin-1'));
+            
+            const isMeReceiver = m.receiverId === currentUser!.id || (userType === 'admin' && (m.receiverId === currentAdminId || m.receiverId === 'admin-1'));
+            const isOtherSender = m.senderId === otherParticipant.id || (otherParticipant.id === currentAdminId && (m.senderId === currentAdminId || m.senderId === 'admin-1')) || (otherParticipant.id === 'admin-1' && (m.senderId === currentAdminId || m.senderId === 'admin-1'));
+            
+            return (isMe && isOther) || (isMeReceiver && isOtherSender);
+        });
+
         return <MessagingScreen
             currentUser={currentUser as User | Worker}
             otherParticipant={otherParticipant as User | Worker}
-            messages={messages.filter(m => (m.senderId === currentUser!.id && m.receiverId === otherParticipant.id) || (m.senderId === otherParticipant.id && m.receiverId === currentUser!.id))}
+            messages={conversationMessages}
             invoices={invoices}
             onSendMessage={handleSendMessage}
             onPayInvoice={handlePayInvoice}
@@ -1385,7 +1403,7 @@ const App: React.FC = () => {
       }
       case 'CONVERSATIONS':
          const userConversations = Array.from(new Set(messages.filter(m => m.senderId === currentUser!.id || m.receiverId === currentUser!.id).map(m => `conv_${[m.senderId, m.receiverId].sort().join('_')}`)));
-         const allUsersAndWorkersForConvo = [...users, ...workers, {id: ADMIN_ID, name: 'TUFIX Support', avatarUrl: 'https://picsum.photos/seed/admin/200'}];
+         const allUsersAndWorkersForConvo = [...users, ...workers, {id: currentAdminId, name: 'TUFIX Support', avatarUrl: 'https://picsum.photos/seed/admin/200', userType: 'admin'}, {id: 'admin-1', name: 'TUFIX Support', avatarUrl: 'https://picsum.photos/seed/admin/200', userType: 'admin'}];
          const conversations: Conversation[] = userConversations.map(convId => {
             const participantIds = convId.replace('conv_', '').split('_');
             const participantA = allUsersAndWorkersForConvo.find(p => p.id === participantIds[0])! as User | Worker;
