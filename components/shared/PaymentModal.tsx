@@ -79,9 +79,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
       name: 'Mercado Pago', 
       icon: (
         <img 
-          src="https://http2.mlstatic.com/frontend-assets/mkt-cp/mercadopago-logo.svg" 
+          src="https://ais-pre-jlotlyayfwrmgg2tok4ehy-268659277257.us-east1.run.app/api/attachments/acef3cf3-6ef6-44a2-af30-033b89100744/image_33.png" 
           alt="Mercado Pago" 
-          className="w-10 h-auto max-h-full object-contain" 
+          className="w-10 h-auto object-contain" 
           referrerPolicy="no-referrer"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "https://img.icons8.com/color/48/000000/mercadopago.png";

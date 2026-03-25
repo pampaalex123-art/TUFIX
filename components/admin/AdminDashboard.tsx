@@ -149,7 +149,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
     const [workerSort, setWorkerSort] = useState<{ key: WorkerSortKey; direction: SortDirection }>({ key: 'name', direction: 'ascending' });
     const [showClearConfirm, setShowClearConfirm] = useState(false);
 
-    const userMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
+    const participantMap = useMemo(() => {
+        const map = new Map<string, User | Worker>();
+        users.forEach(u => map.set(u.id, u));
+        workers.forEach(w => map.set(w.id, w));
+        return map;
+    }, [users, workers]);
 
     // --- DATA PROCESSING ---
     const workerAnalytics = useMemo(() => {
@@ -268,28 +273,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
 
     const supportConversations = useMemo(() => {
         const supportNotifs = notifications.filter(n => n.type === 'new_support_chat');
+        const supportConvoIds = new Set(supportNotifs.map(n => n.relatedEntityId));
         const convoMap = new Map<string, { user: User, lastMessage: Message, unreadCount: number }>();
 
-        // Get all conversations with admin
-        const adminConvos = new Set<string>(messages.filter(m => m.senderId === adminId || m.receiverId === adminId).map(m => `conv_${[m.senderId, m.receiverId].sort().join('_')}`));
+        // Get all conversations with admin that have a support notification
+        const adminConvos = new Set<string>(
+            messages
+                .filter(m => m.senderId === adminId || m.receiverId === adminId)
+                .map(m => `conv_${[m.senderId, m.receiverId].sort().join('_')}`)
+                .filter(id => supportConvoIds.has(id))
+        );
         
         adminConvos.forEach((conversationId: string) => {
-            const userId = conversationId.replace('conv_', '').replace(adminId, '').replace('_', '');
-            const user = userMap.get(userId);
-             if (user) {
+            const userId = conversationId.replace('conv_', '').split('_').find(id => id !== adminId);
+            if (!userId) return;
+            
+            const participant = participantMap.get(userId);
+             if (participant) {
                 const conversationMessages = messages.filter(m => 
-                    (m.senderId === user.id && m.receiverId === adminId) || 
-                    (m.senderId === adminId && m.receiverId === user.id)
+                    (m.senderId === participant.id && m.receiverId === adminId) || 
+                    (m.senderId === adminId && m.receiverId === participant.id)
                 );
                 
                 if (conversationMessages.length > 0) {
                     const lastMessage = conversationMessages.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
                     const unreadCount = conversationMessages.filter(m => m.receiverId === adminId && !m.isRead).length;
                     
-                    const existingConvo = convoMap.get(conversationId);
-                    if (!existingConvo || new Date(lastMessage.timestamp) > new Date(existingConvo.lastMessage.timestamp)) {
-                        convoMap.set(conversationId, { user, lastMessage, unreadCount });
-                    }
+                    convoMap.set(conversationId, { user: participant, lastMessage, unreadCount });
                 }
             }
         });
@@ -297,8 +307,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
         return Array.from(convoMap.entries())
             .map(([id, data]) => ({ id, ...data }))
             .sort((a, b) => new Date(b.lastMessage.timestamp).getTime() - new Date(a.lastMessage.timestamp).getTime());
-
-    }, [notifications, messages, userMap, adminId]);
+    }, [notifications, messages, participantMap, adminId]);
 
     // --- HANDLERS ---
     const handleClientSort = (key: ClientSortKey) => setClientSort(prev => ({ key, direction: prev.key === key && prev.direction === 'ascending' ? 'descending' : 'ascending' }));

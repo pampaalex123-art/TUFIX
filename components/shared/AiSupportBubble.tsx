@@ -55,7 +55,14 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
           const modelMessage: Content = { role: 'model', parts: [{ text: "Te estoy conectando con un agente de soporte. Por favor espera un momento." }] };
           setMessages(prev => [...prev, modelMessage]);
           onRequestHumanSupport([...newMessages, modelMessage]);
-          setTimeout(() => setIsOpen(false), 2000);
+          setTimeout(() => {
+            setIsOpen(false);
+            // Clear history after transfer so next time it starts fresh
+            const welcomeMessage = currentUser 
+              ? t('ai support welcome') 
+              : "¡Hola! Soy tu asistente de IA de TUFIX. Por favor, inicia sesión para que pueda ayudarte con tus trabajos y finanzas. ¿En qué puedo ayudarte hoy?";
+            setMessages([{ role: 'model', parts: [{ text: welcomeMessage }] }]);
+          }, 2000);
         } else if (aiResponse.functionCall === 'findWorkers') {
           const { service, minRating, location, maxPrice } = (aiResponse.functionArgs as any) || {};
           let filteredWorkers = workers;

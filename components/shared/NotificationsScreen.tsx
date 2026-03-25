@@ -35,6 +35,10 @@ const NotificationIcon: React.FC<{ type: AppNotification['type'] }> = ({ type })
       iconPath = <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />;
       bgClass = "bg-red-500";
       break;
+    case 'new_support_chat':
+      iconPath = <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 5.636l-3.536 3.536m0 5.656l3.536 3.536M9.172 9.172L5.636 5.636m3.536 9.9l-3.536 3.536M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-5 0a4 4 0 11-8 0 4 4 0 018 0z" />;
+      bgClass = "bg-orange-500";
+      break;
     case 'dispute_update':
         iconPath = <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />;
         bgClass = "bg-yellow-500";
