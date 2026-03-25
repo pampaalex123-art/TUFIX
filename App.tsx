@@ -98,6 +98,41 @@ const App: React.FC = () => {
       setView({ screen: 'CONFIRMATION' });
     }
   }, []);
+
+  // Handle hardware back button
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (currentUser) {
+        let targetScreen: View['screen'] | null = null;
+        if (userType === 'user') targetScreen = 'MY_JOBS';
+        else if (userType === 'worker') targetScreen = 'WORKER_DASHBOARD';
+        else if (userType === 'admin') targetScreen = 'ADMIN_DASHBOARD';
+
+        if (targetScreen && view.screen !== targetScreen) {
+          // Prevent going back, instead go to the jobs panel
+          setView({ screen: targetScreen as any });
+        }
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentUser, userType, view.screen]);
+
+  // Ensure there's a history state to pop when not on the main screen
+  useEffect(() => {
+    const isJobsPanel = 
+        !currentUser ||
+        (userType === 'user' && view.screen === 'MY_JOBS') ||
+        (userType === 'worker' && view.screen === 'WORKER_DASHBOARD') ||
+        (userType === 'admin' && view.screen === 'ADMIN_DASHBOARD');
+
+    if (!isJobsPanel) {
+      if (window.history.state?.level !== 'app') {
+        window.history.pushState({ level: 'app' }, '', window.location.href);
+      }
+    }
+  }, [view.screen, currentUser, userType]);
   
   const [workers, setWorkers] = useFirestoreCollection<Worker>('workers', []);
   const [jobRequests, setJobRequests] = useFirestoreCollection<JobRequest>('jobRequests', DUMMY_JOB_REQUESTS);

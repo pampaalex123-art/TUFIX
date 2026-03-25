@@ -30,11 +30,16 @@ const LocationDisplay: React.FC<LocationDisplayProps> = ({ address, coordinates,
     );
   }
 
+  const parts = address ? address.split(' | Notes: ') : [];
+  const baseAddress = parts[0] || '';
+  const notes = parts.length > 1 ? parts[1] : '';
+
   if (!coordinates) {
     return (
       <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
         <p className="text-sm font-medium text-slate-600 mb-1">{t('location')}</p>
-        <p className="text-black">{address || t('no_location_provided')}</p>
+        <p className="text-black">{baseAddress || t('no_location_provided')}</p>
+        {notes && <p className="text-sm text-slate-500 mt-1">{t('location_notes')}: {notes}</p>}
       </div>
     );
   }
@@ -43,7 +48,8 @@ const LocationDisplay: React.FC<LocationDisplayProps> = ({ address, coordinates,
     <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
       <div>
         <p className="text-sm font-medium text-slate-600 mb-1">{t('location')}</p>
-        <p className="text-black">{address}</p>
+        <p className="text-black">{baseAddress}</p>
+        {notes && <p className="text-sm text-slate-500 mt-1">{t('location_notes')}: {notes}</p>}
       </div>
       <div className="rounded-lg overflow-hidden border border-slate-200">
         {isLoaded ? (

@@ -488,6 +488,9 @@ const translations: Record<Language, Record<string, string>> = {
         "search_address_placeholder": "Search address...",
         "map_click_hint": "Click on the map to pinpoint your exact location",
         "location_error": "Location Service Error",
+        "location_notes": "Apt, Suite, Floor, etc. (Optional)",
+        "location_notes_placeholder": "e.g. Apt 4B, Floor 2",
+        "location_hidden_until_paid": "Exact location will be revealed once the job is paid by the user.",
         "please select a date time provide a description and choose a location": "Please select a date, time, provide a description and choose a location"
     },
     es: {
@@ -1438,6 +1441,9 @@ const translations: Record<Language, Record<string, string>> = {
         "search_address_placeholder": "Buscar dirección...",
         "map_click_hint": "Haz clic en el mapa para señalar tu ubicación exacta",
         "location_error": "Error del servicio de ubicación",
+        "location_notes": "Depto, Oficina, Piso, etc. (Opcional)",
+        "location_notes_placeholder": "ej. Depto 4B, Piso 2",
+        "location_hidden_until_paid": "La ubicación exacta se revelará una vez que el usuario pague el trabajo.",
         "please select a date time provide a description and choose a location": "Por favor selecciona una fecha, hora, proporciona una descripción y elige una ubicación"
     }
 };

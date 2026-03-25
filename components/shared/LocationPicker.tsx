@@ -53,8 +53,34 @@ const LocationPicker: React.FC<LocationPickerProps> = (props) => {
 
 const LocationPickerContent: React.FC<LocationPickerProps> = ({ initialCoordinates, initialAddress, onLocationSelect, t }) => {
   const [marker, setMarker] = useState<Coordinates | undefined>(initialCoordinates);
-  const [address, setAddress] = useState(initialAddress || '');
+  const [address, setAddress] = useState('');
+  const [notes, setNotes] = useState('');
   const mapRef = useRef<google.maps.Map | null>(null);
+
+  const {
+    ready,
+    value,
+    suggestions: { status, data },
+    setValue,
+    clearSuggestions,
+  } = usePlacesAutocomplete({
+    requestOptions: {
+      locationBias: { radius: 200 * 1000, center: marker || defaultCenter },
+    },
+    debounce: 300,
+  });
+
+  useEffect(() => {
+    if (initialAddress) {
+      const parts = initialAddress.split(' | Notes: ');
+      const baseAddress = parts[0];
+      const parsedNotes = parts.length > 1 ? parts[1] : '';
+      
+      setAddress(baseAddress);
+      setValue(baseAddress, false);
+      setNotes(parsedNotes);
+    }
+  }, [initialAddress, setValue]);
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
@@ -88,47 +114,40 @@ const LocationPickerContent: React.FC<LocationPickerProps> = ({ initialCoordinat
         const results = await getGeocode({ location: coords });
         const addr = results[0].formatted_address;
         setAddress(addr);
-        onLocationSelect(addr, coords);
+        setValue(addr, false);
+        const finalAddress = notes ? `${addr} | Notes: ${notes}` : addr;
+        onLocationSelect(finalAddress, coords);
       } catch (error) {
         console.error("Error fetching address: ", error);
       }
     }
-  }, [onLocationSelect]);
+  }, [onLocationSelect, setValue, notes]);
 
-  const {
-    ready,
-    value,
-    suggestions: { status, data },
-    setValue,
-    clearSuggestions,
-  } = usePlacesAutocomplete({
-    requestOptions: {
-      locationBias: { radius: 200 * 1000, center: marker || defaultCenter },
-    },
-    debounce: 300,
-  });
-
-  useEffect(() => {
-    if (initialAddress) {
-      setValue(initialAddress, false);
-    }
-  }, [initialAddress, setValue]);
-
-  const handleSelect = async (address: string) => {
-    setValue(address, false);
+  const handleSelect = async (selectedAddress: string) => {
+    setValue(selectedAddress, false);
     clearSuggestions();
 
     try {
-      const results = await getGeocode({ address });
+      const results = await getGeocode({ address: selectedAddress });
       const { lat, lng } = await getLatLng(results[0]);
       const coords = { lat, lng };
       setMarker(coords);
-      setAddress(address);
-      onLocationSelect(address, coords);
+      setAddress(selectedAddress);
+      const finalAddress = notes ? `${selectedAddress} | Notes: ${notes}` : selectedAddress;
+      onLocationSelect(finalAddress, coords);
       mapRef.current?.panTo(coords);
       mapRef.current?.setZoom(15);
     } catch (error) {
       console.error("Error: ", error);
+    }
+  };
+
+  const handleNotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newNotes = e.target.value;
+    setNotes(newNotes);
+    if (address && marker) {
+      const finalAddress = newNotes ? `${address} | Notes: ${newNotes}` : address;
+      onLocationSelect(finalAddress, marker);
     }
   };
 
@@ -153,6 +172,17 @@ const LocationPickerContent: React.FC<LocationPickerProps> = ({ initialCoordinat
             </ComboboxList>
           </ComboboxPopover>
         </Combobox>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-slate-600 mb-1">{t('location_notes')}</label>
+        <input
+          type="text"
+          value={notes}
+          onChange={handleNotesChange}
+          className="w-full p-3 bg-slate-100 border-transparent rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none sm:text-sm text-slate-900"
+          placeholder={t('location_notes_placeholder')}
+        />
       </div>
 
       <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm">
