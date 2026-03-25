@@ -11,7 +11,7 @@ interface AdminDisputeResolutionScreenProps {
     onBack: () => void;
     onSendMessage: (disputeId: string, text: string) => void;
     onResolve: (disputeId: string, resolution: string, fundAction: 'release_full' | 'refund_full' | 'refund_partial', partialAmount?: number) => void;
-    t: (key: string) => string;
+    t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
 type FundAction = 'release_full' | 'refund_full' | 'refund_partial';

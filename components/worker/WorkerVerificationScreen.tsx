@@ -8,7 +8,7 @@ interface WorkerVerificationScreenProps {
     phoneNumber: string;
     onSubmit: (workerId: string, idPhotoUrl: string, selfiePhotoUrl: string) => void;
     onBack: () => void;
-    t: (key: string) => string;
+    t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
 const WorkerVerificationScreen: React.FC<WorkerVerificationScreenProps> = ({ workerId, phoneNumber, onSubmit, onBack, t }) => {

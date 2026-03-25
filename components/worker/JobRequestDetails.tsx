@@ -2,6 +2,7 @@ import React from 'react';
 import { JobRequest, Worker, User, Invoice } from '../../types';
 import StarRating from '../common/StarRating';
 import JobProgressSidebar from '../new/JobProgressSidebar';
+import LocationDisplay from '../shared/LocationDisplay';
 
 interface JobRequestDetailsProps {
   job: JobRequest;
@@ -53,6 +54,16 @@ const JobRequestDetails: React.FC<JobRequestDetailsProps> = ({ job, invoice, cli
                         <h2 className="font-bold text-lg mb-2 text-black">{t('job_description')}</h2>
                         <p className="text-black whitespace-pre-wrap">{job.description}</p>
                     </div>
+                    {job.status !== 'pending' && (
+                        <div className="mt-4 border-t border-slate-200 pt-4">
+                            <h2 className="font-bold text-lg mb-2 text-black">{t('job_location')}</h2>
+                            <LocationDisplay 
+                                address={job.location || ''} 
+                                coordinates={job.coordinates} 
+                                t={t} 
+                            />
+                        </div>
+                    )}
                     <div className="mt-4 border-t border-slate-200 pt-4 flex justify-end space-x-3">
                         {renderActionButtons()}
                     </div>

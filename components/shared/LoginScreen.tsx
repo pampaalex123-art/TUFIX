@@ -479,7 +479,16 @@ const translations: Record<Language, Record<string, string>> = {
         "unit hr": "h",
         "unit min": "m",
         "unit s": "s",
-        "Yesterday": "Yesterday"
+        "Yesterday": "Yesterday",
+        "home_location": "Home Location",
+        "job_location": "Job Location",
+        "loading_map": "Loading map...",
+        "no_location_provided": "No location provided",
+        "search_location": "Search location",
+        "search_address_placeholder": "Search address...",
+        "map_click_hint": "Click on the map to pinpoint your exact location",
+        "location_error": "Location Service Error",
+        "please select a date time provide a description and choose a location": "Please select a date, time, provide a description and choose a location"
     },
     es: {
         "user_login": "Inicia sesión para encontrar a tu trabajador",
@@ -1420,7 +1429,16 @@ const translations: Record<Language, Record<string, string>> = {
         "unit hr": "h",
         "unit min": "min",
         "unit s": "s",
-        "Yesterday": "Ayer"
+        "Yesterday": "Ayer",
+        "home_location": "Ubicación de casa",
+        "job_location": "Ubicación del trabajo",
+        "loading_map": "Cargando mapa...",
+        "no_location_provided": "No se proporcionó ubicación",
+        "search_location": "Buscar ubicación",
+        "search_address_placeholder": "Buscar dirección...",
+        "map_click_hint": "Haz clic en el mapa para señalar tu ubicación exacta",
+        "location_error": "Error del servicio de ubicación",
+        "please select a date time provide a description and choose a location": "Por favor selecciona una fecha, hora, proporciona una descripción y elige una ubicación"
     }
 };
 

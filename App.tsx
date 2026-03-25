@@ -35,7 +35,7 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } f
 import { getToken, onMessage } from 'firebase/messaging';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useTranslations, Language } from './components/shared/LoginScreen';
-import { Worker, User, JobRequest, ServiceCategory, UserType, AppNotification, Message, Conversation, Invoice, Review, InvoiceLineItem, Transaction, Dispute, DisputeMessage } from './types';
+import { Worker, User, JobRequest, ServiceCategory, UserType, AppNotification, Message, Conversation, Invoice, Review, InvoiceLineItem, Transaction, Dispute, DisputeMessage, Coordinates } from './types';
 import AiSupportBubble from './components/shared/AiSupportBubble';
 import { Content } from '@google/genai';
 import WorkerVerificationScreen from './components/worker/WorkerVerificationScreen';
@@ -609,13 +609,15 @@ const App: React.FC = () => {
     }
   };
 
-  const handleBookingSubmit = (details: { worker: Worker; date: string; time: string; description: string; }) => {
+  const handleBookingSubmit = (details: { worker: Worker; date: string; time: string; description: string; location: string; coordinates: Coordinates; }) => {
     const newJob: JobRequest = {
       id: `job-${Date.now()}`,
       user: currentUser as User,
       workerId: details.worker.id,
       service: details.worker.service,
       description: details.description,
+      location: details.location,
+      coordinates: details.coordinates,
       date: details.date,
       time: details.time,
       status: 'pending',

@@ -3,6 +3,7 @@ import { JobRequest, Invoice } from '../../types';
 import PaymentModal from '../shared/PaymentModal';
 import ConfirmAndPayModal from '../new/ConfirmAndPayModal';
 import JobProgressSidebar from '../new/JobProgressSidebar';
+import LocationDisplay from '../shared/LocationDisplay';
 
 interface MyJobsScreenProps {
   jobRequests: JobRequest[];
@@ -50,6 +51,14 @@ const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, onLe
                   <h2 className="text-xl font-bold text-black">{t(job.service)}</h2>
                   <p className="text-sm text-black">{t('requested on', { date: new Date(job.createdAt).toLocaleDateString() })}</p>
                   <p className="mt-2 text-black">{job.description}</p>
+                  <div className="mt-4">
+                    <p className="text-sm font-semibold text-slate-600 mb-2">{t('job_location')}</p>
+                    <LocationDisplay 
+                      address={job.location || ''} 
+                      coordinates={job.coordinates} 
+                      t={t} 
+                    />
+                  </div>
                   <div className="mt-4 flex flex-wrap gap-2 items-center">
                     {invoice && invoice.status === 'pending' && <button onClick={() => handlePay(invoice)} className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700">{t('pay invoice')}</button>}
                     {job.status === 'worker_completed' && <button onClick={() => handleConfirmCompletion(job)} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg">{t('confirm completion')}</button>}

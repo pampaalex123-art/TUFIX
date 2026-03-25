@@ -17,7 +17,7 @@ interface MessagingScreenProps {
   onViewProfile?: (participant: User | Worker) => void;
   onBack: () => void;
   isReadOnly?: boolean;
-  t: (key: string) => string;
+  t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
 const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherParticipant, messages, invoices, onSendMessage, onPayInvoice, onMarkAsRead, onViewProfile, onBack, isReadOnly = false, t }) => {

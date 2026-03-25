@@ -1,14 +1,15 @@
 import React, { useState, useMemo } from 'react';
-import { Worker, User, DayOfWeek, JobRequest } from '../../types';
+import { Worker, User, DayOfWeek, JobRequest, Coordinates } from '../../types';
 import { formatTime12hr, generateTimeSlots } from '../../utils/time';
+import LocationPicker from '../shared/LocationPicker';
 
 interface BookingScreenProps {
   worker: Worker;
   user: User;
   allJobRequests: JobRequest[];
   onBack: () => void;
-  onSubmit: (details: { worker: Worker; date: string; time: string; description: string; }) => void;
-  t: (key: string, replacements?: Record<string, string>) => string;
+  onSubmit: (details: { worker: Worker; date: string; time: string; description: string; location: string; coordinates: Coordinates; }) => void;
+  t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
 const DAYS_OF_WEEK: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -32,6 +33,8 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ worker, user, allJobReque
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState('');
   const [description, setDescription] = useState('');
+  const [location, setLocation] = useState(user.location || '');
+  const [coordinates, setCoordinates] = useState<Coordinates | undefined>(user.coordinates);
   
   const availableSlots = useMemo(() => {
     if (!selectedDate) return [];
@@ -85,11 +88,18 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ worker, user, allJobReque
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDate || !selectedTime || !description.trim()) {
-      alert(t('please select a date time and provide a description'));
+    if (!selectedDate || !selectedTime || !description.trim() || !coordinates) {
+      alert(t('please select a date time provide a description and choose a location'));
       return;
     }
-    onSubmit({ worker, date: formatDateForInput(selectedDate), time: selectedTime, description });
+    onSubmit({ 
+      worker, 
+      date: formatDateForInput(selectedDate), 
+      time: selectedTime, 
+      description,
+      location,
+      coordinates
+    });
   };
   
   const isDateInPast = (date: Date) => {
@@ -168,6 +178,19 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ worker, user, allJobReque
         <div>
           <label htmlFor="description" className="block text-lg font-medium mb-2 text-black">{t('describe job')}</label>
           <textarea id="description" rows={4} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('job description placeholder', { service: t(worker.service) })} required className="w-full p-3 border rounded-lg bg-white border-slate-300 text-black"></textarea>
+        </div>
+
+        <div>
+          <label className="block text-lg font-medium mb-2 text-black">{t('job_location')}</label>
+          <LocationPicker 
+            initialAddress={location}
+            initialCoordinates={coordinates}
+            onLocationSelect={(addr, coords) => {
+              setLocation(addr);
+              setCoordinates(coords);
+            }}
+            t={t}
+          />
         </div>
         
         <div className="pt-5 flex justify-end space-x-3">

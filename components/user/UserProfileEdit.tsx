@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { User } from '../../types';
+import { User, Coordinates } from '../../types';
+import LocationPicker from '../shared/LocationPicker';
 
 interface UserProfileEditProps {
   user: User;
@@ -17,6 +18,14 @@ const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onSave, onBack,
     setFormData(prev => ({
       ...prev,
       [name]: value,
+    }));
+  };
+
+  const handleLocationSelect = (address: string, coordinates: Coordinates) => {
+    setFormData(prev => ({
+      ...prev,
+      location: address,
+      coordinates: coordinates,
     }));
   };
 
@@ -99,14 +108,12 @@ const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onSave, onBack,
               />
             </div>
             <div className="md:col-span-2">
-              <label htmlFor="location" className="block text-sm font-medium text-slate-600">{t('location')}</label>
-              <input
-                type="text"
-                name="location"
-                id="location"
-                value={formData.location}
-                onChange={handleChange}
-                className={inputStyles}
+              <label htmlFor="location" className="block text-sm font-medium text-slate-600 mb-4">{t('home_location')}</label>
+              <LocationPicker 
+                initialAddress={formData.location}
+                initialCoordinates={formData.coordinates}
+                onLocationSelect={handleLocationSelect}
+                t={t}
               />
             </div>
           </div>

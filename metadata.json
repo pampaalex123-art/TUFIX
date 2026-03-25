@@ -2,6 +2,7 @@
   "name": "Copy of TUFIX",
   "description": "An application, inspired by Airbnb, that connects users with local service professionals like handymen, electricians, and cleaners. It features separate interfaces for users and workers, detailed profiles with reviews, a messaging system, and a robust search functionality.",
   "requestFramePermissions": [
-    "camera"
+    "camera",
+    "geolocation"
   ]
 }

@@ -110,6 +110,11 @@ export interface PaymentMethods {
   mercadoPagoAccount?: string;
 }
 
+export interface Coordinates {
+  lat: number;
+  lng: number;
+}
+
 export interface Worker {
   id: string;
   name: string;
@@ -118,6 +123,7 @@ export interface Worker {
   service: ServiceCategory;
   jobTypes: string[];
   location: string;
+  coordinates?: Coordinates;
   regions: string[];
   avgJobCost: Money;
   bio: string;
@@ -147,6 +153,7 @@ export interface User {
   email: string;
   password: string;
   location: string;
+  coordinates?: Coordinates;
   avatarUrl: string;
   signupDate: string; // ISO 8601 string
   lastLoginDate: string; // ISO 8601 string
@@ -165,6 +172,8 @@ export interface JobRequest {
   workerId: string;
   service: ServiceCategory;
   description: string;
+  location?: string;
+  coordinates?: Coordinates;
   date: string; // YYYY-MM-DD
   time: string; // HH:mm
   status: 'pending' | 'accepted' | 'declined' | 'in_progress' | 'worker_completed' | 'completed' | 'cancelled';
