@@ -468,7 +468,18 @@ const translations: Record<Language, Record<string, string>> = {
         "released": "Released",
         "not available": "Not Available",
         "verify_phone_description": "Please verify your phone number, we have sent you a 4 digit code to",
-        "not_found": "Not Found"
+        "not_found": "Not Found",
+        "just now": "just now",
+        "time ago prefix": "",
+        "time ago suffix": " ago",
+        "unit yr": "y",
+        "unit mo": "mo",
+        "unit wk": "w",
+        "unit d": "d",
+        "unit hr": "h",
+        "unit min": "m",
+        "unit s": "s",
+        "Yesterday": "Yesterday"
     },
     es: {
         "user_login": "Inicia sesión para encontrar a tu trabajador",
@@ -1398,7 +1409,18 @@ const translations: Record<Language, Record<string, string>> = {
         "messages": "Mensajes",
         "profile": "Perfil",
         "earnings": "Ganancias",
-        "notifications": "Notificaciones"
+        "notifications": "Notificaciones",
+        "just now": "ahora mismo",
+        "time ago prefix": "hace ",
+        "time ago suffix": "",
+        "unit yr": "a",
+        "unit mo": "m",
+        "unit wk": "sem",
+        "unit d": "d",
+        "unit hr": "h",
+        "unit min": "min",
+        "unit s": "s",
+        "Yesterday": "Ayer"
     }
 };
 

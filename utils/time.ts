@@ -9,33 +9,19 @@ const YEAR = DAY * 365;
 
 export function formatDistanceToNow(dateString: string, t: (key: string) => string): string {
   const date = new Date(dateString);
-  const seconds = Math.round((new Date().getTime() - date.getTime()) / 1000);
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  const isYesterday = new Date(now.getTime() - 86400000).toDateString() === date.toDateString();
 
-  if (seconds < 30) return t('just now');
-  
-  const intervals: { [key: string]: number } = {
-    yr: YEAR,
-    mo: MONTH,
-    wk: WEEK,
-    d: DAY,
-    hr: HOUR,
-    min: MINUTE,
-  };
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-  const prefix = t('time ago prefix');
-  const suffix = t('time ago suffix');
-
-  let counter;
-  for (const key in intervals) {
-    counter = Math.floor(seconds / intervals[key]);
-    if (counter > 0) {
-      const unit = t(`unit ${key}`);
-      return `${prefix}${counter}${unit}${suffix}`.trim();
-    }
+  if (isToday) {
+    return timeStr;
+  } else if (isYesterday) {
+    return `${t('Yesterday')}, ${timeStr}`;
+  } else {
+    return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeStr}`;
   }
-  
-  const unit = t(`unit s`);
-  return `${prefix}${Math.floor(seconds)}${unit}${suffix}`.trim();
 }
 
 export const formatTime12hr = (time24: string): string => {

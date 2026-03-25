@@ -145,21 +145,26 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
           <div className="flex-1 p-4 overflow-y-auto">
             <div className="space-y-4">
               {messages.sort((a,b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()).map(message => {
-                const isCurrentUserSender = message.senderId === currentUser.id;
-                const isMessageFromAdmin = isCurrentUserSender 
-                  ? currentUser.userType === 'admin' 
-                  : otherParticipant.userType === 'admin';
+                const isAdminSender = message.senderId === 'admin-1' || message.senderId === 'admin' || (currentUser.userType === 'admin' && message.senderId === currentUser.id) || (otherParticipant.userType === 'admin' && message.senderId === otherParticipant.id);
+                
+                // If current user is admin, all admin messages (including AI) should be on the right
+                // If current user is NOT admin, only their own messages should be on the right
+                const isOnRight = currentUser.userType === 'admin' 
+                  ? isAdminSender 
+                  : message.senderId === currentUser.id;
+
+                const isMessageFromAdmin = isAdminSender;
 
                 return (
-                  <div key={message.id} className={`flex items-end gap-2 ${isCurrentUserSender ? 'justify-end' : 'justify-start'}`}>
-                    {!isCurrentUserSender && <img src={otherParticipant.avatarUrl} className="w-6 h-6 rounded-full" alt="" />}
+                  <div key={message.id} className={`flex items-end gap-2 ${isOnRight ? 'justify-end' : 'justify-start'}`}>
+                    {!isOnRight && <img src={otherParticipant.avatarUrl} className="w-6 h-6 rounded-full" alt="" />}
                     <div className={`max-w-md p-3 rounded-lg ${isMessageFromAdmin ? 'bg-purple-600 text-white' : 'bg-slate-200 text-black'}`}>
                       {renderMessageContent(message)}
                       <p className={`text-xs mt-1 ${isMessageFromAdmin ? 'text-purple-200' : 'text-slate-500'}`}>
                         {formatDistanceToNow(message.timestamp, t)}
                       </p>
                     </div>
-                     {isCurrentUserSender && <img src={currentUser.avatarUrl} className="w-6 h-6 rounded-full" alt="" />}
+                     {isOnRight && <img src={message.senderId === currentUser.id ? currentUser.avatarUrl : 'https://picsum.photos/seed/admin/200'} className="w-6 h-6 rounded-full" alt="" />}
                   </div>
                 );
               })}
