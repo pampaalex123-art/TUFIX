@@ -146,6 +146,7 @@ export interface Worker {
   userType?: 'worker' | 'admin';
   fcmToken?: string;
   has_completed_onboarding?: boolean;
+  has_completed_menu_onboarding?: boolean;
 }
 
 export interface User {
@@ -166,6 +167,7 @@ export interface User {
   userType?: 'user' | 'admin';
   fcmToken?: string;
   has_completed_onboarding?: boolean;
+  has_completed_menu_onboarding?: boolean;
 }
 
 export interface JobRequest {

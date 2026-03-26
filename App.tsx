@@ -43,6 +43,7 @@ import VerificationPendingScreen from './components/auth/VerificationPendingScre
 import AdminWorkerVerificationScreen from './components/admin/AdminWorkerVerificationScreen';
 import ConfirmationPage from './components/shared/ConfirmationPage';
 import OnboardingTour from './components/shared/OnboardingTour';
+import MenuOnboardingTour from './components/shared/MenuOnboardingTour';
 import { addWorkerToSpreadsheet, updateSpreadsheetVerificationStatus } from './services/spreadsheetService';
 
 const DUMMY_USERS: User[] = [];
@@ -303,6 +304,27 @@ const App: React.FC = () => {
       }, { merge: true });
     } catch (error) {
       console.error("Failed to update onboarding status", error);
+    }
+  };
+
+  const updateMenuOnboardingStatus = async () => {
+    if (!currentUser || !userType) return;
+    
+    if (userType === 'user') {
+      const updatedUser = { ...currentUser, has_completed_menu_onboarding: true } as User;
+      setCurrentUser(updatedUser);
+    } else if (userType === 'worker') {
+      const updatedUser = { ...currentUser, has_completed_menu_onboarding: true } as Worker;
+      setCurrentUser(updatedUser);
+    }
+
+    try {
+      const collectionName = userType === 'user' ? 'users' : 'workers';
+      await setDoc(doc(db, collectionName, currentUser.id), {
+        has_completed_menu_onboarding: true
+      }, { merge: true });
+    } catch (error) {
+      console.error("Failed to update menu onboarding status", error);
     }
   };
 
@@ -1842,6 +1864,11 @@ const App: React.FC = () => {
         currentUser={currentUser} 
         userType={userType} 
         onComplete={updateUserOnboardingStatus} 
+      />
+      <MenuOnboardingTour 
+        currentUser={currentUser} 
+        userType={userType} 
+        onComplete={updateMenuOnboardingStatus} 
       />
       <Header
         user={currentUser}

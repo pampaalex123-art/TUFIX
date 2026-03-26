@@ -1,22 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { User, Worker, UserType } from '../../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapPin, CreditCard, UserCircle, CheckCircle, ChevronRight, ChevronLeft } from 'lucide-react';
+import { UserCircle, Briefcase, MessageSquare, Bell, DollarSign, CheckCircle, ChevronRight, ChevronLeft } from 'lucide-react';
 
-interface OnboardingTourProps {
+interface MenuOnboardingTourProps {
   currentUser: User | Worker | null;
   userType: UserType | null;
   onComplete: () => void;
 }
 
-const OnboardingTour: React.FC<OnboardingTourProps> = ({ currentUser, userType, onComplete }) => {
+const MenuOnboardingTour: React.FC<MenuOnboardingTourProps> = ({ currentUser, userType, onComplete }) => {
   const [run, setRun] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
 
   useEffect(() => {
-    if (currentUser && currentUser.has_completed_onboarding === undefined) {
-      setRun(true);
-    } else if (currentUser && currentUser.has_completed_onboarding === false) {
+    // Run if they completed the first onboarding but haven't completed this one
+    if (currentUser && currentUser.has_completed_onboarding === true && 
+        (currentUser.has_completed_menu_onboarding === undefined || currentUser.has_completed_menu_onboarding === false)) {
       setRun(true);
     }
   }, [currentUser]);
@@ -40,31 +40,69 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ currentUser, userType, 
     }
   };
 
-  const steps = [
+  // Base steps for everyone
+  const baseSteps = [
     {
-      title: '¡Bienvenido a TUFIX!',
-      description: 'Hagamos un recorrido rápido para ayudarte a empezar con nuestra plataforma.',
-      icon: <span className="text-5xl drop-shadow-md">👋</span>,
-      color: 'bg-white/40 text-purple-700 border border-white/50 shadow-lg'
-    },
-    {
-      title: 'Elige Tu Rol',
-      description: 'Ya sea que necesites un servicio o quieras ofrecer tus habilidades, TUFIX te conecta con las personas adecuadas.',
+      title: 'Tu Perfil',
+      description: 'Aquí puedes actualizar tu información, foto y ver tus reseñas. ¡Un perfil completo genera más confianza!',
       icon: <UserCircle size={48} strokeWidth={1.5} />,
+      color: 'bg-white/40 text-purple-700 border border-white/50 shadow-lg'
+    }
+  ];
+
+  // Worker specific steps
+  const workerSteps = [
+    {
+      title: 'Trabajos Disponibles',
+      description: 'Explora las solicitudes de trabajo de los usuarios en tu área y postúlate a las que mejor se adapten a tus habilidades.',
+      icon: <Briefcase size={48} strokeWidth={1.5} />,
       color: 'bg-white/40 text-blue-700 border border-white/50 shadow-lg'
     },
     {
-      title: 'Establece Tu Ubicación',
-      description: 'Usa la barra de búsqueda de direcciones para establecer con precisión dónde se realizará el servicio.',
-      icon: <MapPin size={48} strokeWidth={1.5} />,
+      title: 'Tus Ganancias',
+      description: 'Lleva un control detallado de todos tus ingresos y retira tu dinero de forma segura cuando lo necesites.',
+      icon: <DollarSign size={48} strokeWidth={1.5} />,
       color: 'bg-white/40 text-emerald-700 border border-white/50 shadow-lg'
+    }
+  ];
+
+  // User specific steps
+  const userSteps = [
+    {
+      title: 'Mis Trabajos',
+      description: 'Aquí verás el estado de los servicios que has solicitado, desde la búsqueda hasta la finalización.',
+      icon: <Briefcase size={48} strokeWidth={1.5} />,
+      color: 'bg-white/40 text-blue-700 border border-white/50 shadow-lg'
     },
     {
-      title: 'Pagos Seguros',
-      description: 'Paga o recibe pagos de forma segura usando Mercado Pago. Es rápido, confiable y está protegido.',
-      icon: <CreditCard size={48} strokeWidth={1.5} />,
-      color: 'bg-white/40 text-orange-700 border border-white/50 shadow-lg'
+      title: 'Trabajadores',
+      description: 'Encuentra a los mejores profesionales cerca de ti, revisa sus perfiles y contrátalos directamente.',
+      icon: <UserCircle size={48} strokeWidth={1.5} />,
+      color: 'bg-white/40 text-emerald-700 border border-white/50 shadow-lg'
     }
+  ];
+
+  // Common steps at the end
+  const endSteps = [
+    {
+      title: 'Mensajes',
+      description: 'Comunícate directamente con los usuarios o trabajadores. Coordina detalles, envía fotos y resuelve dudas.',
+      icon: <MessageSquare size={48} strokeWidth={1.5} />,
+      color: 'bg-white/40 text-orange-700 border border-white/50 shadow-lg'
+    },
+    {
+      title: 'Notificaciones',
+      description: 'Mantente al tanto de todo. Recibirás alertas sobre nuevos mensajes, actualizaciones de trabajos y más.',
+      icon: <Bell size={48} strokeWidth={1.5} />,
+      color: 'bg-white/40 text-rose-700 border border-white/50 shadow-lg'
+    }
+  ];
+
+  const steps = [
+    ...baseSteps,
+    ...(userType === 'worker' ? workerSteps : []),
+    ...(userType === 'user' ? userSteps : []),
+    ...endSteps
   ];
 
   if (!run) return null;
@@ -148,7 +186,7 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ currentUser, userType, 
                   onClick={nextStep}
                   className="flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white px-7 py-3 rounded-full font-semibold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                 >
-                  <span>{currentStep === steps.length - 1 ? 'Comenzar' : 'Siguiente'}</span>
+                  <span>{currentStep === steps.length - 1 ? '¡Listo!' : 'Siguiente'}</span>
                   {currentStep === steps.length - 1 ? <CheckCircle size={18} strokeWidth={2.5} /> : <ChevronRight size={18} strokeWidth={2.5} />}
                 </button>
               </div>
@@ -160,4 +198,4 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ currentUser, userType, 
   );
 };
 
-export default OnboardingTour;
+export default MenuOnboardingTour;
