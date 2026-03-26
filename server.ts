@@ -20,27 +20,22 @@ async function initializeFirebaseAdmin() {
   }
 
   try {
-    const projectId = process.env.GOOGLE_CLOUD_PROJECT || firebaseConfigJson.projectId;
-    console.log('Initializing Firebase Admin with project ID:', projectId);
+    // Force the use of the project ID from your firebase-applet-config.json
+    const projectId = firebaseConfigJson.projectId;
+    console.log('Initializing Firebase Admin strictly with project ID:', projectId);
+    
     const app = admin.initializeApp({
       projectId: projectId,
       credential: admin.credential.applicationDefault(),
     });
+    
     console.log('Firebase Admin initialized successfully. Project ID:', app.options.projectId);
-    console.log('Environment Project ID:', process.env.GOOGLE_CLOUD_PROJECT);
-    console.log('Environment Firebase Config:', process.env.FIREBASE_CONFIG);
     return app;
   } catch (e: any) {
-    console.error('Initialization failed, attempting default initialization:', e.message);
-    try {
-      const app = admin.initializeApp();
-      console.log('Firebase Admin initialized (fallback). Project ID:', app.options.projectId);
-      return app;
-    } catch (fallbackError: any) {
-      console.error('Fallback initialization also failed:', fallbackError.message);
-      throw fallbackError;
-    }
+    console.error('Firebase Admin initialization failed:', e.message);
+    throw e;
   }
+}
 }
 
 const adminApp = await initializeFirebaseAdmin();
