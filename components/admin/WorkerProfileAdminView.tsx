@@ -1,5 +1,5 @@
 import React from 'react';
-import { Worker, JobRequest, User, Message } from '../../types';
+import { Worker, JobRequest, User, Message, Invoice } from '../../types';
 import StarRating from '../common/StarRating';
 
 interface WorkerProfileAdminViewProps {
@@ -7,6 +7,7 @@ interface WorkerProfileAdminViewProps {
   jobs: JobRequest[];
   users: User[];
   messages: Message[];
+  invoices: Invoice[];
   onBack: () => void;
   onViewConversation: (conversationId: string) => void;
   t: (key: string) => string;
@@ -27,10 +28,11 @@ const getStatusBadge = (status: JobRequest['status'], t: (key: string) => string
     }
 };
 
-const WorkerProfileAdminView: React.FC<WorkerProfileAdminViewProps> = ({ worker, jobs, users, messages, onBack, onViewConversation, t }) => {
+const WorkerProfileAdminView: React.FC<WorkerProfileAdminViewProps> = ({ worker, jobs, users, messages, invoices, onBack, onViewConversation, t }) => {
 
   const userMap = new Map<string, User>(users.map(u => [u.id, u]));
   const sortedJobs = [...jobs].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const workerInvoices = invoices.filter(i => i.workerId === worker.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const conversations = React.useMemo(() => {
     const workerMessages = messages.filter(m => m.senderId === worker.id || m.receiverId === worker.id);
@@ -108,7 +110,42 @@ const WorkerProfileAdminView: React.FC<WorkerProfileAdminViewProps> = ({ worker,
             </div>
 
             <div className="lg:col-span-1">
-                <h2 className="text-2xl font-bold text-black mb-6">{t('conversations')}</h2>
+                <h2 className="text-2xl font-bold text-black mb-6">{t('receipts')} ({workerInvoices.length})</h2>
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-2">
+                    {workerInvoices.length > 0 ? workerInvoices.map(invoice => (
+                        <div key={invoice.id} className="bg-white p-4 rounded-lg shadow-sm border border-slate-200">
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <p className="font-bold text-black">${invoice.total.toFixed(2)} {invoice.currency}</p>
+                                    <p className="text-xs text-black opacity-60">{formatDate(invoice.createdAt)}</p>
+                                </div>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase ${
+                                    invoice.status === 'released' ? 'bg-green-100 text-green-800' :
+                                    invoice.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-slate-100 text-slate-800'
+                                }`}>
+                                    {t(invoice.status)}
+                                </span>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-semibold text-black">{t('materials_and_services')}:</p>
+                                {invoice.items.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between text-xs text-black opacity-80">
+                                        <span>{item.description}</span>
+                                        <span>${item.amount.toFixed(2)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100 flex justify-between items-center">
+                                <p className="text-[10px] text-black opacity-60">{t('client_label')} {userMap.get(invoice.userId)?.name || t('not available')}</p>
+                            </div>
+                        </div>
+                    )) : (
+                        <p className="text-center text-black opacity-60 py-8">{t('no_receipts_found')}</p>
+                    )}
+                </div>
+
+                <h2 className="text-2xl font-bold text-black mb-6 mt-8">{t('conversations')}</h2>
                 <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                     {conversations.length > 0 ? conversations.map(({ partner, conversationId }) => (
                         <button key={conversationId} onClick={() => onViewConversation(conversationId)} className="w-full text-left p-3 bg-white rounded-lg shadow-sm border border-slate-200 flex items-center space-x-3 hover:bg-slate-50 transition">

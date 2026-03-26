@@ -191,7 +191,7 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
 
   const handleLinkMercadoPago = async () => {
     try {
-      const response = await fetch(`/api/auth/mercadopago/url?workerId=${worker.id}`);
+      const response = await fetch(`/api/mercadopago/auth-url?workerId=${worker.id}`);
       if (!response.ok) {
         throw new Error('Failed to get auth URL');
       }

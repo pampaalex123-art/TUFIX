@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { User, Worker, JobRequest, ServiceCategory, Transaction, Dispute, AppNotification, Message } from '../../types';
+import { User, Worker, JobRequest, ServiceCategory, Transaction, Dispute, AppNotification, Message, Invoice } from '../../types';
 import { SERVICE_CATEGORIES } from '../../constants';
 import AdminTransactionsScreen from './AdminTransactionsScreen';
 import AdminDisputesScreen from '../new/AdminDisputesScreen';
@@ -56,7 +56,7 @@ const downloadCSV = (csvString: string, filename: string) => {
 type SortDirection = 'ascending' | 'descending';
 type ClientSortKey = 'name' | 'location' | 'jobsRequested' | 'signupDate';
 type WorkerSortKey = 'name' | 'service' | 'location' | 'rating' | 'jobsCompleted' | 'totalEarnings' | 'signupDate';
-type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications';
+type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings';
 
 interface ClientFilters {
     nameOrEmail: string;
@@ -93,6 +93,7 @@ interface AdminDashboardProps {
     disputes: Dispute[];
     notifications: AppNotification[];
     messages: Message[];
+    invoices: Invoice[];
     pendingVerifications: Worker[];
     onSelectUser: (user: User) => void;
     onDeleteUser: (user: User) => void;
@@ -143,7 +144,7 @@ const PieChart: React.FC<{ data: { label: string; value: number; color: string }
 };
 
 // --- MAIN COMPONENT ---
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs, transactions, disputes, notifications, messages, pendingVerifications, onSelectUser, onDeleteUser, onSelectWorker, onDeleteWorker, onSelectDispute, onSelectSupportConversation, onSelectVerification, onEditTerms, onClearAllData, t, adminId }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs, transactions, disputes, notifications, messages, invoices, pendingVerifications, onSelectUser, onDeleteUser, onSelectWorker, onDeleteWorker, onSelectDispute, onSelectSupportConversation, onSelectVerification, onEditTerms, onClearAllData, t, adminId }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('clients');
     const [clientFilters, setClientFilters] = useState<ClientFilters>(initialClientFilters);
     const [workerFilters, setWorkerFilters] = useState<WorkerFilters>(initialWorkerFilters);
@@ -153,6 +154,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    React.useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            const origin = event.origin;
+            if (!origin.endsWith('.run.app') && !origin.includes('localhost')) {
+                return;
+            }
+            if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
+                console.log('Mercado Pago Holding Account linked successfully');
+                alert('Mercado Pago Holding Account linked successfully');
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
+
+    const handleLinkHoldingAccount = async () => {
+        try {
+            const response = await fetch('/api/mercadopago/auth-url?isAdmin=true');
+            if (!response.ok) {
+                throw new Error('Failed to get auth URL');
+            }
+            const { url } = await response.json();
+            const authWindow = window.open(url, 'oauth_popup', 'width=600,height=700');
+            if (!authWindow) {
+                alert('Please allow popups for this site to connect the holding account.');
+            }
+        } catch (error) {
+            console.error('OAuth error:', error);
+            alert('Failed to initiate Mercado Pago linking.');
+        }
+    };
 
     const participantMap = useMemo(() => {
         const map = new Map<string, User | Worker>();
@@ -438,6 +471,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                             <TabButton tabId="transactions">{t('transactions')}</TabButton>
                             <TabButton tabId="disputes" badgeCount={openDisputesCount}>{t('disputes')}</TabButton>
                             <TabButton tabId="support" badgeCount={openSupportChatsCount}>{t('support')}</TabButton>
+                            <TabButton tabId="settings">{t('settings')}</TabButton>
                         </nav>
                     </div>
                 </div>
@@ -715,6 +749,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                 ))}
                             </div>
                         )}
+                    </div>
+                )}
+                {activeTab === 'settings' && (
+                    <div className="p-8 space-y-8">
+                        <div>
+                            <h2 className="text-2xl font-bold text-black mb-4">{t('financial settings')}</h2>
+                            <div className="bg-slate-50 p-6 rounded-xl border border-slate-200">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between space-y-4 md:space-y-0">
+                                    <div>
+                                        <h3 className="text-lg font-bold text-black">{t('mercado pago holding account')}</h3>
+                                        <p className="text-sm text-slate-600 max-w-md">{t('mercado pago holding account desc')}</p>
+                                    </div>
+                                    <button 
+                                        onClick={handleLinkHoldingAccount}
+                                        className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition flex items-center justify-center space-x-2 shadow-md"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                                        </svg>
+                                        <span>{t('link holding account')}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

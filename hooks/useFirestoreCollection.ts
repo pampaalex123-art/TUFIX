@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { db, auth } from '../firebase';
-import { collection, onSnapshot, doc, setDoc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, onSnapshot, doc, setDoc, deleteDoc, writeBatch, query, where } from 'firebase/firestore';
 
 enum OperationType {
   CREATE = 'create',
@@ -10,6 +10,7 @@ enum OperationType {
   GET = 'get',
   WRITE = 'write',
 }
+// ... (rest of the interface and handleFirestoreError)
 
 interface FirestoreErrorInfo {
   error: string;
@@ -53,7 +54,12 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
   throw new Error(JSON.stringify(errInfo));
 }
 
-export function useFirestoreCollection<T extends { id: string }>(collectionName: string, initialValue: T[]): [T[], (value: T[] | ((val: T[]) => T[])) => void] {
+export function useFirestoreCollection<T extends { id: string }>(
+  collectionName: string, 
+  initialValue: T[],
+  filterField?: string,
+  filterValue?: string
+): [T[], (value: T[] | ((val: T[]) => T[])) => void] {
   const [data, setData] = useState<T[]>(initialValue);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [user, setUser] = useState(auth.currentUser);
@@ -67,39 +73,44 @@ export function useFirestoreCollection<T extends { id: string }>(collectionName:
   }, []);
 
   useEffect(() => {
+    // 1. Listener Protection: Ensure auth is valid before starting
     if (!isAuthReady || !user) {
       setData(initialValue);
       return;
     }
 
-    const unsubscribe = onSnapshot(collection(db, collectionName), (snapshot) => {
-      console.log(`Firestore onSnapshot for ${collectionName}: ${snapshot.size} items`);
-      if (snapshot.empty && initialValue.length > 0) {
-        // Only seed if we are an admin to avoid permission errors for regular users
-        const isAdmin = user?.email === 'admin@tufix.com' || 
-                        user?.email === 'pampa.alex123@gmail.com' ||
-                        user?.email === 'admin@admin';
-        
-        if (isAdmin) {
-          const batch = writeBatch(db);
-          console.log(`Seeding ${collectionName} with ${initialValue.length} items (Admin only)`);
-          initialValue.forEach(item => {
-            batch.set(doc(db, collectionName, item.id), item);
-          });
-          batch.commit().catch(err => console.error(`Error seeding ${collectionName}:`, err));
-        } else {
-          console.log(`Collection ${collectionName} is empty, but user is not admin. Skipping seed.`);
-        }
-        return;
-      }
+    console.log(`Starting listener for ${collectionName} (User: ${user.uid})`);
+    
+    let q: any = collection(db, collectionName);
+    // If a filter is provided, use it to avoid permission errors on broad queries
+    if (filterField && filterValue) {
+      console.log(`Applying filter: ${filterField} == ${filterValue}`);
+      q = query(q, where(filterField, '==', filterValue));
+    }
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const items = snapshot.docs.map(doc => ({ ...doc.data() as T, id: doc.id }));
       setData(items);
     }, (error) => {
-      console.error(`onSnapshot error for ${collectionName}:`, error);
-      handleFirestoreError(error, OperationType.LIST, collectionName);
+      // 2. Graceful Detach: Log and handle permission errors
+      console.error(`onSnapshot error for ${collectionName}:`, error.message);
+      
+      if (error.message.includes('permission') || error.message.includes('7')) {
+        console.warn(`Permission denied for ${collectionName}. Detaching listener to prevent loop.`);
+        // The listener is automatically detached by Firestore on permanent errors,
+        // but we ensure we don't try to use stale data.
+        setData([]); 
+      }
+      
+      // We don't throw here to avoid crashing the component tree
+      // handleFirestoreError(error, OperationType.LIST, collectionName);
     });
-    return () => unsubscribe();
-  }, [collectionName, isAuthReady, user]);
+
+    return () => {
+      console.log(`Unsubscribing from ${collectionName}`);
+      unsubscribe();
+    };
+  }, [collectionName, isAuthReady, user, filterField, filterValue]);
 
   const setValue = useCallback((value: T[] | ((val: T[]) => T[])) => {
     if (!auth.currentUser) {

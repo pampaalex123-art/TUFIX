@@ -95,7 +95,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // Handle Mercado Pago confirmation redirect
-    if (window.location.pathname === '/confirmation') {
+    if (window.location.pathname === '/confirmation' || window.location.pathname === '/payment-status') {
       setView({ screen: 'CONFIRMATION' });
     }
   }, []);
@@ -138,7 +138,53 @@ const App: React.FC = () => {
   const [workers, setWorkers] = useFirestoreCollection<Worker>('workers', []);
   const [jobRequests, setJobRequests] = useFirestoreCollection<JobRequest>('jobRequests', DUMMY_JOB_REQUESTS);
   const [users, setUsers] = useFirestoreCollection<User>('users', DUMMY_USERS);
-  const [notifications, setNotifications] = useFirestoreCollection<AppNotification>('notifications', DUMMY_NOTIFICATIONS);
+  const [notifications, setNotifications] = useFirestoreCollection<AppNotification>(
+    'notifications', 
+    DUMMY_NOTIFICATIONS,
+    userType === 'admin' ? undefined : 'userId',
+    userType === 'admin' ? undefined : currentUser?.id
+  );
+
+  // Admin Claim Sync: Ensure system admins have the correct custom claims
+  useEffect(() => {
+    const syncAdminClaim = async () => {
+      if (!currentUser || !auth.currentUser) return;
+      
+      const isSystemAdmin = currentUser.email === 'admin@tufix.com' || 
+                            currentUser.email === 'pampa.alex123@gmail.com' ||
+                            currentUser.email === 'admin@admin';
+      
+      if (isSystemAdmin) {
+        try {
+          const idToken = await auth.currentUser.getIdToken(true); // Force refresh to check claims
+          const decodedToken = JSON.parse(atob(idToken.split('.')[1]));
+          
+          if (!decodedToken.admin) {
+            console.log('Admin claim missing for system admin. Syncing...');
+            const response = await fetch('/api/admin/promote', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${idToken}`
+              },
+              body: JSON.stringify({ uid: currentUser.id })
+            });
+            
+            if (response.ok) {
+              console.log('Admin claim synced successfully. Refreshing token...');
+              await auth.currentUser.getIdToken(true);
+            }
+          }
+        } catch (error) {
+          console.error('Error syncing admin claim:', error);
+        }
+      }
+    };
+
+    if (currentUser) {
+      syncAdminClaim();
+    }
+  }, [currentUser]);
   const [messages, setMessages] = useFirestoreCollection<Message>('messages', DUMMY_MESSAGES);
   const [invoices, setInvoices] = useFirestoreCollection<Invoice>('invoices', []);
   const [transactions, setTransactions] = useFirestoreCollection<Transaction>('transactions', []);
@@ -784,13 +830,18 @@ const App: React.FC = () => {
     }]);
   };
   
-  const handleUpdateJobStatus = (jobId: string, status: JobRequest['status']) => {
+  const handleUpdateJobStatus = async (jobId: string, status: JobRequest['status']) => {
     const now = new Date().toISOString();
+    
+    // Optimistic update for UI responsiveness
     setJobRequests(prev => prev.map(job => {
         if (job.id === jobId) {
             const updatedJob = { ...job, status };
             if (status === 'in_progress') updatedJob.startedAt = now;
-            if (status === 'worker_completed') updatedJob.workerCompletedAt = now;
+            if (status === 'worker_completed') {
+              updatedJob.workerCompletedAt = now;
+              updatedJob.worker_confirmed = true;
+            }
             return updatedJob;
         }
         return job;
@@ -798,6 +849,29 @@ const App: React.FC = () => {
 
     const job = jobRequests.find(j => j.id === jobId);
     if (!job) return;
+
+    try {
+      // Update Firestore
+      const jobRef = doc(db, 'jobRequests', jobId);
+      const updateData: any = { status };
+      if (status === 'in_progress') updateData.startedAt = now;
+      if (status === 'worker_completed') {
+        updateData.workerCompletedAt = now;
+        updateData.worker_confirmed = true;
+      }
+      await updateDoc(jobRef, updateData);
+
+      // If worker completed, trigger the backend confirmation logic
+      if (status === 'worker_completed') {
+        await fetch(`/api/jobs/${jobId}/confirm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: 'worker' })
+        });
+      }
+    } catch (error) {
+      console.error("Error updating job status:", error);
+    }
 
     let notificationMessage = '';
     let recipientId = job.user.id;
@@ -836,7 +910,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleConfirmAndReleasePayment = (jobId: string) => {
+  const handleConfirmAndReleasePayment = async (jobId: string) => {
     const job = jobRequests.find(j => j.id === jobId);
     if (!job || !job.invoiceId) return;
 
@@ -849,35 +923,36 @@ const App: React.FC = () => {
     }
 
     const invoice = invoices.find(inv => inv.id === job.invoiceId);
-    if (!invoice || invoice.status !== 'held') {
+    if (!invoice || (invoice.status !== 'held' && invoice.status !== 'pending')) {
         alert(t('error invoice is not in a payable state'));
         return;
     }
 
     const now = new Date().toISOString();
 
-    setJobRequests(prev => prev.map(j => 
-        j.id === jobId ? { ...j, status: 'completed', clientApprovedPayout: true, clientConfirmedAt: now } : j
-    ));
+    try {
+      // Call the backend API to confirm as client and trigger fund release
+      const response = await fetch(`/api/jobs/${jobId}/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'client' })
+      });
 
-    setInvoices(prev => prev.map(inv => 
-        inv.id === job.invoiceId ? { ...inv, status: 'released', releasedAt: now } : inv
-    ));
-    
-    setTransactions(prev => prev.map(t => 
-        t.invoiceId === job.invoiceId ? { ...t, status: 'released', releasedAt: now } : t
-    ));
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to confirm job completion');
+      }
 
-    setNotifications(prev => [...prev, {
-        id: `notif-release-${Date.now()}`,
-        userId: invoice.workerId,
-        type: 'status_update',
-        message: `Funds for invoice #${invoice.id.slice(-6)} have been released to your account!`,
-        isRead: false,
-        timestamp: now,
-        relatedEntityId: invoice.jobId,
-    }]);
-    alert(t('job confirmed and payment released'));
+      // Optimistic update
+      setJobRequests(prev => prev.map(j => 
+          j.id === jobId ? { ...j, client_confirmed: true, clientConfirmedAt: now } : j
+      ));
+
+      alert(t('job confirmed and payment release triggered'));
+    } catch (error: any) {
+      console.error('Error confirming job:', error);
+      alert(t('error confirming job', { error: error.message }));
+    }
   };
 
   const handleSaveWorkerProfile = (updatedWorker: Worker) => {
@@ -1309,15 +1384,18 @@ const App: React.FC = () => {
   const allWorkers = workers; // Pass all workers to UserDashboard
 
   const handleDeleteUser = async (userToDelete: User) => {
+    if (currentUser?.userType !== 'admin') {
+      alert(t('Permission Denied: Only admins can delete users.'));
+      return;
+    }
+
     console.log('handleDeleteUser initiated for:', userToDelete.id, userToDelete.email);
     try {
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) {
-        console.error('No ID token available for deletion');
-        throw new Error('Not authenticated');
+        throw new Error(t('Not authenticated'));
       }
 
-      console.log('Calling backend API /api/admin/delete-user...');
       const response = await fetch('/api/admin/delete-user', {
         method: 'POST',
         headers: {
@@ -1327,31 +1405,37 @@ const App: React.FC = () => {
         body: JSON.stringify({ uid: userToDelete.id, collectionName: 'users' }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Backend deletion failed:', errorData);
-        throw new Error(errorData.error || 'Failed to delete user');
+        throw new Error(data.error || t('Failed to delete user'));
       }
 
-      console.log('Deletion successful, updating state...');
+      // UI Feedback & Automatic Refresh
       setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
-      alert(`Usuario ${userToDelete.name} eliminado correctamente.`);
-    } catch (error) {
-      console.error('Error in handleDeleteUser:', error);
-      alert(`Error al eliminar usuario: ${error instanceof Error ? error.message : String(error)}`);
+      // Also remove associated jobs from local state to keep UI in sync
+      setJobRequests(prev => prev.filter(j => j.user.id !== userToDelete.id));
+      
+      alert(t('User Deleted Successfully'));
+    } catch (error: any) {
+      console.error('Delete User Error:', error);
+      alert(`${t('Error deleting user')}: ${error.message}`);
     }
   };
 
   const handleDeleteWorker = async (workerToDelete: Worker) => {
+    if (currentUser?.userType !== 'admin') {
+      alert(t('Permission Denied: Only admins can delete workers.'));
+      return;
+    }
+
     console.log('handleDeleteWorker initiated for:', workerToDelete.id, workerToDelete.email);
     try {
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) {
-        console.error('No ID token available for deletion');
-        throw new Error('Not authenticated');
+        throw new Error(t('Not authenticated'));
       }
 
-      console.log('Calling backend API /api/admin/delete-user...');
       const response = await fetch('/api/admin/delete-user', {
         method: 'POST',
         headers: {
@@ -1361,18 +1445,21 @@ const App: React.FC = () => {
         body: JSON.stringify({ uid: workerToDelete.id, collectionName: 'workers' }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Backend deletion failed:', errorData);
-        throw new Error(errorData.error || 'Failed to delete worker');
+        throw new Error(data.error || t('Failed to delete worker'));
       }
 
-      console.log('Deletion successful, updating state...');
+      // UI Feedback & Automatic Refresh
       setWorkers(prev => prev.filter(w => w.id !== workerToDelete.id));
-      alert(`Proveedor ${workerToDelete.name} eliminado correctamente.`);
-    } catch (error) {
-      console.error('Error in handleDeleteWorker:', error);
-      alert(`Error al eliminar proveedor: ${error instanceof Error ? error.message : String(error)}`);
+      // Also remove associated jobs from local state
+      setJobRequests(prev => prev.filter(j => j.workerId !== workerToDelete.id));
+      
+      alert(t('User Deleted Successfully'));
+    } catch (error: any) {
+      console.error('Delete Worker Error:', error);
+      alert(`${t('Error deleting worker')}: ${error.message}`);
     }
   };
 
@@ -1572,6 +1659,7 @@ const App: React.FC = () => {
             disputes={disputes}
             notifications={notifications}
             messages={messages}
+            invoices={invoices}
             pendingVerifications={pendingWorkers}
             onSelectUser={(user) => setView({ screen: 'ADMIN_CLIENT_PROFILE', user })}
             onDeleteUser={handleDeleteUser}
@@ -1591,6 +1679,7 @@ const App: React.FC = () => {
             jobs={jobRequests.filter(j => j.user.id === view.user.id)}
             workers={workers}
             messages={messages}
+            invoices={invoices}
             onViewConversation={handleAdminViewConversation}
             onBack={() => setView({ screen: 'ADMIN_DASHBOARD' })}
             t={t}
@@ -1601,6 +1690,7 @@ const App: React.FC = () => {
             jobs={jobRequests.filter(j => j.workerId === view.worker.id)}
             users={users}
             messages={messages}
+            invoices={invoices}
             onViewConversation={handleAdminViewConversation}
             onBack={() => setView({ screen: 'ADMIN_DASHBOARD' })}
             t={t}

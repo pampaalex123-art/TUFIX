@@ -13,7 +13,7 @@ const ConfirmationPage: React.FC<ConfirmationPageProps> = ({ onBack }) => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setStatus(params.get('status'));
-    setItemId(params.get('itemId'));
+    setItemId(params.get('itemId') || params.get('jobId'));
   }, []);
 
   const renderStatus = () => {

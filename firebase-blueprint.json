@@ -74,6 +74,8 @@
         "finalPrice": { "type": "number" },
         "invoiceId": { "type": "string" },
         "clientApprovedPayout": { "type": "boolean" },
+        "client_confirmed": { "type": "boolean" },
+        "worker_confirmed": { "type": "boolean" },
         "disputeId": { "type": "string" },
         "createdAt": { "type": "string" },
         "startedAt": { "type": "string" },

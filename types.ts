@@ -185,6 +185,8 @@ export interface JobRequest {
   finalPrice?: number;
   invoiceId?: string;
   clientApprovedPayout?: boolean;
+  client_confirmed?: boolean;
+  worker_confirmed?: boolean;
   disputeId?: string;
   createdAt: string; // ISO 8601
   startedAt?: string; // ISO 8601
