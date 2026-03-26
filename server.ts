@@ -14,29 +14,23 @@ const __dirname = path.dirname(__filename);
 
 // Initialize Firebase Admin
 async function initializeFirebaseAdmin() {
-  console.log('Environment Check:');
-  console.log('GOOGLE_CLOUD_PROJECT:', process.env.GOOGLE_CLOUD_PROJECT);
-  console.log('FIREBASE_CONFIG:', process.env.FIREBASE_CONFIG);
-  console.log('Config JSON Project ID:', firebaseConfigJson.projectId);
-
   if (admin.apps.length > 0) {
-    console.log('Firebase Admin already initialized. Apps:', admin.apps.map(a => a?.name));
-    await Promise.all(admin.apps.map(app => app?.delete()));
+    console.log('Firebase Admin already initialized. Using existing app.');
+    return admin.app();
   }
 
-  // Always use the config's project ID explicitly to avoid mismatches
   try {
-    console.log('Initializing Firebase Admin with explicit project ID:', firebaseConfigJson.projectId);
+    console.log('Attempting default Firebase Admin initialization...');
+    const app = admin.initializeApp();
+    console.log('Firebase Admin initialized (default). Project ID:', app.options.projectId);
+    return app;
+  } catch (e: any) {
+    console.log('Default initialization failed, attempting explicit initialization:', e.message);
     const app = admin.initializeApp({
       credential: admin.credential.applicationDefault(),
       projectId: firebaseConfigJson.projectId,
     });
-    console.log('Firebase Admin initialized. Project ID:', app.options.projectId);
-    return app;
-  } catch (e) {
-    console.log('Explicit initialization failed, attempting default initialization...');
-    const app = admin.initializeApp();
-    console.log('Firebase Admin initialized (default). Project ID:', app.options.projectId);
+    console.log('Firebase Admin initialized (explicit). Project ID:', app.options.projectId);
     return app;
   }
 }
@@ -306,22 +300,39 @@ async function startServer() {
       }
       
       const adminUid = decodedToken.uid;
-      console.log('Token verified for admin:', adminUid, 'Email:', decodedToken.email);
-
-      // Check if the requester is an admin in Firestore
-      console.log('Checking admin role in Firestore...');
-      const adminDoc = await db.collection('users').doc(adminUid).get();
-      const adminData = adminDoc.data();
-      
       const isSystemAdmin = decodedToken.email === 'admin@tufix.com' || 
                             decodedToken.email === 'pampa.alex123@gmail.com' ||
                             decodedToken.email === 'admin@admin';
 
-      console.log('Is system admin:', isSystemAdmin, 'userType in Firestore:', adminData?.userType);
+      console.log('Token verified for admin:', adminUid, 'Email:', decodedToken.email, 'isSystemAdmin:', isSystemAdmin);
 
-      if (!isSystemAdmin && adminData?.userType !== 'admin') {
-        console.warn(`Unauthorized deletion attempt by ${adminUid} (${decodedToken.email})`);
-        return res.status(403).json({ error: 'Forbidden: Admin access required' });
+      if (!isSystemAdmin) {
+        console.log('Checking admin role in Firestore for non-system admin...');
+        try {
+          // Check users collection first
+          let adminDoc = await db.collection('users').doc(adminUid).get();
+          let adminData = adminDoc.data();
+          
+          // If not found in users, check workers
+          if (!adminDoc.exists || adminData?.userType !== 'admin') {
+            console.log(`Admin role not found in users for ${adminUid}, checking workers...`);
+            adminDoc = await db.collection('workers').doc(adminUid).get();
+            adminData = adminDoc.data();
+          }
+
+          if (!adminDoc.exists || adminData?.userType !== 'admin') {
+            console.warn(`Unauthorized deletion attempt by ${adminUid} (${decodedToken.email})`);
+            return res.status(403).json({ error: 'Forbidden: Admin access required' });
+          }
+          console.log('Admin role verified in Firestore for:', adminUid);
+        } catch (dbError: any) {
+          console.error('Error checking admin role in Firestore:', dbError.message);
+          // If we can't check Firestore, we must deny access for safety, 
+          // unless it's a system admin (which we already checked).
+          return res.status(500).json({ error: `Failed to verify admin status: ${dbError.message}` });
+        }
+      } else {
+        console.log('System admin verified via email, skipping Firestore check.');
       }
 
       console.log(`Admin ${adminUid} is deleting user ${uid} from ${collectionName}`);

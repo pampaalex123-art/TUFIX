@@ -284,14 +284,20 @@ const App: React.FC = () => {
           signupDate: new Date().toISOString(),
           lastLoginDate: new Date().toISOString(),
           rating: 0,
-// FIX: Add missing idNumber and phoneNumber properties to satisfy the User type.
           reviews: [],
           idNumber: '000-00-0000',
-// FIX: Changed phoneNumber from a string to a PhoneNumber object to match the type definition.
           phoneNumber: { code: '+1', number: '555-555-5555' },
           userType: 'admin',
         };
+        
         // Ensure admin user exists in users collection so rules pass
+        try {
+          const adminRef = doc(db, 'users', adminUid);
+          await setDoc(adminRef, adminUser, { merge: true });
+        } catch (err) {
+          console.error('Failed to save admin user to Firestore:', err);
+        }
+
         if (!users.find(u => u.id === adminUid)) {
           setUsers(prev => [...prev, adminUser]);
         }

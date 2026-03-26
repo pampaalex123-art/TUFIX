@@ -95,6 +95,7 @@ const translations: Record<Language, Record<string, string>> = {
         "review placeholder worker": "Share your experience with {name}. Was the work well done? Were they on time?",
         "submit review": "Submit Review",
         "welcome back": "Welcome back, {name}!",
+        "welcome_back": "Welcome back, {name}!",
         "incoming jobs": "Incoming Jobs",
         "no job requests": "You have no new jobs at this time.",
         "available this day": "Available this day",
