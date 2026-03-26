@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { COUNTRY_CODES } from '../../constants';
 
 interface PasswordRecoveryScreenProps {
   error: string;
@@ -13,6 +14,7 @@ const PasswordRecoveryScreen: React.FC<PasswordRecoveryScreenProps> = ({ error, 
   const [stage, setStage] = useState<'selection' | 'input' | 'code' | 'reset'>('selection');
   const [method, setMethod] = useState<'email' | 'phone' | null>(null);
   const [emailOrPhone, setEmailOrPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+1');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,7 +23,8 @@ const PasswordRecoveryScreen: React.FC<PasswordRecoveryScreenProps> = ({ error, 
   const handleSendCode = (e: React.FormEvent) => {
     e.preventDefault();
     setInternalError('');
-    if (onSendCode(emailOrPhone)) {
+    const valueToSend = method === 'phone' ? `${countryCode}${emailOrPhone}` : emailOrPhone;
+    if (onSendCode(valueToSend)) {
         setStage('code');
     }
   };
@@ -93,16 +96,45 @@ const PasswordRecoveryScreen: React.FC<PasswordRecoveryScreenProps> = ({ error, 
               <label htmlFor="emailOrPhone" className="block text-sm font-medium text-slate-700 mb-1">
                 {method === 'email' ? t('email_address') : t('phone_number')}
               </label>
-              <input 
-                type={method === 'email' ? "email" : "text"} 
-                name="emailOrPhone" 
-                id="emailOrPhone" 
-                placeholder={method === 'email' ? t('enter email') : t('enter phone')} 
-                value={emailOrPhone} 
-                onChange={e => setEmailOrPhone(e.target.value)} 
-                required 
-                className={inputStyles} 
-              />
+              {method === 'phone' ? (
+                <div className="flex space-x-2">
+                  <div>
+                    <label htmlFor="countryCode" className="sr-only">{t('country_code')}</label>
+                    <select 
+                      name="countryCode" 
+                      id="countryCode" 
+                      value={countryCode} 
+                      onChange={e => setCountryCode(e.target.value)} 
+                      className="p-3 bg-slate-50 border border-slate-300 rounded-lg text-black focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition h-full"
+                    >
+                      {COUNTRY_CODES.map(c => <option key={c.code} value={c.code} className="bg-white text-black">{c.name} ({c.code})</option>)}
+                    </select>
+                  </div>
+                  <div className="flex-grow">
+                    <input 
+                      type="tel" 
+                      name="emailOrPhone" 
+                      id="emailOrPhone" 
+                      placeholder={t('enter phone')} 
+                      value={emailOrPhone} 
+                      onChange={e => setEmailOrPhone(e.target.value)} 
+                      required 
+                      className={inputStyles} 
+                    />
+                  </div>
+                </div>
+              ) : (
+                <input 
+                  type="email" 
+                  name="emailOrPhone" 
+                  id="emailOrPhone" 
+                  placeholder={t('enter email')} 
+                  value={emailOrPhone} 
+                  onChange={e => setEmailOrPhone(e.target.value)} 
+                  required 
+                  className={inputStyles} 
+                />
+              )}
             </div>
             <button type="submit" className="w-full bg-purple-600 text-white font-bold py-3.5 px-4 rounded-xl hover:bg-purple-700 shadow-md transition-all">{t('send code')}</button>
             <button type="button" onClick={() => setStage('selection')} className="w-full text-sm text-slate-500 hover:text-purple-600 transition-all">{t('change method')}</button>
