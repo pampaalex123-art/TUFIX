@@ -385,7 +385,10 @@ const App: React.FC = () => {
             verificationStatus: 'approved',
             userType: isAdminEmail ? 'admin' : 'user',
           };
-          setUsers(prev => [...prev, user!]);
+          setUsers(prev => {
+            if (prev.find(u => u.id === user!.id)) return prev;
+            return [...prev, user!];
+          });
         }
         setCurrentUser(user);
         setUserType(user.userType as UserType);
@@ -424,7 +427,10 @@ const App: React.FC = () => {
             verificationStatus: 'approved', // Auto-approve restored workers to avoid getting stuck
             userType: 'worker',
           };
-          setWorkers(prev => [...prev, worker!]);
+          setWorkers(prev => {
+            if (prev.find(w => w.id === worker!.id)) return prev;
+            return [...prev, worker!];
+          });
         }
 
         if (worker.verificationStatus === 'pending') {

@@ -36,27 +36,43 @@ async function initializeFirebaseAdmin() {
     throw e;
   }
 }
-}
 
 const adminApp = await initializeFirebaseAdmin();
 // Use the named database if provided, otherwise fallback to (default)
 const firestoreDatabaseId = firebaseConfigJson.firestoreDatabaseId || '(default)';
-console.log('Using Firestore Database ID:', firestoreDatabaseId);
+console.log('Primary Firestore Database ID:', firestoreDatabaseId);
+
 let db = getFirestore(adminApp, firestoreDatabaseId);
 
 // Test connection and fallback to (default) if needed
-try {
-  await db.collection('notifications').limit(1).get();
-  console.log('Successfully connected to Firestore database:', firestoreDatabaseId);
-} catch (err: any) {
-  const errMsg = err.message?.toLowerCase() || '';
-  if (errMsg.includes('permission') || errMsg.includes('7') || errMsg.includes('not found') || errMsg.includes('5') || errMsg.includes('not_found')) {
-    console.warn(`Failed to connect to named database ${firestoreDatabaseId}. Falling back to (default). Error: ${err.message}`);
-    db = getFirestore(adminApp, '(default)');
-  } else {
-    console.error('Unexpected Firestore connection error:', err.message);
+async function verifyFirestoreConnection() {
+  try {
+    console.log(`Testing connection to Firestore database: ${firestoreDatabaseId}...`);
+    // Try to get a document from a common collection to verify the database exists
+    await db.collection('users').limit(1).get();
+    console.log(`Successfully connected to Firestore database: ${firestoreDatabaseId}`);
+  } catch (err: any) {
+    const errMsg = err.message?.toLowerCase() || '';
+    console.warn(`Initial connection test failed for database ${firestoreDatabaseId}: ${err.message}`);
+    
+    // If the error suggests the database is not found or permission denied, try (default)
+    if (firestoreDatabaseId !== '(default)' && 
+        (errMsg.includes('not found') || errMsg.includes('5') || errMsg.includes('permission') || errMsg.includes('7'))) {
+      console.log('Attempting fallback to (default) database...');
+      try {
+        const fallbackDb = getFirestore(adminApp, '(default)');
+        await fallbackDb.collection('users').limit(1).get();
+        console.log('Successfully connected to (default) database. Updating global db instance.');
+        db = fallbackDb;
+      } catch (defaultErr: any) {
+        console.error('Fallback to (default) database also failed:', defaultErr.message);
+        // We'll stick with the original db instance and let the listeners handle retries
+      }
+    }
   }
 }
+
+await verifyFirestoreConnection();
 
 const messaging = adminApp.messaging();
 const authAdmin = adminApp.auth();
@@ -89,7 +105,7 @@ async function startServer() {
       .catch(err => console.error('Initial connection test to notifications failed:', err.message));
 
     const unsubscribe = db.collection('notifications')
-      .orderBy('createdAt', 'desc')
+      .orderBy('timestamp', 'desc')
       .limit(50)
       .onSnapshot((snapshot) => {
         console.log(`Notification snapshot received: ${snapshot.size} items`);

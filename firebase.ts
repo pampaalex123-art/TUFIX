@@ -17,9 +17,23 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// Initialize Firestore with the named database
-console.log('Initializing Firestore with database ID:', firebaseConfigJson.firestoreDatabaseId);
-export const db = getFirestore(app, firebaseConfigJson.firestoreDatabaseId);
+// Initialize Firestore with the named database and fallback to (default) if needed
+let dbInstance;
+const namedDatabaseId = firebaseConfigJson.firestoreDatabaseId;
+
+try {
+  if (namedDatabaseId && namedDatabaseId !== '(default)') {
+    console.log('Attempting to initialize Firestore with named database ID:', namedDatabaseId);
+    dbInstance = getFirestore(app, namedDatabaseId);
+  } else {
+    console.log('No named database ID provided, using (default).');
+    dbInstance = getFirestore(app);
+  }
+} catch (e) {
+  console.warn('Failed to initialize Firestore with named database, falling back to (default):', e);
+  dbInstance = getFirestore(app);
+}
+export const db = dbInstance;
 
 export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
 
