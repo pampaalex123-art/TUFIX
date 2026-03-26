@@ -491,7 +491,10 @@ const translations: Record<Language, Record<string, string>> = {
         "location_notes": "Apt, Suite, Floor, etc. (Optional)",
         "location_notes_placeholder": "e.g. Apt 4B, Floor 2",
         "location_hidden_until_paid": "Exact location will be revealed once the job is paid by the user.",
-        "please select a date time provide a description and choose a location": "Please select a date, time, provide a description and choose a location"
+        "please select a date time provide a description and choose a location": "Please select a date, time, provide a description and choose a location",
+        "edit_my_profile_user": "Edit My Profile",
+        "change_photo": "Change Photo",
+        "save_changes": "Save Changes"
     },
     es: {
         "user_login": "Inicia sesión para encontrar a tu trabajador",
@@ -1444,7 +1447,10 @@ const translations: Record<Language, Record<string, string>> = {
         "location_notes": "Depto, Oficina, Piso, etc. (Opcional)",
         "location_notes_placeholder": "ej. Depto 4B, Piso 2",
         "location_hidden_until_paid": "La ubicación exacta se revelará una vez que el usuario pague el trabajo.",
-        "please select a date time provide a description and choose a location": "Por favor selecciona una fecha, hora, proporciona una descripción y elige una ubicación"
+        "please select a date time provide a description and choose a location": "Por favor selecciona una fecha, hora, proporciona una descripción y elige una ubicación",
+        "edit_my_profile_user": "Mi Perfil",
+        "change_photo": "Cambiar foto",
+        "save_changes": "Guardar cambios"
     }
 };
 

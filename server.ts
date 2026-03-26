@@ -266,6 +266,16 @@ async function startServer() {
   });
 
   // API Route to delete a user from Auth and Firestore
+  app.get('/api/admin/debug-env', (req, res) => {
+    res.json({
+      GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT,
+      FIREBASE_CONFIG: process.env.FIREBASE_CONFIG,
+      configJsonProjectId: firebaseConfigJson.projectId,
+      adminProjectId: admin.app().options.projectId,
+      apps: admin.apps.map(a => a?.name),
+    });
+  });
+
   app.post('/api/admin/delete-user', async (req, res) => {
     const { uid, collectionName } = req.body;
     const idToken = req.headers.authorization?.split('Bearer ')[1];
