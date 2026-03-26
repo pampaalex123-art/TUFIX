@@ -7,9 +7,10 @@ interface BottomNavigationProps {
   onNavigate: (screen: 'messages' | 'profile' | 'earnings' | 'job-requests' | 'notifications' | 'my-jobs') => void;
   t: (key: string) => string;
   unreadNotificationsCount?: number;
+  unreadMessagesCount?: number;
 }
 
-const BottomNavigation: React.FC<BottomNavigationProps> = ({ userType, activeScreen, onNavigate, t, unreadNotificationsCount = 0 }) => {
+const BottomNavigation: React.FC<BottomNavigationProps> = ({ userType, activeScreen, onNavigate, t, unreadNotificationsCount = 0, unreadMessagesCount = 0 }) => {
   if (!userType || userType === 'admin') return null;
 
   const navItems = [
@@ -34,9 +35,16 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ userType, activeScr
       </svg>
     )},
     { id: 'messages', label: t('messages'), icon: (
-      <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-      </svg>
+      <div className="relative">
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+        </svg>
+        {unreadMessagesCount > 0 && (
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">
+            {unreadMessagesCount > 9 ? '9+' : unreadMessagesCount}
+          </span>
+        )}
+      </div>
     )},
     { id: 'notifications', label: t('notifications'), icon: (
       <div className="relative">

@@ -161,6 +161,10 @@ const App: React.FC = () => {
     ? notifications.filter(n => n.userId === currentUser.id && !n.isRead).length 
     : 0;
 
+  const unreadMessagesCount = currentUser
+    ? messages.filter(m => m.receiverId === currentUser.id && !m.isRead).length
+    : 0;
+
   const prevUnreadCountRef = useRef(unreadNotificationsCount);
 
   useEffect(() => {
@@ -895,61 +899,62 @@ const App: React.FC = () => {
   };
   
   const handleNotificationClick = (notification: AppNotification) => {
-     setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
-     
-     if (notification.type === 'new_message') {
-        setView({ screen: 'MESSAGING', conversationId: notification.relatedEntityId });
-        return;
-     }
+    setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, isRead: true } : n));
+    
+    if (notification.type === 'new_message') {
+      setView({ screen: 'MESSAGING', conversationId: notification.relatedEntityId });
+      return;
+    }
 
-     if (notification.type === 'new_job' || notification.type === 'status_update') {
-        const job = jobRequests.find(j => j.id === notification.relatedEntityId);
-        if (!job) return;
+    if (notification.type === 'new_job' || notification.type === 'status_update') {
+      const job = jobRequests.find(j => j.id === notification.relatedEntityId);
+      if (!job) return;
 
-        if (userType === 'worker') {
-            setView({ screen: 'JOB_DETAILS', job });
-        } else if (userType === 'user') {
-            setView({ screen: 'MY_JOBS' });
-        }
-     }
-     
-      if (notification.type === 'new_support_chat' && userType === 'admin') {
-        setView({ screen: 'MESSAGING', conversationId: notification.relatedEntityId });
+      if (userType === 'worker') {
+        setView({ screen: 'JOB_DETAILS', job });
+      } else if (userType === 'user') {
+        setView({ screen: 'MY_JOBS' });
+      }
+      return;
+    }
+    
+    if (notification.type === 'new_support_chat' && userType === 'admin') {
+      setView({ screen: 'MESSAGING', conversationId: notification.relatedEntityId });
+      return;
+    }
+
+    if (notification.type === 'new_registration' && userType === 'admin') {
+      const user = users.find(u => u.id === notification.relatedEntityId);
+      if (user) {
+        setView({ screen: 'ADMIN_CLIENT_PROFILE', user });
         return;
       }
-
-      if (notification.type === 'new_dispute') {
-        const dispute = disputes.find(d => d.id === notification.relatedEntityId);
-        if (dispute && userType === 'admin') {
-            setView({ screen: 'ADMIN_DISPUTE_DETAILS', dispute });
+      const worker = workers.find(w => w.id === notification.relatedEntityId);
+      if (worker) {
+        if (worker.verificationStatus === 'pending' && worker.idPhotoUrl) {
+          setView({ screen: 'ADMIN_WORKER_VERIFICATION', worker });
+        } else {
+          setView({ screen: 'ADMIN_WORKER_PROFILE', worker });
         }
-     }
-     
-     if (notification.type === 'dispute_update') {
-        setView({ screen: 'DISPUTE_DETAILS', disputeId: notification.relatedEntityId });
-     }
-     
-      if (notification.type === 'new_support_chat' && userType === 'admin') {
-        setView({ screen: 'MESSAGING', conversationId: notification.relatedEntityId });
         return;
-     }
+      }
+      return;
+    }
 
-     if (userType === 'admin' && notification.type === 'new_registration') {
-        const user = users.find(u => u.id === notification.relatedEntityId);
-        if (user) {
-            setView({ screen: 'ADMIN_CLIENT_PROFILE', user });
-            return;
-        }
-        const worker = workers.find(w => w.id === notification.relatedEntityId);
-        if (worker) {
-            if (worker.verificationStatus === 'pending' && worker.idPhotoUrl) {
-                setView({ screen: 'ADMIN_WORKER_VERIFICATION', worker });
-            } else {
-                setView({ screen: 'ADMIN_WORKER_PROFILE', worker });
-            }
-            return;
-        }
-     }
+    if ((notification.type === 'new_dispute' || notification.type === 'dispute_update') && userType === 'admin') {
+      const dispute = disputes.find(d => d.id === notification.relatedEntityId);
+      if (dispute) {
+        setView({ screen: 'ADMIN_DISPUTE_DETAILS', dispute });
+      } else {
+        setView({ screen: 'ADMIN_DASHBOARD' });
+      }
+      return;
+    }
+    
+    if (notification.type === 'dispute_update' && (userType === 'user' || userType === 'worker')) {
+      setView({ screen: 'DISPUTE_DETAILS', disputeId: notification.relatedEntityId });
+      return;
+    }
   };
   
   const handleContact = (recipient: User | Worker) => {
@@ -1714,15 +1719,8 @@ const App: React.FC = () => {
         return (
           <NotificationsScreen 
             notifications={notifications.filter(n => n.userId === currentUser?.id)}
-            onNotificationClick={(notif) => {
-              if (notif.type === 'new_message') setView({ screen: 'CONVERSATIONS' });
-              else if (notif.type === 'new_job' || notif.type === 'status_update') {
-                  if (userType === 'worker') setView({ screen: 'WORKER_DASHBOARD' });
-                  else setView({ screen: 'MY_JOBS' });
-              }
-              setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true } : n));
-            }}
-            onMarkAllAsRead={() => setNotifications(prev => prev.map(n => n.userId === currentUser?.id ? { ...n, isRead: true } : n))}
+            onNotificationClick={handleNotificationClick}
+            onMarkAllAsRead={handleMarkAllAsRead}
             t={t}
           />
         );
@@ -1774,6 +1772,7 @@ const App: React.FC = () => {
         userType={userType}
         activeScreen={view.screen}
         unreadNotificationsCount={unreadNotificationsCount}
+        unreadMessagesCount={unreadMessagesCount}
         t={t}
         onNavigate={(screen) => {
             if (screen === 'messages') setView({ screen: 'CONVERSATIONS' });

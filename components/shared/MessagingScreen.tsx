@@ -32,11 +32,19 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
 
   const isCurrentUserWorker = 'service' in currentUser;
 
+  const hasUnreadMessages = messages.some(m => !m.isRead && m.receiverId === currentUser.id);
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(scrollToBottom, [messages]);
+
+  useEffect(() => {
+    if (!isReadOnly && hasUnreadMessages) {
+      onMarkAsRead(otherParticipant.id);
+    }
+  }, [hasUnreadMessages, isReadOnly, onMarkAsRead, otherParticipant.id]);
 
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,8 +107,6 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
     }
     return <p>{message.text}</p>;
   };
-
-  const hasUnreadMessages = messages.some(m => !m.isRead && m.receiverId === currentUser.id);
 
   return (
     <>

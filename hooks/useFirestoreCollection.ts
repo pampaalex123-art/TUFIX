@@ -124,7 +124,16 @@ export function useFirestoreCollection<T extends { id: string }>(collectionName:
             if (!newIds.has(item.id)) {
               // Only delete if we are the owner or admin
               // We also allow deleting 'admin-1' which is a legacy ID
-              if (isAdmin || item.id === currentUser?.uid || item.id === 'admin-1') {
+              const itemData = item as any;
+              const isOwner = item.id === currentUser?.uid || 
+                              item.id === 'admin-1' ||
+                              itemData.userId === currentUser?.uid ||
+                              itemData.workerId === currentUser?.uid ||
+                              itemData.senderId === currentUser?.uid ||
+                              itemData.receiverId === currentUser?.uid ||
+                              itemData.user?.id === currentUser?.uid ||
+                              itemData.raisedById === currentUser?.uid;
+              if (isAdmin || isOwner) {
                 batch.delete(doc(db, collectionName, item.id));
               }
             }
@@ -137,7 +146,15 @@ export function useFirestoreCollection<T extends { id: string }>(collectionName:
               // 1. It's a new item
               // 2. It's the current user's own item
               // 3. The current user is the admin
-              const isOwner = item.id === currentUser?.uid || item.id === 'admin-1';
+              const itemData = item as any;
+              const isOwner = item.id === currentUser?.uid || 
+                              item.id === 'admin-1' ||
+                              itemData.userId === currentUser?.uid ||
+                              itemData.workerId === currentUser?.uid ||
+                              itemData.senderId === currentUser?.uid ||
+                              itemData.receiverId === currentUser?.uid ||
+                              itemData.user?.id === currentUser?.uid ||
+                              itemData.raisedById === currentUser?.uid;
               
               if (!prevItem || isOwner || isAdmin) {
                 batch.set(doc(db, collectionName, item.id), item);
