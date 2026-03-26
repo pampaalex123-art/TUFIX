@@ -24,6 +24,7 @@
     "motion": "^12.38.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-joyride": "^3.0.0",
     "tsx": "^4.21.0",
     "twilio": "^5.13.0",
     "use-places-autocomplete": "^4.0.1"

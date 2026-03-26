@@ -42,6 +42,7 @@ import WorkerVerificationScreen from './components/worker/WorkerVerificationScre
 import VerificationPendingScreen from './components/auth/VerificationPendingScreen';
 import AdminWorkerVerificationScreen from './components/admin/AdminWorkerVerificationScreen';
 import ConfirmationPage from './components/shared/ConfirmationPage';
+import OnboardingTour from './components/shared/OnboardingTour';
 import { addWorkerToSpreadsheet, updateSpreadsheetVerificationStatus } from './services/spreadsheetService';
 
 const DUMMY_USERS: User[] = [];
@@ -234,6 +235,27 @@ const App: React.FC = () => {
     }
   }, [currentUser, userType]);
   
+  const updateUserOnboardingStatus = async () => {
+    if (!currentUser || !userType) return;
+    
+    if (userType === 'user') {
+      const updatedUser = { ...currentUser, has_completed_onboarding: true } as User;
+      setCurrentUser(updatedUser);
+    } else if (userType === 'worker') {
+      const updatedUser = { ...currentUser, has_completed_onboarding: true } as Worker;
+      setCurrentUser(updatedUser);
+    }
+
+    try {
+      const collectionName = userType === 'user' ? 'users' : 'workers';
+      await updateDoc(doc(db, collectionName, currentUser.id), {
+        has_completed_onboarding: true
+      });
+    } catch (error) {
+      console.error("Failed to update onboarding status", error);
+    }
+  };
+
   const handleLogin = async (type: UserType, formData: any): Promise<string | null> => {
     if (type === 'admin' || (type === 'user' && formData.email === 'admin@admin' && formData.password === 'admin')) {
       if (formData.email !== 'admin@admin') {
@@ -1646,6 +1668,11 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen font-sans bg-white text-black">
+      <OnboardingTour 
+        currentUser={currentUser} 
+        userType={userType} 
+        onComplete={updateUserOnboardingStatus} 
+      />
       <Header
         user={currentUser}
         userType={userType}

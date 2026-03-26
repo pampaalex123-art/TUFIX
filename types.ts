@@ -145,6 +145,7 @@ export interface Worker {
   adminApproverId?: string;
   userType?: 'worker' | 'admin';
   fcmToken?: string;
+  has_completed_onboarding?: boolean;
 }
 
 export interface User {
@@ -164,6 +165,7 @@ export interface User {
   verificationStatus?: 'pending' | 'approved' | 'declined';
   userType?: 'user' | 'admin';
   fcmToken?: string;
+  has_completed_onboarding?: boolean;
 }
 
 export interface JobRequest {
