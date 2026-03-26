@@ -95,7 +95,9 @@ interface AdminDashboardProps {
     messages: Message[];
     pendingVerifications: Worker[];
     onSelectUser: (user: User) => void;
+    onDeleteUser: (user: User) => void;
     onSelectWorker: (worker: Worker) => void;
+    onDeleteWorker: (worker: Worker) => void;
     onSelectDispute: (dispute: Dispute) => void;
     onSelectSupportConversation: (conversationId: string) => void;
     onSelectVerification: (worker: Worker) => void;
@@ -141,13 +143,16 @@ const PieChart: React.FC<{ data: { label: string; value: number; color: string }
 };
 
 // --- MAIN COMPONENT ---
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs, transactions, disputes, notifications, messages, pendingVerifications, onSelectUser, onSelectWorker, onSelectDispute, onSelectSupportConversation, onSelectVerification, onEditTerms, onClearAllData, t, adminId }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs, transactions, disputes, notifications, messages, pendingVerifications, onSelectUser, onDeleteUser, onSelectWorker, onDeleteWorker, onSelectDispute, onSelectSupportConversation, onSelectVerification, onEditTerms, onClearAllData, t, adminId }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('clients');
     const [clientFilters, setClientFilters] = useState<ClientFilters>(initialClientFilters);
     const [workerFilters, setWorkerFilters] = useState<WorkerFilters>(initialWorkerFilters);
     const [clientSort, setClientSort] = useState<{ key: ClientSortKey; direction: SortDirection }>({ key: 'name', direction: 'ascending' });
     const [workerSort, setWorkerSort] = useState<{ key: WorkerSortKey; direction: SortDirection }>({ key: 'name', direction: 'ascending' });
     const [showClearConfirm, setShowClearConfirm] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<User | null>(null);
+    const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const participantMap = useMemo(() => {
         const map = new Map<string, User | Worker>();
@@ -179,8 +184,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
             const minJobs = parseInt(clientFilters.minJobs) || 0;
             const maxJobs = parseInt(clientFilters.maxJobs) || Infinity;
             return (
-                (user.name.toLowerCase().includes(clientFilters.nameOrEmail.toLowerCase()) || user.email.toLowerCase().includes(clientFilters.nameOrEmail.toLowerCase())) &&
-                user.location.toLowerCase().includes(clientFilters.location.toLowerCase()) &&
+                ((user.name || '').toLowerCase().includes((clientFilters.nameOrEmail || '').toLowerCase()) || (user.email || '').toLowerCase().includes((clientFilters.nameOrEmail || '').toLowerCase())) &&
+                (user.location || '').toLowerCase().includes((clientFilters.location || '').toLowerCase()) &&
                 (!clientFilters.signupDateStart || new Date(user.signupDate) >= new Date(clientFilters.signupDateStart)) &&
                 (!clientFilters.signupDateEnd || new Date(user.signupDate) <= new Date(clientFilters.signupDateEnd)) &&
                 (!clientFilters.lastLoginDateStart || new Date(user.lastLoginDate) >= new Date(clientFilters.lastLoginDateStart)) &&
@@ -224,8 +229,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
             const minEarnings = parseInt(workerFilters.minEarnings) || 0;
             const maxEarnings = parseInt(workerFilters.maxEarnings) || Infinity;
             return (
-                 (worker.name.toLowerCase().includes(workerFilters.nameOrEmail.toLowerCase()) || worker.email.toLowerCase().includes(workerFilters.nameOrEmail.toLowerCase())) &&
-                worker.location.toLowerCase().includes(workerFilters.location.toLowerCase()) &&
+                 ((worker.name || '').toLowerCase().includes((workerFilters.nameOrEmail || '').toLowerCase()) || (worker.email || '').toLowerCase().includes((workerFilters.nameOrEmail || '').toLowerCase())) &&
+                (worker.location || '').toLowerCase().includes((workerFilters.location || '').toLowerCase()) &&
                 (!workerFilters.service || worker.service === workerFilters.service) &&
                 (!workerFilters.signupDateStart || new Date(worker.signupDate) >= new Date(workerFilters.signupDateStart)) &&
                 (!workerFilters.signupDateEnd || new Date(worker.signupDate) <= new Date(workerFilters.signupDateEnd)) &&
@@ -464,11 +469,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                 <SortableHeader sortKey="location" currentSort={clientSort} onSort={handleClientSort}>{t('location')}</SortableHeader>
                                 <SortableHeader sortKey="jobsRequested" currentSort={clientSort} onSort={handleClientSort}>{t('jobs')}</SortableHeader>
                                 <SortableHeader sortKey="signupDate" currentSort={clientSort} onSort={handleClientSort}>{t('joined')}</SortableHeader>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">{t('actions')}</th>
                             </tr></thead>
                             <tbody className="divide-y divide-slate-200">{filteredAndSortedClients.map(user => <tr key={user.id} onClick={() => onSelectUser(user)} className="hover:bg-slate-50 cursor-pointer">
                                 <td className="px-6 py-4 flex items-center space-x-3"><img className="w-10 h-10 rounded-full" src={user.avatarUrl} alt={user.name}/><div><p className="font-medium text-black">{user.name}</p><p className="text-xs text-black">{user.email}</p></div></td>
                                 <td className="px-6 py-4">{user.location}</td><td className="px-6 py-4">{user.jobsRequested}</td>
                                 <td className="px-6 py-4">{new Date(user.signupDate).toLocaleDateString()}</td>
+                                <td className="px-6 py-4">
+                                    <button 
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            console.log('Delete button clicked for client:', user.id);
+                                            setUserToDelete(user); 
+                                        }}
+                                        className="text-red-600 hover:text-red-800 font-medium text-sm"
+                                    >
+                                        {t('delete')}
+                                    </button>
+                                </td>
                             </tr>)}</tbody>
                         </table></div>
                         <div className="sm:hidden divide-y divide-slate-200">
@@ -480,6 +498,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                             <p className="font-bold text-black">{user.name}</p>
                                             <p className="text-xs text-black opacity-60">{user.email}</p>
                                         </div>
+                                        <button 
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                console.log('Mobile delete button clicked for client:', user.id);
+                                                setUserToDelete(user); 
+                                            }}
+                                            className="text-red-600 hover:text-red-800 font-medium text-sm px-3 py-1 border border-red-200 rounded-lg"
+                                        >
+                                            {t('delete')}
+                                        </button>
                                     </div>
                                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
                                         <div className="bg-slate-50 p-2 rounded">
@@ -534,6 +562,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                 <SortableHeader sortKey="jobsCompleted" currentSort={workerSort} onSort={handleWorkerSort}>{t('jobs done')}</SortableHeader>
                                 <SortableHeader sortKey="totalEarnings" currentSort={workerSort} onSort={handleWorkerSort}>{t('earnings')}</SortableHeader>
                                 <SortableHeader sortKey="signupDate" currentSort={workerSort} onSort={handleWorkerSort}>{t('joined')}</SortableHeader>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">{t('actions')}</th>
                             </tr></thead>
                             <tbody className="divide-y divide-slate-200">{filteredAndSortedWorkers.map(worker => <tr key={worker.id} onClick={() => onSelectWorker(worker)} className="hover:bg-slate-50 cursor-pointer">
                                 <td className="px-6 py-4 flex items-center space-x-3"><img className="w-10 h-10 rounded-full" src={worker.avatarUrl} alt={worker.name}/><div><p className="font-medium text-black">{worker.name}</p><p className="text-xs text-black">{worker.email}</p></div></td>
@@ -541,6 +570,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                 <td className="px-6 py-4">{worker.location}</td><td className="px-6 py-4">{worker.rating.toFixed(1)} ★</td>
                                 <td className="px-6 py-4">{worker.jobsCompleted}</td><td className="px-6 py-4">${worker.totalEarnings.toFixed(2)}</td>
                                 <td className="px-6 py-4">{new Date(worker.signupDate).toLocaleDateString()}</td>
+                                <td className="px-6 py-4">
+                                    <button 
+                                        onClick={(e) => { 
+                                            e.stopPropagation(); 
+                                            console.log('Delete button clicked for provider:', worker.id);
+                                            setWorkerToDelete(worker); 
+                                        }}
+                                        className="text-red-600 hover:text-red-800 font-medium text-sm"
+                                    >
+                                        {t('delete')}
+                                    </button>
+                                </td>
                             </tr>)}</tbody>
                         </table></div>
                         <div className="sm:hidden divide-y divide-slate-200">
@@ -554,7 +595,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                                 <p className="text-xs text-black opacity-60">{worker.email}</p>
                                             </div>
                                         </div>
-                                        <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-green-100 text-green-800 uppercase">{t(worker.service)}</span>
+                                        <div className="flex flex-col items-end space-y-2">
+                                            <span className="px-2 py-1 text-[10px] font-bold rounded-full bg-green-100 text-green-800 uppercase">{t(worker.service)}</span>
+                                            <button 
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    console.log('Mobile delete button clicked for provider:', worker.id);
+                                                    setWorkerToDelete(worker); 
+                                                }}
+                                                className="text-red-600 hover:text-red-800 font-medium text-xs px-2 py-1 border border-red-200 rounded"
+                                            >
+                                                {t('delete')}
+                                            </button>
+                                        </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2 text-xs">
                                         <div className="flex justify-between bg-slate-50 p-2 rounded">
@@ -697,6 +750,86 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                 className="flex-1 bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700"
                             >
                                 {t('yes clear all')}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {userToDelete && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
+                        <h3 className="text-xl font-bold text-black mb-4">Delete Client</h3>
+                        <p className="text-black mb-6">Are you sure you want to delete client <strong>{userToDelete.name}</strong>? This action will remove them from the database and platform and cannot be undone.</p>
+                        <div className="flex space-x-4">
+                            <button 
+                                onClick={() => setUserToDelete(null)}
+                                disabled={isDeleting}
+                                className="flex-1 bg-slate-100 text-black font-bold py-2 rounded-lg hover:bg-slate-200 disabled:opacity-50"
+                            >
+                                {t('cancel')}
+                            </button>
+                            <button 
+                                onClick={async () => {
+                                    setIsDeleting(true);
+                                    try {
+                                        await onDeleteUser(userToDelete);
+                                        setUserToDelete(null);
+                                    } finally {
+                                        setIsDeleting(false);
+                                    }
+                                }}
+                                disabled={isDeleting}
+                                className="flex-1 bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center space-x-2"
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                        <span>{t('deleting')}...</span>
+                                    </>
+                                ) : (
+                                    <span>{t('delete')}</span>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {workerToDelete && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
+                        <h3 className="text-xl font-bold text-black mb-4">Delete Provider</h3>
+                        <p className="text-black mb-6">Are you sure you want to delete provider <strong>{workerToDelete.name}</strong>? This action will remove them from the database and platform and cannot be undone.</p>
+                        <div className="flex space-x-4">
+                            <button 
+                                onClick={() => setWorkerToDelete(null)}
+                                disabled={isDeleting}
+                                className="flex-1 bg-slate-100 text-black font-bold py-2 rounded-lg hover:bg-slate-200 disabled:opacity-50"
+                            >
+                                {t('cancel')}
+                            </button>
+                            <button 
+                                onClick={async () => {
+                                    setIsDeleting(true);
+                                    try {
+                                        await onDeleteWorker(workerToDelete);
+                                        setWorkerToDelete(null);
+                                    } finally {
+                                        setIsDeleting(false);
+                                    }
+                                }}
+                                disabled={isDeleting}
+                                className="flex-1 bg-red-600 text-white font-bold py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center justify-center space-x-2"
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                        <span>{t('deleting')}...</span>
+                                    </>
+                                ) : (
+                                    <span>{t('delete')}</span>
+                                )}
                             </button>
                         </div>
                     </div>

@@ -13,14 +13,38 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize Firebase Admin
-const adminApp = !admin.apps.length 
-  ? admin.initializeApp({
-      projectId: firebaseConfigJson.projectId,
-    })
-  : admin.app();
+async function initializeFirebaseAdmin() {
+  console.log('Environment Check:');
+  console.log('GOOGLE_CLOUD_PROJECT:', process.env.GOOGLE_CLOUD_PROJECT);
+  console.log('FIREBASE_CONFIG:', process.env.FIREBASE_CONFIG);
+  console.log('Config JSON Project ID:', firebaseConfigJson.projectId);
 
+  if (admin.apps.length > 0) {
+    console.log('Firebase Admin already initialized. Apps:', admin.apps.map(a => a?.name));
+    await Promise.all(admin.apps.map(app => app?.delete()));
+  }
+
+  // Always use the config's project ID explicitly to avoid mismatches
+  try {
+    console.log('Initializing Firebase Admin with explicit project ID:', firebaseConfigJson.projectId);
+    const app = admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+      projectId: firebaseConfigJson.projectId,
+    });
+    console.log('Firebase Admin initialized. Project ID:', app.options.projectId);
+    return app;
+  } catch (e) {
+    console.log('Explicit initialization failed, attempting default initialization...');
+    const app = admin.initializeApp();
+    console.log('Firebase Admin initialized (default). Project ID:', app.options.projectId);
+    return app;
+  }
+}
+
+const adminApp = await initializeFirebaseAdmin();
 const db = getFirestore(adminApp, firebaseConfigJson.firestoreDatabaseId);
-const messaging = admin.messaging();
+const messaging = adminApp.messaging();
+const authAdmin = adminApp.auth();
 
 async function startServer() {
   const app = express();
@@ -67,6 +91,8 @@ async function startServer() {
         }
       }
     });
+  }, (error) => {
+    console.error('Firestore onSnapshot error (notifications):', error);
   });
 
   // Twilio Client (Lazy Initialization)
@@ -236,6 +262,89 @@ async function startServer() {
     } catch (error: any) {
       console.error('Mercado Pago Error:', error);
       res.status(500).json({ error: error.message || 'Failed to link Mercado Pago' });
+    }
+  });
+
+  // API Route to delete a user from Auth and Firestore
+  app.post('/api/admin/delete-user', async (req, res) => {
+    const { uid, collectionName } = req.body;
+    const idToken = req.headers.authorization?.split('Bearer ')[1];
+
+    console.log(`Received delete request for UID: ${uid}, Collection: ${collectionName}`);
+
+    if (!uid || !collectionName) {
+      return res.status(400).json({ error: 'UID and collection name are required' });
+    }
+
+    if (!idToken) {
+      console.error('No ID token provided in request');
+      return res.status(401).json({ error: 'Unauthorized: No token provided' });
+    }
+
+    try {
+      console.log('Verifying ID token...');
+      // Verify the ID token
+      let decodedToken;
+      try {
+        decodedToken = await authAdmin.verifyIdToken(idToken);
+      } catch (verifyError: any) {
+        console.error('ID Token Verification Failed:', verifyError.message);
+        if (verifyError.message.includes('aud')) {
+          console.error('Audience mismatch detected. Token aud:', idToken.split('.')[1]); // Log part of the token for debugging (careful with PII, but this is base64 header/payload)
+        }
+        return res.status(401).json({ error: `Authentication failed: ${verifyError.message}` });
+      }
+      
+      const adminUid = decodedToken.uid;
+      console.log('Token verified for admin:', adminUid, 'Email:', decodedToken.email);
+
+      // Check if the requester is an admin in Firestore
+      console.log('Checking admin role in Firestore...');
+      const adminDoc = await db.collection('users').doc(adminUid).get();
+      const adminData = adminDoc.data();
+      
+      const isSystemAdmin = decodedToken.email === 'admin@tufix.com' || 
+                            decodedToken.email === 'pampa.alex123@gmail.com' ||
+                            decodedToken.email === 'admin@admin';
+
+      console.log('Is system admin:', isSystemAdmin, 'userType in Firestore:', adminData?.userType);
+
+      if (!isSystemAdmin && adminData?.userType !== 'admin') {
+        console.warn(`Unauthorized deletion attempt by ${adminUid} (${decodedToken.email})`);
+        return res.status(403).json({ error: 'Forbidden: Admin access required' });
+      }
+
+      console.log(`Admin ${adminUid} is deleting user ${uid} from ${collectionName}`);
+
+      // 1. Delete from Firebase Auth
+      try {
+        console.log(`Attempting to delete user ${uid} from Firebase Auth...`);
+        await authAdmin.deleteUser(uid);
+        console.log(`User ${uid} deleted from Firebase Auth successfully`);
+      } catch (authError: any) {
+        // If user not found in Auth, we still want to try deleting from Firestore
+        if (authError.code === 'auth/user-not-found') {
+          console.log(`User ${uid} not found in Firebase Auth, proceeding to Firestore`);
+        } else {
+          console.error('Error deleting from Firebase Auth:', authError.code, authError.message);
+          return res.status(500).json({ error: `Auth deletion failed: ${authError.message}` });
+        }
+      }
+
+      // 2. Delete from Firestore
+      try {
+        console.log(`Attempting to delete user ${uid} from Firestore collection ${collectionName}...`);
+        await db.collection(collectionName).doc(uid).delete();
+        console.log(`User ${uid} deleted from Firestore collection ${collectionName} successfully`);
+      } catch (firestoreError: any) {
+        console.error('Error deleting from Firestore:', firestoreError.message);
+        return res.status(500).json({ error: `Firestore deletion failed: ${firestoreError.message}` });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('Unexpected Admin Delete Error:', error);
+      res.status(500).json({ error: error.message || 'Failed to delete user' });
     }
   });
 

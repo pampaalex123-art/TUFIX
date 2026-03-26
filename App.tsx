@@ -33,7 +33,7 @@ import { useFirestoreCollection } from './hooks/useFirestoreCollection';
 import { auth, db, messaging } from './firebase';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
 import { getToken, onMessage } from 'firebase/messaging';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { useTranslations, Language } from './components/shared/LoginScreen';
 import { Worker, User, JobRequest, ServiceCategory, UserType, AppNotification, Message, Conversation, Invoice, Review, InvoiceLineItem, Transaction, Dispute, DisputeMessage, Coordinates } from './types';
 import AiSupportBubble from './components/shared/AiSupportBubble';
@@ -204,7 +204,7 @@ const App: React.FC = () => {
               // Update user/worker document with the token
               const collectionName = userType === 'worker' ? 'workers' : 'users';
               const userRef = doc(db, collectionName, currentUser.id);
-              await updateDoc(userRef, { fcmToken: token });
+              await setDoc(userRef, { fcmToken: token }, { merge: true });
             }
           }
         } catch (error) {
@@ -248,9 +248,9 @@ const App: React.FC = () => {
 
     try {
       const collectionName = userType === 'user' ? 'users' : 'workers';
-      await updateDoc(doc(db, collectionName, currentUser.id), {
+      await setDoc(doc(db, collectionName, currentUser.id), {
         has_completed_onboarding: true
-      });
+      }, { merge: true });
     } catch (error) {
       console.error("Failed to update onboarding status", error);
     }
@@ -309,13 +309,13 @@ const App: React.FC = () => {
       const error = null;
 
       if (type === 'user') {
-        let user = users.find(u => u.email.toLowerCase() === formData.email.toLowerCase());
+        let user = users.find(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase());
         if (!user) {
           // Recreate user if missing from local storage but exists in Supabase
-          const isAdminEmail = formData.email.toLowerCase() === 'pampa.alex123@gmail.com' || formData.email.toLowerCase() === 'admin@tufix.com';
+          const isAdminEmail = (formData.email || '').toLowerCase() === 'pampa.alex123@gmail.com' || (formData.email || '').toLowerCase() === 'admin@tufix.com';
           user = {
             id: data.user?.uid || `user-${Date.now()}`,
-            name: formData.email.split('@')[0], // Fallback name
+            name: (formData.email || '').split('@')[0], // Fallback name
             email: formData.email,
             password: formData.password,
             location: 'New City, NC',
@@ -335,12 +335,12 @@ const App: React.FC = () => {
         setUserType(user.userType as UserType);
         return null;
       } else if (type === 'worker') {
-        let worker = workers.find(w => w.email.toLowerCase() === formData.email.toLowerCase());
+        let worker = workers.find(w => (w.email || '').toLowerCase() === (formData.email || '').toLowerCase());
         if (!worker) {
           // Recreate worker if missing from local storage but exists in Supabase
           worker = {
             id: data.user?.uid || `worker-${Date.now()}`,
-            name: formData.email.split('@')[0], // Fallback name
+            name: (formData.email || '').split('@')[0], // Fallback name
             email: formData.email,
             password: formData.password,
             service: ServiceCategory.HANDYMAN,
@@ -395,10 +395,10 @@ const App: React.FC = () => {
       const error = null;
 
       if (type === 'user') {
-        if (users.some(u => u.email.toLowerCase() === formData.email.toLowerCase())) {
+        if (users.some(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase())) {
           return 'An account with this email already exists. Please log in.';
         }
-        const isAdminEmail = formData.email.toLowerCase() === 'pampa.alex123@gmail.com' || formData.email.toLowerCase() === 'admin@tufix.com';
+        const isAdminEmail = (formData.email || '').toLowerCase() === 'pampa.alex123@gmail.com' || (formData.email || '').toLowerCase() === 'admin@tufix.com';
         const newUser: User = {
           id: data.user?.uid || `user-${Date.now()}`,
           name: formData.name,
@@ -429,7 +429,7 @@ const App: React.FC = () => {
         }]);
         return null;
       } else if (type === 'worker') {
-        if (workers.some(w => w.email.toLowerCase() === formData.email.toLowerCase())) {
+        if (workers.some(w => (w.email || '').toLowerCase() === (formData.email || '').toLowerCase())) {
           return 'An account with this email already exists. Please log in.';
         }
         const newWorker: Worker = {
@@ -494,8 +494,8 @@ const App: React.FC = () => {
     setRecoveryError('');
     const allUsersAndWorkers = [...users, ...workers];
     const foundUser = allUsersAndWorkers.find(u =>
-        u.email.toLowerCase() === emailOrPhone.toLowerCase() ||
-        `${u.phoneNumber.code}${u.phoneNumber.number}`.replace(/\D/g, '') === emailOrPhone.replace(/\D/g, '')
+        (u.email || '').toLowerCase() === (emailOrPhone || '').toLowerCase() ||
+        `${u.phoneNumber?.code || ''}${u.phoneNumber?.number || ''}`.replace(/\D/g, '') === (emailOrPhone || '').replace(/\D/g, '')
     );
 
     if (foundUser) {
@@ -1297,6 +1297,74 @@ const App: React.FC = () => {
 
   const allWorkers = workers; // Pass all workers to UserDashboard
 
+  const handleDeleteUser = async (userToDelete: User) => {
+    console.log('handleDeleteUser initiated for:', userToDelete.id, userToDelete.email);
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        console.error('No ID token available for deletion');
+        throw new Error('Not authenticated');
+      }
+
+      console.log('Calling backend API /api/admin/delete-user...');
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ uid: userToDelete.id, collectionName: 'users' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Backend deletion failed:', errorData);
+        throw new Error(errorData.error || 'Failed to delete user');
+      }
+
+      console.log('Deletion successful, updating state...');
+      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+      alert(`Usuario ${userToDelete.name} eliminado correctamente.`);
+    } catch (error) {
+      console.error('Error in handleDeleteUser:', error);
+      alert(`Error al eliminar usuario: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
+  const handleDeleteWorker = async (workerToDelete: Worker) => {
+    console.log('handleDeleteWorker initiated for:', workerToDelete.id, workerToDelete.email);
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) {
+        console.error('No ID token available for deletion');
+        throw new Error('Not authenticated');
+      }
+
+      console.log('Calling backend API /api/admin/delete-user...');
+      const response = await fetch('/api/admin/delete-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`,
+        },
+        body: JSON.stringify({ uid: workerToDelete.id, collectionName: 'workers' }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Backend deletion failed:', errorData);
+        throw new Error(errorData.error || 'Failed to delete worker');
+      }
+
+      console.log('Deletion successful, updating state...');
+      setWorkers(prev => prev.filter(w => w.id !== workerToDelete.id));
+      alert(`Proveedor ${workerToDelete.name} eliminado correctamente.`);
+    } catch (error) {
+      console.error('Error in handleDeleteWorker:', error);
+      alert(`Error al eliminar proveedor: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  };
+
   const handleClearAllData = async () => {
     // Keep the current admin user if they are in the users or workers list
     const adminInUsers = users.find(u => u.id === currentUser?.id);
@@ -1495,7 +1563,9 @@ const App: React.FC = () => {
             messages={messages}
             pendingVerifications={pendingWorkers}
             onSelectUser={(user) => setView({ screen: 'ADMIN_CLIENT_PROFILE', user })}
+            onDeleteUser={handleDeleteUser}
             onSelectWorker={(worker) => setView({ screen: 'ADMIN_WORKER_PROFILE', worker })}
+            onDeleteWorker={handleDeleteWorker}
             onSelectDispute={(dispute) => setView({ screen: 'ADMIN_DISPUTE_DETAILS', dispute })}
             onSelectSupportConversation={(conversationId) => setView({ screen: 'MESSAGING', conversationId })}
             onSelectVerification={(worker) => setView({ screen: 'ADMIN_WORKER_VERIFICATION', worker })}

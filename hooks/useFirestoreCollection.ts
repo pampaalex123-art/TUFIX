@@ -75,19 +75,27 @@ export function useFirestoreCollection<T extends { id: string }>(collectionName:
     const unsubscribe = onSnapshot(collection(db, collectionName), (snapshot) => {
       console.log(`Firestore onSnapshot for ${collectionName}: ${snapshot.size} items`);
       if (snapshot.empty && initialValue.length > 0) {
-        // Seed initial data
-        const batch = writeBatch(db);
-        console.log(`Seeding ${collectionName} with ${initialValue.length} items`);
-        initialValue.forEach(item => {
-          batch.set(doc(db, collectionName, item.id), item);
-        });
-        batch.commit().catch(err => console.error(`Error seeding ${collectionName}:`, err));
-        // The snapshot listener will fire again once seeded
+        // Only seed if we are an admin to avoid permission errors for regular users
+        const isAdmin = user?.email === 'admin@tufix.com' || 
+                        user?.email === 'pampa.alex123@gmail.com' ||
+                        user?.email === 'admin@admin';
+        
+        if (isAdmin) {
+          const batch = writeBatch(db);
+          console.log(`Seeding ${collectionName} with ${initialValue.length} items (Admin only)`);
+          initialValue.forEach(item => {
+            batch.set(doc(db, collectionName, item.id), item);
+          });
+          batch.commit().catch(err => console.error(`Error seeding ${collectionName}:`, err));
+        } else {
+          console.log(`Collection ${collectionName} is empty, but user is not admin. Skipping seed.`);
+        }
         return;
       }
-      const items = snapshot.docs.map(doc => doc.data() as T);
+      const items = snapshot.docs.map(doc => ({ ...doc.data() as T, id: doc.id }));
       setData(items);
     }, (error) => {
+      console.error(`onSnapshot error for ${collectionName}:`, error);
       handleFirestoreError(error, OperationType.LIST, collectionName);
     });
     return () => unsubscribe();

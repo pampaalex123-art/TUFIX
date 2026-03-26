@@ -18,6 +18,7 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // Initialize Firestore with the named database
+console.log('Initializing Firestore with database ID:', firebaseConfigJson.firestoreDatabaseId);
 export const db = getFirestore(app, firebaseConfigJson.firestoreDatabaseId);
 
 export const messaging = typeof window !== 'undefined' ? getMessaging(app) : null;
