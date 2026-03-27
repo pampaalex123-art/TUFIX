@@ -1777,6 +1777,7 @@ const App: React.FC = () => {
         return <MyJobsScreen
           jobRequests={jobRequests.filter(j => j.user.id === currentUser?.id)}
           invoices={invoices}
+          workers={workers}
           onLeaveReview={handleLeaveUserReview}
           onCancelJob={handleCancelJob}
           onBack={() => setView({ screen: 'USER_DASHBOARD' })}

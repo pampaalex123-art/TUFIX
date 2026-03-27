@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { JobRequest, Invoice, Coordinates } from '../../types';
+import { JobRequest, Invoice, Coordinates, Worker } from '../../types';
 import PaymentModal from '../shared/PaymentModal';
 import ConfirmAndPayModal from '../new/ConfirmAndPayModal';
 import JobProgressSidebar from '../new/JobProgressSidebar';
 import LocationDisplay from '../shared/LocationDisplay';
+import { Star } from 'lucide-react';
 
 interface MyJobsScreenProps {
   jobRequests: JobRequest[];
   invoices: Invoice[];
+  workers?: Worker[];
   onLeaveReview: (job: JobRequest) => void;
   onCancelJob: (jobId: string, reason: string) => void;
   onBack: () => void;
@@ -19,7 +21,7 @@ interface MyJobsScreenProps {
   t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
-const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, onLeaveReview, onCancelJob, onBack, onPayInvoice, onConfirmAndReleasePayment, onRaiseDispute, onViewDispute, onUpdateJobLocation, t }) => {
+const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, workers = [], onLeaveReview, onCancelJob, onBack, onPayInvoice, onConfirmAndReleasePayment, onRaiseDispute, onViewDispute, onUpdateJobLocation, t }) => {
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -60,7 +62,36 @@ const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, onLe
                       t={t} 
                     />
                   </div>
-                  <div className="mt-4 flex flex-wrap gap-2 items-center">
+                  
+                  {job.workerId && (
+                    <div className="mt-6 border-t border-slate-100 pt-4">
+                      <p className="text-sm font-semibold text-slate-600 mb-3">{t('assigned_worker') || 'Trabajador Asignado'}</p>
+                      {(() => {
+                        const worker = workers?.find(w => w.id === job.workerId);
+                        if (!worker) return null;
+                        return (
+                          <div className="flex items-start gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <img 
+                              src={worker.avatarUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(worker.name)}`} 
+                              alt={worker.name} 
+                              className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm"
+                            />
+                            <div>
+                              <h3 className="font-bold text-gray-900 text-lg">{worker.name}</h3>
+                              <div className="flex items-center gap-1 text-yellow-500 mb-1">
+                                <Star className="w-4 h-4 fill-current" />
+                                <span className="font-medium">{worker.rating?.toFixed(1) || '5.0'}</span>
+                                <span className="text-gray-500 text-sm ml-1">({worker.reviews?.length || 0} {t('reviews')})</span>
+                              </div>
+                              <p className="text-sm text-gray-600 line-clamp-2">{worker.bio || t('no_bio_available') || 'Sin biografía disponible'}</p>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex flex-wrap gap-2 items-center">
                     {invoice && invoice.status === 'pending' && <button onClick={() => handlePay(invoice)} className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700">{t('pay invoice')}</button>}
                     {job.status === 'worker_completed' && <button onClick={() => handleConfirmCompletion(job)} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg">{t('confirm completion')}</button>}
                     {job.status === 'completed' && !job.userReview && <button onClick={() => onLeaveReview(job)} className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">{t('leave review')}</button>}
