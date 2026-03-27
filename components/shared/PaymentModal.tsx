@@ -3,11 +3,15 @@ import { Invoice } from '../../types';
 import { formatCurrency } from '../../constants';
 import { CreditCard, QrCode, Wallet, Check, ChevronRight, X } from 'lucide-react';
 import LocationSelector from './LocationSelector';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../../firebase';
 
 interface PaymentModalProps {
   invoice: Invoice;
+  job?: any;
   onClose: () => void;
   onConfirm: () => void;
+  onUpdateLocation?: (location: string, coordinates: { lat: number, lng: number }) => Promise<void>;
   t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
@@ -20,12 +24,14 @@ interface PaymentOption {
   description?: string;
 }
 
-const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm, t }) => {
+const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onConfirm, onUpdateLocation, t }) => {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(
     invoice.currency === 'ARS' ? 'mercadopago' : (invoice.currency === 'BOB' ? 'qr_bob' : 'visa')
   );
   const [loading, setLoading] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<{ address: string; lat: number; lng: number } | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{ address: string; lat: number; lng: number } | null>(
+    job?.location && job?.coordinates ? { address: job.location, lat: job.coordinates.lat, lng: job.coordinates.lng } : null
+  );
 
   const paymentOptions: PaymentOption[] = [
     { 
@@ -101,7 +107,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
   ];
 
   const handleMercadoPagoPayment = async () => {
-    setLoading(true);
     try {
       const response = await fetch('/api/create-preference', {
         method: 'POST',
@@ -124,7 +129,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
     } catch (error) {
       console.error('Payment error:', error);
       alert('Error al iniciar el pago con Mercado Pago. Intenta de nuevo.');
-    } finally {
       setLoading(false);
     }
   };
@@ -136,14 +140,40 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
       onConfirm(); // Existing QR logic
     } else {
       alert(`El método ${method} estará disponible próximamente. Por ahora, usa Mercado Pago o QR.`);
+      setLoading(false);
     }
   };
 
-  const handleContinue = () => {
-    if (selectedMethod === 'mercadopago') {
-      handleMercadoPagoPayment();
-    } else {
-      handleOtherPayment(selectedMethod);
+  const handleContinue = async () => {
+    if (!selectedLocation) return;
+    
+    setLoading(true);
+    try {
+      if (onUpdateLocation) {
+        await onUpdateLocation(selectedLocation.address, {
+          lat: selectedLocation.lat,
+          lng: selectedLocation.lng
+        });
+      } else {
+        const jobRef = doc(db, 'jobRequests', invoice.jobId);
+        await updateDoc(jobRef, {
+          location: selectedLocation.address,
+          coordinates: {
+            lat: selectedLocation.lat,
+            lng: selectedLocation.lng
+          }
+        });
+      }
+
+      if (selectedMethod === 'mercadopago') {
+        await handleMercadoPagoPayment();
+      } else {
+        handleOtherPayment(selectedMethod);
+      }
+    } catch (error) {
+      console.error('Error updating location:', error);
+      alert('Error al actualizar la ubicación. Intenta de nuevo.');
+      setLoading(false);
     }
   };
 
