@@ -1,6 +1,6 @@
 // FIX: Replaced placeholder content with a functional MessagingScreen component.
 import React, { useState, useRef, useEffect } from 'react';
-import { User, Worker, Message, Invoice } from '../../types';
+import { User, Worker, Message, Invoice, JobRequest, Coordinates } from '../../types';
 import { formatDistanceToNow } from '../../utils/time';
 import PaymentModal from './PaymentModal';
 import ReceiptModal from './ReceiptModal';
@@ -11,8 +11,10 @@ interface MessagingScreenProps {
   otherParticipant: User | Worker;
   messages: Message[];
   invoices: Invoice[];
+  jobRequests?: JobRequest[];
   onSendMessage: (receiverId: string, content: { text?: string; imageUrl?: string; }) => void;
   onPayInvoice: (invoiceId: string) => void;
+  onUpdateJobLocation?: (jobId: string, location: string, coordinates: Coordinates) => Promise<void>;
   onMarkAsRead: (otherParticipantId: string) => void;
   onViewProfile?: (participant: User | Worker) => void;
   onBack: () => void;
@@ -20,7 +22,7 @@ interface MessagingScreenProps {
   t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
-const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherParticipant, messages, invoices, onSendMessage, onPayInvoice, onMarkAsRead, onViewProfile, onBack, isReadOnly = false, t }) => {
+const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherParticipant, messages, invoices, jobRequests = [], onSendMessage, onPayInvoice, onUpdateJobLocation, onMarkAsRead, onViewProfile, onBack, isReadOnly = false, t }) => {
   const [newMessage, setNewMessage] = useState('');
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -218,8 +220,14 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
       {isPaymentModalOpen && selectedInvoice && (
         <PaymentModal
             invoice={selectedInvoice}
+            job={jobRequests.find(j => j.id === selectedInvoice.jobId)}
             onClose={() => { setPaymentModalOpen(false); setSelectedInvoice(null); }}
             onConfirm={handleConfirmPayment}
+            onUpdateLocation={async (location, coordinates) => {
+              if (onUpdateJobLocation) {
+                await onUpdateJobLocation(selectedInvoice.jobId, location, coordinates);
+              }
+            }}
 // FIX: The 't' prop was missing and is required by the PaymentModal component.
             t={t}
         />

@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { Invoice } from '../../types';
+import { Invoice, JobRequest, Coordinates } from '../../types';
 import { formatCurrency } from '../../constants';
-import { CreditCard, QrCode, Wallet, Check, ChevronRight, X } from 'lucide-react';
+import { CreditCard, QrCode, Wallet, Check, ChevronRight, X, MapPin } from 'lucide-react';
+import LocationPicker from './LocationPicker';
 
 interface PaymentModalProps {
   invoice: Invoice;
+  job?: JobRequest;
   onClose: () => void;
   onConfirm: () => void;
+  onUpdateLocation?: (location: string, coordinates: Coordinates) => Promise<void>;
   t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
@@ -19,7 +22,10 @@ interface PaymentOption {
   description?: string;
 }
 
-const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm, t }) => {
+const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onConfirm, onUpdateLocation, t }) => {
+  const [step, setStep] = useState<'location' | 'payment'>('location');
+  const [selectedLocation, setSelectedLocation] = useState<string>(job?.location || '');
+  const [selectedCoordinates, setSelectedCoordinates] = useState<Coordinates | undefined>(job?.coordinates);
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(
     invoice.currency === 'ARS' ? 'mercadopago' : (invoice.currency === 'BOB' ? 'qr_bob' : 'visa')
   );
@@ -101,6 +107,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
   const handleMercadoPagoPayment = async () => {
     setLoading(true);
     try {
+      if (selectedLocation && selectedCoordinates && onUpdateLocation) {
+        await onUpdateLocation(selectedLocation, selectedCoordinates);
+      }
       const response = await fetch('/api/create-preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -127,17 +136,36 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
     }
   };
 
-  const handleOtherPayment = (method: PaymentMethod) => {
+  const handleOtherPayment = async (method: PaymentMethod) => {
     console.log(`Handling payment for method: ${method}`);
     // Placeholder for future SDK integrations (Stripe, PayPal, etc.)
     if (method === 'qr_bob') {
-      onConfirm(); // Existing QR logic
+      setLoading(true);
+      try {
+        if (selectedLocation && selectedCoordinates && onUpdateLocation) {
+          await onUpdateLocation(selectedLocation, selectedCoordinates);
+        }
+        onConfirm(); // Existing QR logic
+      } catch (error) {
+        console.error('Error updating location:', error);
+      } finally {
+        setLoading(false);
+      }
     } else {
       alert(`El método ${method} estará disponible próximamente. Por ahora, usa Mercado Pago o QR.`);
     }
   };
 
   const handleContinue = () => {
+    if (step === 'location') {
+      if (!selectedLocation || !selectedCoordinates) {
+        alert(t('please select a location for the service'));
+        return;
+      }
+      setStep('payment');
+      return;
+    }
+
     if (selectedMethod === 'mercadopago') {
       handleMercadoPagoPayment();
     } else {
@@ -151,7 +179,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
         {/* Header */}
         <div className="p-5 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">Método de Pago</h2>
+            <h2 className="text-xl font-bold text-gray-900">
+              {step === 'location' ? t('confirm_service_location', { defaultValue: 'Confirmar Ubicación' }) : t('payment_method', { defaultValue: 'Método de Pago' })}
+            </h2>
             <p className="text-xs text-gray-500 mt-1">
               Total: <span className="font-bold text-purple-600">{formatCurrency(invoice.total, invoice.currency)}</span>
             </p>
@@ -164,44 +194,61 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
           </button>
         </div>
 
-        {/* Payment Options List */}
+        {/* Content */}
         <div className="flex-1 overflow-y-auto p-5 space-y-3">
-          {paymentOptions.map((option) => (
-            <button
-              key={option.id}
-              onClick={() => setSelectedMethod(option.id)}
-              className={`w-full flex items-center p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${
-                selectedMethod === option.id
-                  ? 'border-purple-600 bg-purple-50 ring-1 ring-purple-600/10'
-                  : 'border-gray-100 hover:border-gray-200 bg-white'
-              }`}
-            >
-              <div className={`w-14 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                selectedMethod === option.id ? 'bg-white shadow-sm' : 'bg-gray-50'
-              }`}>
-                {option.icon}
-              </div>
-              
-              <div className="flex-1 ml-4">
-                <h3 className={`text-sm font-bold transition-colors ${
-                  selectedMethod === option.id ? 'text-purple-900' : 'text-gray-900'
+          {step === 'location' ? (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                {t('confirm_location_desc', { defaultValue: 'Por favor, confirma o selecciona la ubicación donde se realizará el servicio antes de proceder con el pago.' })}
+              </p>
+              <LocationPicker
+                initialAddress={selectedLocation}
+                initialCoordinates={selectedCoordinates}
+                onLocationSelect={(address, coords) => {
+                  setSelectedLocation(address);
+                  setSelectedCoordinates(coords);
+                }}
+                t={t}
+              />
+            </div>
+          ) : (
+            paymentOptions.map((option) => (
+              <button
+                key={option.id}
+                onClick={() => setSelectedMethod(option.id)}
+                className={`w-full flex items-center p-4 rounded-2xl border-2 transition-all duration-200 text-left group ${
+                  selectedMethod === option.id
+                    ? 'border-purple-600 bg-purple-50 ring-1 ring-purple-600/10'
+                    : 'border-gray-100 hover:border-gray-200 bg-white'
+                }`}
+              >
+                <div className={`w-14 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                  selectedMethod === option.id ? 'bg-white shadow-sm' : 'bg-gray-50'
                 }`}>
-                  {option.name}
-                </h3>
-                {option.description && (
-                  <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">{option.description}</p>
-                )}
-              </div>
+                  {option.icon}
+                </div>
+                
+                <div className="flex-1 ml-4">
+                  <h3 className={`text-sm font-bold transition-colors ${
+                    selectedMethod === option.id ? 'text-purple-900' : 'text-gray-900'
+                  }`}>
+                    {option.name}
+                  </h3>
+                  {option.description && (
+                    <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">{option.description}</p>
+                  )}
+                </div>
 
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                selectedMethod === option.id
-                  ? 'border-purple-600 bg-purple-600'
-                  : 'border-gray-200'
-              }`}>
-                {selectedMethod === option.id && <Check className="w-3.5 h-3.5 text-white" />}
-              </div>
-            </button>
-          ))}
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
+                  selectedMethod === option.id
+                    ? 'border-purple-600 bg-purple-600'
+                    : 'border-gray-200'
+                }`}>
+                  {selectedMethod === option.id && <Check className="w-3.5 h-3.5 text-white" />}
+                </div>
+              </button>
+            ))
+          )}
         </div>
 
         {/* Footer Actions */}
@@ -221,12 +268,22 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm
             )}
           </button>
           
-          <button
-            onClick={onClose}
-            className="w-full py-2 px-6 text-gray-400 text-sm font-medium hover:text-gray-600 transition-colors"
-          >
-            Volver
-          </button>
+          {step === 'payment' && (
+            <button
+              onClick={() => setStep('location')}
+              className="w-full py-2 px-6 text-gray-400 text-sm font-medium hover:text-gray-600 transition-colors"
+            >
+              Volver a Ubicación
+            </button>
+          )}
+          {step === 'location' && (
+            <button
+              onClick={onClose}
+              className="w-full py-2 px-6 text-gray-400 text-sm font-medium hover:text-gray-600 transition-colors"
+            >
+              Cancelar
+            </button>
+          )}
         </div>
       </div>
     </div>

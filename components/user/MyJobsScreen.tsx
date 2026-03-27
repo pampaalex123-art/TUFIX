@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { JobRequest, Invoice } from '../../types';
+import { JobRequest, Invoice, Coordinates } from '../../types';
 import PaymentModal from '../shared/PaymentModal';
 import ConfirmAndPayModal from '../new/ConfirmAndPayModal';
 import JobProgressSidebar from '../new/JobProgressSidebar';
@@ -15,10 +15,11 @@ interface MyJobsScreenProps {
   onConfirmAndReleasePayment: (jobId: string) => void;
   onRaiseDispute: (job: JobRequest) => void;
   onViewDispute: (disputeId: string) => void;
+  onUpdateJobLocation?: (jobId: string, location: string, coordinates: Coordinates) => Promise<void>;
   t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
-const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, onLeaveReview, onCancelJob, onBack, onPayInvoice, onConfirmAndReleasePayment, onRaiseDispute, onViewDispute, t }) => {
+const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, onLeaveReview, onCancelJob, onBack, onPayInvoice, onConfirmAndReleasePayment, onRaiseDispute, onViewDispute, onUpdateJobLocation, t }) => {
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -78,10 +79,16 @@ const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, onLe
       {isPaymentModalOpen && selectedInvoice && (
         <PaymentModal
           invoice={selectedInvoice}
+          job={jobRequests.find(j => j.id === selectedInvoice.jobId)}
           onClose={() => setPaymentModalOpen(false)}
           onConfirm={() => {
             onPayInvoice(selectedInvoice.id);
             setPaymentModalOpen(false);
+          }}
+          onUpdateLocation={async (location, coordinates) => {
+            if (onUpdateJobLocation) {
+              await onUpdateJobLocation(selectedInvoice.jobId, location, coordinates);
+            }
           }}
           t={t}
         />

@@ -1222,6 +1222,16 @@ const App: React.FC = () => {
     alert(t('payment successful funds held securely'));
   };
 
+  const handleUpdateJobLocation = async (jobId: string, location: string, coordinates: Coordinates) => {
+    setJobRequests(prev => prev.map(j => j.id === jobId ? { ...j, location, coordinates } : j));
+    try {
+      const jobRef = doc(db, 'jobRequests', jobId);
+      await updateDoc(jobRef, { location, coordinates });
+    } catch (error) {
+      console.error("Failed to update job location", error);
+    }
+  };
+
   const handleRaiseDispute = (jobId: string, reason: string) => {
     const job = jobRequests.find(j => j.id === jobId);
     if (!job) return;
@@ -1643,8 +1653,10 @@ const App: React.FC = () => {
             otherParticipant={otherParticipant as User | Worker}
             messages={conversationMessages}
             invoices={invoices}
+            jobRequests={jobRequests}
             onSendMessage={handleSendMessage}
             onPayInvoice={handlePayInvoice}
+            onUpdateJobLocation={handleUpdateJobLocation}
             onMarkAsRead={handleMarkMessagesAsRead}
             onViewProfile={handleViewParticipantProfile}
             onBack={() => {
@@ -1743,6 +1755,7 @@ const App: React.FC = () => {
             otherParticipant={participant2}
             messages={messages.filter(m => (m.senderId === participant1.id && m.receiverId === participant2.id) || (m.senderId === participant2.id && m.receiverId === participant1.id))}
             invoices={invoices}
+            jobRequests={jobRequests}
             onSendMessage={() => {}}
             onPayInvoice={() => {}}
             onMarkAsRead={() => {}}
@@ -1768,6 +1781,7 @@ const App: React.FC = () => {
           onCancelJob={handleCancelJob}
           onBack={() => setView({ screen: 'USER_DASHBOARD' })}
           onPayInvoice={handlePayInvoice}
+          onUpdateJobLocation={handleUpdateJobLocation}
           onConfirmAndReleasePayment={handleConfirmAndReleasePayment}
           onRaiseDispute={(job) => setView({ screen: 'RAISE_DISPUTE', job })}
           onViewDispute={(disputeId) => setView({ screen: 'DISPUTE_DETAILS', disputeId })}
