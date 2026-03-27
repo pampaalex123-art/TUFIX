@@ -382,7 +382,7 @@ async function startServer() {
       // If worker hasn't linked, we can't do a marketplace split automatically.
       // For this implementation, we'll use the worker's token if available, 
       // or fallback to admin's token (but then the whole amount goes to admin).
-      const sellerAccessToken = workerAccessToken || holdingAccount?.accessToken;
+      const sellerAccessToken = workerAccessToken || holdingAccount?.accessToken || process.env.MERCADOPAGO_ACCESS_TOKEN;
 
       if (!sellerAccessToken) {
         throw new Error('No se pudo encontrar una cuenta de cobro válida. Por favor, contacte al administrador.');
@@ -401,7 +401,7 @@ async function startServer() {
           title: item.title,
           unit_price: Number(item.unit_price),
           quantity: Number(item.quantity),
-          currency_id: 'ARS'
+          currency_id: item.currency_id || 'ARS'
         })),
         payer: {
           email: payer.email,

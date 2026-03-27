@@ -4,7 +4,7 @@ import { formatCurrency } from '../../constants';
 import { CreditCard, QrCode, Wallet, Check, ChevronRight, X } from 'lucide-react';
 import LocationSelector from './LocationSelector';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, auth } from '../../firebase';
 
 interface PaymentModalProps {
   invoice: Invoice;
@@ -108,17 +108,28 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
 
   const handleMercadoPagoPayment = async () => {
     try {
-      const response = await fetch('/api/create-preference', {
+      const response = await fetch('/api/mercadopago/create-preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          itemId: invoice.id, 
-          price: invoice.total, 
-          title: `Pago de Servicio TUFIX - #${invoice.id.slice(-6)}` 
+          items: [{
+            title: `Pago de Servicio TUFIX - #${invoice.id.slice(-6)}`,
+            unit_price: invoice.total,
+            quantity: 1,
+            currency_id: invoice.currency || 'ARS'
+          }],
+          payer: {
+            email: auth.currentUser?.email || 'test@test.com'
+          },
+          external_reference: invoice.jobId,
+          workerId: invoice.workerId
         }),
       });
       
-      if (!response.ok) throw new Error('Failed to create payment preference');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create payment preference');
+      }
       const { init_point } = await response.json();
 
       if (init_point) {
@@ -126,9 +137,9 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
       } else {
         throw new Error('No payment URL returned');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Payment error:', error);
-      alert('Error al iniciar el pago con Mercado Pago. Intenta de nuevo.');
+      alert(`Error al iniciar el pago con Mercado Pago: ${error.message || 'Intenta de nuevo.'}`);
       setLoading(false);
     }
   };
