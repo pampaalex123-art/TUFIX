@@ -126,18 +126,21 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
         }),
       });
       
+      const responseText = await response.text();
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Raw server response:', responseText);
+        throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}`);
+      }
+
       if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch (e) {
-          errorData = { error: 'Unknown server error' };
-        }
-        console.error('Detailed server error:', errorData);
-        throw new Error(errorData.error || 'Failed to create payment preference');
+        console.error('Detailed server error:', responseData);
+        throw new Error(responseData.error || 'Failed to create payment preference');
       }
       
-      const { init_point } = await response.json();
+      const { init_point } = responseData;
 
       if (init_point) {
         window.location.href = init_point;

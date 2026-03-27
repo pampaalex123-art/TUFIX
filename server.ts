@@ -398,7 +398,7 @@ async function startServer() {
 
       const baseUrl = process.env.APP_URL || 'http://localhost:3000';
       
-      const body = {
+      const body: any = {
         items: items.map((item: any) => ({
           title: item.title,
           unit_price: Number(item.unit_price),
@@ -415,20 +415,21 @@ async function startServer() {
           pending: `${baseUrl}/payment-status?status=pending&jobId=${external_reference}`,
         },
         auto_return: 'approved',
-        // marketplace_fee only works if the accessToken belongs to a seller linked to the marketplace app
-        marketplace_fee: workerAccessToken ? marketplaceFee : 0,
         notification_url: `${baseUrl}/api/mercadopago/webhook`,
       };
+
+      // marketplace_fee only works if the accessToken belongs to a seller linked to the marketplace app
+      if (workerAccessToken && marketplaceFee > 0) {
+        body.marketplace_fee = marketplaceFee;
+      }
 
       const result = await preference.create({ body });
       res.json({ id: result.id, init_point: result.init_point });
 
     } catch (error: any) {
-      console.error('Mercado Pago Preference Error:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
+      console.error('Mercado Pago Preference Error:', error.message || error);
       res.status(500).json({ 
-        error: error.message || 'Error creating preference',
-        details: error.cause || error.response || error
+        error: error.message || 'Error creating preference'
       });
     }
   });
