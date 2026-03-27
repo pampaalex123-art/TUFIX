@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
-import { Invoice, JobRequest, Coordinates } from '../../types';
+import { Invoice } from '../../types';
 import { formatCurrency } from '../../constants';
-import { CreditCard, QrCode, Wallet, Check, ChevronRight, X, MapPin } from 'lucide-react';
-import LocationPicker from './LocationPicker';
+import { CreditCard, QrCode, Wallet, Check, ChevronRight, X } from 'lucide-react';
+import LocationSelector from './LocationSelector';
 
 interface PaymentModalProps {
   invoice: Invoice;
-  job?: JobRequest;
   onClose: () => void;
   onConfirm: () => void;
-  onUpdateLocation?: (location: string, coordinates: Coordinates) => Promise<void>;
   t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
@@ -22,14 +20,12 @@ interface PaymentOption {
   description?: string;
 }
 
-const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onConfirm, onUpdateLocation, t }) => {
-  const [step, setStep] = useState<'location' | 'payment'>('location');
-  const [selectedLocation, setSelectedLocation] = useState<string>(job?.location || '');
-  const [selectedCoordinates, setSelectedCoordinates] = useState<Coordinates | undefined>(job?.coordinates);
+const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, onClose, onConfirm, t }) => {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(
     invoice.currency === 'ARS' ? 'mercadopago' : (invoice.currency === 'BOB' ? 'qr_bob' : 'visa')
   );
   const [loading, setLoading] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{ address: string; lat: number; lng: number } | null>(null);
 
   const paymentOptions: PaymentOption[] = [
     { 
@@ -107,9 +103,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
   const handleMercadoPagoPayment = async () => {
     setLoading(true);
     try {
-      if (selectedLocation && selectedCoordinates && onUpdateLocation) {
-        await onUpdateLocation(selectedLocation, selectedCoordinates);
-      }
       const response = await fetch('/api/create-preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,36 +129,17 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
     }
   };
 
-  const handleOtherPayment = async (method: PaymentMethod) => {
+  const handleOtherPayment = (method: PaymentMethod) => {
     console.log(`Handling payment for method: ${method}`);
     // Placeholder for future SDK integrations (Stripe, PayPal, etc.)
     if (method === 'qr_bob') {
-      setLoading(true);
-      try {
-        if (selectedLocation && selectedCoordinates && onUpdateLocation) {
-          await onUpdateLocation(selectedLocation, selectedCoordinates);
-        }
-        onConfirm(); // Existing QR logic
-      } catch (error) {
-        console.error('Error updating location:', error);
-      } finally {
-        setLoading(false);
-      }
+      onConfirm(); // Existing QR logic
     } else {
       alert(`El método ${method} estará disponible próximamente. Por ahora, usa Mercado Pago o QR.`);
     }
   };
 
   const handleContinue = () => {
-    if (step === 'location') {
-      if (!selectedLocation || !selectedCoordinates) {
-        alert(t('please select a location for the service'));
-        return;
-      }
-      setStep('payment');
-      return;
-    }
-
     if (selectedMethod === 'mercadopago') {
       handleMercadoPagoPayment();
     } else {
@@ -179,9 +153,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
         {/* Header */}
         <div className="p-5 border-b border-gray-100 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              {step === 'location' ? t('confirm_service_location', { defaultValue: 'Confirmar Ubicación' }) : t('payment_method', { defaultValue: 'Método de Pago' })}
-            </h2>
+            <h2 className="text-xl font-bold text-gray-900">Método de Pago</h2>
             <p className="text-xs text-gray-500 mt-1">
               Total: <span className="font-bold text-purple-600">{formatCurrency(invoice.total, invoice.currency)}</span>
             </p>
@@ -194,25 +166,16 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-3">
-          {step === 'location' ? (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
-                {t('confirm_location_desc', { defaultValue: 'Por favor, confirma o selecciona la ubicación donde se realizará el servicio antes de proceder con el pago.' })}
-              </p>
-              <LocationPicker
-                initialAddress={selectedLocation}
-                initialCoordinates={selectedCoordinates}
-                onLocationSelect={(address, coords) => {
-                  setSelectedLocation(address);
-                  setSelectedCoordinates(coords);
-                }}
-                t={t}
-              />
-            </div>
-          ) : (
-            paymentOptions.map((option) => (
+        {/* Payment Options List */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          <LocationSelector 
+            selectedLocation={selectedLocation} 
+            setSelectedLocation={setSelectedLocation} 
+          />
+          
+          <div className="space-y-3">
+            <h3 className="text-sm font-bold text-gray-700">Método de Pago</h3>
+            {paymentOptions.map((option) => (
               <button
                 key={option.id}
                 onClick={() => setSelectedMethod(option.id)}
@@ -247,43 +210,33 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
                   {selectedMethod === option.id && <Check className="w-3.5 h-3.5 text-white" />}
                 </div>
               </button>
-            ))
-          )}
+            ))}
+          </div>
         </div>
 
         {/* Footer Actions */}
         <div className="p-6 bg-white border-t border-gray-100 space-y-3">
           <button
             onClick={handleContinue}
-            disabled={loading}
+            disabled={loading || !selectedLocation}
             className="w-full bg-purple-600 text-white font-bold py-4 px-6 rounded-2xl hover:bg-purple-700 disabled:opacity-50 transition-all shadow-lg shadow-purple-200 active:scale-[0.98] flex items-center justify-center gap-2"
           >
             {loading ? (
               <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
-                <span className="text-base">Continuar</span>
+                <span className="text-base">Pagar Factura</span>
                 <ChevronRight className="w-5 h-5" />
               </>
             )}
           </button>
           
-          {step === 'payment' && (
-            <button
-              onClick={() => setStep('location')}
-              className="w-full py-2 px-6 text-gray-400 text-sm font-medium hover:text-gray-600 transition-colors"
-            >
-              Volver a Ubicación
-            </button>
-          )}
-          {step === 'location' && (
-            <button
-              onClick={onClose}
-              className="w-full py-2 px-6 text-gray-400 text-sm font-medium hover:text-gray-600 transition-colors"
-            >
-              Cancelar
-            </button>
-          )}
+          <button
+            onClick={onClose}
+            className="w-full py-2 px-6 text-gray-400 text-sm font-medium hover:text-gray-600 transition-colors"
+          >
+            Volver
+          </button>
         </div>
       </div>
     </div>
