@@ -382,7 +382,7 @@ async function startServer() {
       // If worker hasn't linked, we can't do a marketplace split automatically.
       // For this implementation, we'll use the worker's token if available, 
       // or fallback to admin's token (but then the whole amount goes to admin).
-      const sellerAccessToken = workerAccessToken || holdingAccount?.accessToken || process.env.MERCADOPAGO_ACCESS_TOKEN;
+      const sellerAccessToken = workerAccessToken || holdingAccount?.accessToken || process.env.MERCADOPAGO_ACCESS_TOKEN || process.env.MP_ACCESS_TOKEN;
 
       if (!sellerAccessToken) {
         throw new Error('No se pudo encontrar una cuenta de cobro válida. Por favor, contacte al administrador.');
@@ -396,6 +396,8 @@ async function startServer() {
       const client = new MercadoPagoConfig({ accessToken: sellerAccessToken });
       const preference = new Preference(client);
 
+      const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+      
       const body = {
         items: items.map((item: any) => ({
           title: item.title,
@@ -408,14 +410,14 @@ async function startServer() {
         },
         external_reference: external_reference,
         back_urls: {
-          success: `${process.env.APP_URL}/payment-status?status=success&jobId=${external_reference}`,
-          failure: `${process.env.APP_URL}/payment-status?status=failure&jobId=${external_reference}`,
-          pending: `${process.env.APP_URL}/payment-status?status=pending&jobId=${external_reference}`,
+          success: `${baseUrl}/payment-status?status=success&jobId=${external_reference}`,
+          failure: `${baseUrl}/payment-status?status=failure&jobId=${external_reference}`,
+          pending: `${baseUrl}/payment-status?status=pending&jobId=${external_reference}`,
         },
         auto_return: 'approved',
         // marketplace_fee only works if the accessToken belongs to a seller linked to the marketplace app
         marketplace_fee: workerAccessToken ? marketplaceFee : 0,
-        notification_url: `${process.env.APP_URL}/api/mercadopago/webhook`,
+        notification_url: `${baseUrl}/api/mercadopago/webhook`,
       };
 
       const result = await preference.create({ body });
@@ -423,7 +425,11 @@ async function startServer() {
 
     } catch (error: any) {
       console.error('Mercado Pago Preference Error:', error);
-      res.status(500).json({ error: error.message });
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      res.status(500).json({ 
+        error: error.message || 'Error creating preference',
+        details: error.cause || error.response || error
+      });
     }
   });
 

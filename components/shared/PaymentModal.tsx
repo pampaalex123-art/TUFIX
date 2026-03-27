@@ -127,9 +127,16 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
       });
       
       if (!response.ok) {
-        const errorData = await response.json();
+        let errorData;
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          errorData = { error: 'Unknown server error' };
+        }
+        console.error('Detailed server error:', errorData);
         throw new Error(errorData.error || 'Failed to create payment preference');
       }
+      
       const { init_point } = await response.json();
 
       if (init_point) {
