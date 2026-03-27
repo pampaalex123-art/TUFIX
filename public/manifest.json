@@ -1,0 +1,21 @@
+{
+  "name": "TUFIX - Servicios para el Hogar",
+  "short_name": "TUFIX",
+  "description": "Tu mercado de servicios para el hogar. Encuentra profesionales para cualquier tarea.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "https://img.icons8.com/color/192/000000/maintenance.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://img.icons8.com/color/512/000000/maintenance.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
