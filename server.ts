@@ -342,7 +342,7 @@ async function startServer() {
                   window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
                   setTimeout(() => window.close(), 2000);
                 } else {
-                  setTimeout(() => window.location.href = '/', 2000);
+                  setTimeout(() => window.location.href = '/?mp_linked=true', 2000);
                 }
               </script>
             </div>

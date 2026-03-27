@@ -171,18 +171,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
     }, []);
 
     const handleLinkHoldingAccount = async () => {
+        const isMobile = window.innerWidth < 768;
+        let authWindow: Window | null = null;
+
+        if (!isMobile) {
+            // Pre-open window to bypass popup blockers on desktop
+            authWindow = window.open('', 'oauth_popup', 'width=600,height=700');
+        }
+
         try {
             const response = await fetch('/api/mercadopago/auth-url?isAdmin=true');
             if (!response.ok) {
                 throw new Error('Failed to get auth URL');
             }
             const { url } = await response.json();
-            const authWindow = window.open(url, 'oauth_popup', 'width=600,height=700');
-            if (!authWindow) {
-                alert('Please allow popups for this site to connect the holding account.');
+            
+            if (isMobile) {
+                // Direct redirect on mobile
+                window.location.href = url;
+            } else if (authWindow) {
+                // Set URL for pre-opened window on desktop
+                authWindow.location.href = url;
             }
         } catch (error) {
             console.error('OAuth error:', error);
+            if (authWindow) authWindow.close();
             alert('Failed to initiate Mercado Pago linking.');
         }
     };
