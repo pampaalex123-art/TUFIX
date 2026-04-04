@@ -13,7 +13,7 @@
     "@capacitor/android": "^8.3.0",
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",
-    "@google/genai": "^1.17.0",
+    "@anthropic-ai/sdk": "^0.39.0",
     "@mercadopago/sdk-js": "^0.0.3",
     "@reach/combobox": "^0.18.0",
     "@react-google-maps/api": "^2.20.8",
