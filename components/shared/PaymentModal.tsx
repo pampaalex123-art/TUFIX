@@ -104,54 +104,6 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
   ];
 
   const handleMercadoPagoPayment = async () => {
-    try {
-      const response = await fetch('/api/mercadopago/create-preference', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          items: [{
-            title: `Pago de Servicio TUFIX - #${invoice.id.slice(-6)}`,
-            unit_price: invoice.total,
-            quantity: 1,
-            currency_id: invoice.currency || 'ARS'
-          }],
-          payer: {
-            email: auth.currentUser?.email || 'test@test.com'
-          },
-          external_reference: invoice.jobId,
-          workerId: invoice.workerId
-        }),
-      });
-      
-      const responseText = await response.text();
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-      } catch (e) {
-        console.error('Raw server response:', responseText);
-        throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}`);
-      }
-
-      if (!response.ok) {
-        console.error('Detailed server error:', responseData);
-        throw new Error(responseData.error || 'Failed to create payment preference');
-      }
-      
-      const { init_point } = responseData;
-
-      if (init_point) {
-        window.location.href = init_point;
-      } else {
-        throw new Error('No payment URL returned');
-      }
-    } catch (error: any) {
-      console.error('Payment error:', error);
-      alert(`Error al iniciar el pago con Mercado Pago: ${error.message || 'Intenta de nuevo.'}`);
-      setLoading(false);
-    }
-  };
-
-  const handleMercadoPagoPayment = async () => {
   try {
     const response = await fetch('/api/mercadopago/create-preference', {
       method: 'POST',
