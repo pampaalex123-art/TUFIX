@@ -37,7 +37,6 @@ import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { useTranslations, Language } from './components/shared/LoginScreen';
 import { Worker, User, JobRequest, ServiceCategory, UserType, AppNotification, Message, Conversation, Invoice, Review, InvoiceLineItem, Transaction, Dispute, DisputeMessage, Coordinates } from './types';
 import AiSupportBubble from './components/shared/AiSupportBubble';
-import { Content } from '@google/genai';
 import WorkerVerificationScreen from './components/worker/WorkerVerificationScreen';
 import VerificationPendingScreen from './components/auth/VerificationPendingScreen';
 import AdminWorkerVerificationScreen from './components/admin/AdminWorkerVerificationScreen';
