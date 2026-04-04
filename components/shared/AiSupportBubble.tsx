@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { getAiSupportResponse, Content } from '../../services/claudeService';
+import { getAiSupportResponse } from '../../services/geminiService';
+import { Content } from '@google/genai';
 import { User, Worker, JobRequest, Transaction, UserType } from '../../types';
 
 interface AiSupportBubbleProps {
