@@ -424,7 +424,11 @@ async function startServer() {
       }
 
       const result = await preference.create({ body });
-      res.json({ id: result.id, init_point: result.init_point });
+      res.json({ 
+  id: result.id, 
+  init_point: result.init_point,
+  mobile_init_point: result.mobile_init_point 
+});
 
     } catch (error: any) {
       console.error('Mercado Pago Preference Error:', error.message || error);

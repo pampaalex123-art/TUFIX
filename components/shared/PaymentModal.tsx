@@ -151,49 +151,72 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
     }
   };
 
-  const handleOtherPayment = (method: PaymentMethod) => {
-    console.log(`Handling payment for method: ${method}`);
-    // Placeholder for future SDK integrations (Stripe, PayPal, etc.)
-    if (method === 'qr_bob') {
-      onConfirm(); // Existing QR logic
-    } else {
-      alert(`El método ${method} estará disponible próximamente. Por ahora, usa Mercado Pago o QR.`);
-      setLoading(false);
-    }
-  };
-
-  const handleContinue = async () => {
-    if (!selectedLocation) return;
+  const handleMercadoPagoPayment = async () => {
+  try {
+    const response = await fetch('/api/mercadopago/create-preference', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        items: [{
+          title: `Pago de Servicio TUFIX - #${invoice.id.slice(-6)}`,
+          unit_price: invoice.total,
+          quantity: 1,
+          currency_id: invoice.currency || 'ARS'
+        }],
+        payer: {
+          email: auth.currentUser?.email || 'test@test.com'
+        },
+        external_reference: invoice.jobId,
+        workerId: invoice.workerId
+      }),
+    });
     
-    setLoading(true);
+    const responseText = await response.text();
+    let responseData;
     try {
-      if (onUpdateLocation) {
-        await onUpdateLocation(selectedLocation.address, {
-          lat: selectedLocation.lat,
-          lng: selectedLocation.lng
-        });
-      } else {
-        const jobRef = doc(db, 'jobRequests', invoice.jobId);
-        await updateDoc(jobRef, {
-          location: selectedLocation.address,
-          coordinates: {
-            lat: selectedLocation.lat,
-            lng: selectedLocation.lng
-          }
-        });
-      }
-
-      if (selectedMethod === 'mercadopago') {
-        await handleMercadoPagoPayment();
-      } else {
-        handleOtherPayment(selectedMethod);
-      }
-    } catch (error) {
-      console.error('Error updating location:', error);
-      alert('Error al actualizar la ubicación. Intenta de nuevo.');
-      setLoading(false);
+      responseData = JSON.parse(responseText);
+    } catch (e) {
+      console.error('Raw server response:', responseText);
+      throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}`);
     }
-  };
+
+    if (!response.ok) {
+      console.error('Detailed server error:', responseData);
+      throw new Error(responseData.error || 'Failed to create payment preference');
+    }
+    
+    const { init_point, mobile_init_point } = responseData;
+
+    if (!init_point) throw new Error('No payment URL returned');
+
+    // On mobile: try to open the MercadoPago app via deep link first,
+    // then fall back to mobile_init_point, then desktop init_point
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile && mobile_init_point) {
+      // Try the deep link to open the native app
+      const deepLink = mobile_init_point.replace('https://', 'mercadopago://');
+      
+      // Attempt to open app — if it fails after 2s, redirect to mobile web
+      const appOpenTimeout = setTimeout(() => {
+        window.location.href = mobile_init_point;
+      }, 2000);
+
+      window.location.href = deepLink;
+
+      // If the page is still visible after timeout, the app didn't open
+      window.addEventListener('blur', () => clearTimeout(appOpenTimeout), { once: true });
+    } else {
+      // Desktop or no mobile_init_point: open in same tab
+      window.location.href = init_point;
+    }
+
+  } catch (error: any) {
+    console.error('Payment error:', error);
+    alert(`Error al iniciar el pago con Mercado Pago: ${error.message || 'Intenta de nuevo.'}`);
+    setLoading(false);
+  }
+};
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true">
