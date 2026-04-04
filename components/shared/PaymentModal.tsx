@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Invoice } from '../../types';
 import { formatCurrency } from '../../constants';
-import { CreditCard, QrCode, Wallet, Check, ChevronRight, X } from 'lucide-react';
+import { QrCode, Check, ChevronRight, X } from 'lucide-react';
 import LocationSelector from './LocationSelector';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
-
+ 
 interface PaymentModalProps {
   invoice: Invoice;
   job?: any;
@@ -14,16 +14,16 @@ interface PaymentModalProps {
   onUpdateLocation?: (location: string, coordinates: { lat: number, lng: number }) => Promise<void>;
   t: (key: string, replacements?: Record<string, string | number>) => string;
 }
-
+ 
 type PaymentMethod = 'visa' | 'mastercard' | 'stripe' | 'mercadopago' | 'qr_bob';
-
+ 
 interface PaymentOption {
   id: PaymentMethod;
   name: string;
   icon: React.ReactNode;
   description?: string;
 }
-
+ 
 const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onConfirm, onUpdateLocation, t }) => {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(
     invoice.currency === 'ARS' ? 'mercadopago' : (invoice.currency === 'BOB' ? 'qr_bob' : 'visa')
@@ -32,7 +32,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
   const [selectedLocation, setSelectedLocation] = useState<{ address: string; lat: number; lng: number } | null>(
     job?.location && job?.coordinates ? { address: job.location, lat: job.coordinates.lat, lng: job.coordinates.lng } : null
   );
-
+ 
   const paymentOptions: PaymentOption[] = [
     { 
       id: 'visa', 
@@ -102,74 +102,108 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
       description: 'Escanea el código QR'
     },
   ];
-
+ 
   const handleMercadoPagoPayment = async () => {
-  try {
-    const response = await fetch('/api/mercadopago/create-preference', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        items: [{
-          title: `Pago de Servicio TUFIX - #${invoice.id.slice(-6)}`,
-          unit_price: invoice.total,
-          quantity: 1,
-          currency_id: invoice.currency || 'ARS'
-        }],
-        payer: {
-          email: auth.currentUser?.email || 'test@test.com'
-        },
-        external_reference: invoice.jobId,
-        workerId: invoice.workerId
-      }),
-    });
-    
-    const responseText = await response.text();
-    let responseData;
     try {
-      responseData = JSON.parse(responseText);
-    } catch (e) {
-      console.error('Raw server response:', responseText);
-      throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}`);
-    }
-
-    if (!response.ok) {
-      console.error('Detailed server error:', responseData);
-      throw new Error(responseData.error || 'Failed to create payment preference');
-    }
-    
-    const { init_point, mobile_init_point } = responseData;
-
-    if (!init_point) throw new Error('No payment URL returned');
-
-    // On mobile: try to open the MercadoPago app via deep link first,
-    // then fall back to mobile_init_point, then desktop init_point
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-
-    if (isMobile && mobile_init_point) {
-      // Try the deep link to open the native app
-      const deepLink = mobile_init_point.replace('https://', 'mercadopago://');
+      const response = await fetch('/api/mercadopago/create-preference', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          items: [{
+            title: `Pago de Servicio TUFIX - #${invoice.id.slice(-6)}`,
+            unit_price: invoice.total,
+            quantity: 1,
+            currency_id: invoice.currency || 'ARS'
+          }],
+          payer: {
+            email: auth.currentUser?.email || 'test@test.com'
+          },
+          external_reference: invoice.jobId,
+          workerId: invoice.workerId
+        }),
+      });
       
-      // Attempt to open app — if it fails after 2s, redirect to mobile web
-      const appOpenTimeout = setTimeout(() => {
-        window.location.href = mobile_init_point;
-      }, 2000);
-
-      window.location.href = deepLink;
-
-      // If the page is still visible after timeout, the app didn't open
-      window.addEventListener('blur', () => clearTimeout(appOpenTimeout), { once: true });
-    } else {
-      // Desktop or no mobile_init_point: open in same tab
-      window.location.href = init_point;
+      const responseText = await response.text();
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+      } catch (e) {
+        console.error('Raw server response:', responseText);
+        throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}`);
+      }
+ 
+      if (!response.ok) {
+        console.error('Detailed server error:', responseData);
+        throw new Error(responseData.error || 'Failed to create payment preference');
+      }
+      
+      const { init_point, mobile_init_point } = responseData;
+      if (!init_point) throw new Error('No payment URL returned');
+ 
+      // On mobile: try to open the MercadoPago app, fallback to mobile web
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+ 
+      if (isMobile && mobile_init_point) {
+        const deepLink = mobile_init_point.replace('https://', 'mercadopago://');
+        const appOpenTimeout = setTimeout(() => {
+          window.location.href = mobile_init_point;
+        }, 2000);
+        window.location.href = deepLink;
+        window.addEventListener('blur', () => clearTimeout(appOpenTimeout), { once: true });
+      } else {
+        window.location.href = init_point;
+      }
+ 
+    } catch (error: any) {
+      console.error('Payment error:', error);
+      alert(`Error al iniciar el pago con Mercado Pago: ${error.message || 'Intenta de nuevo.'}`);
+      setLoading(false);
     }
-
-  } catch (error: any) {
-    console.error('Payment error:', error);
-    alert(`Error al iniciar el pago con Mercado Pago: ${error.message || 'Intenta de nuevo.'}`);
-    setLoading(false);
-  }
-};
-
+  };
+ 
+  const handleOtherPayment = (method: PaymentMethod) => {
+    if (method === 'qr_bob') {
+      onConfirm();
+    } else {
+      alert(`El método ${method} estará disponible próximamente. Por ahora, usa Mercado Pago o QR.`);
+      setLoading(false);
+    }
+  };
+ 
+  const handleContinue = async () => {
+    setLoading(true);
+    try {
+      // Only update location if one was selected
+      if (selectedLocation) {
+        if (onUpdateLocation) {
+          await onUpdateLocation(selectedLocation.address, {
+            lat: selectedLocation.lat,
+            lng: selectedLocation.lng
+          });
+        } else {
+          const jobRef = doc(db, 'jobRequests', invoice.jobId);
+          await updateDoc(jobRef, {
+            location: selectedLocation.address,
+            coordinates: {
+              lat: selectedLocation.lat,
+              lng: selectedLocation.lng
+            }
+          });
+        }
+      }
+ 
+      if (selectedMethod === 'mercadopago') {
+        await handleMercadoPagoPayment();
+      } else {
+        handleOtherPayment(selectedMethod);
+      }
+    } catch (error) {
+      console.error('Error updating location:', error);
+      alert('Error al actualizar la ubicación. Intenta de nuevo.');
+      setLoading(false);
+    }
+  };
+ 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-0 sm:p-4" role="dialog" aria-modal="true">
       <div className="bg-white w-full max-w-md rounded-t-[24px] sm:rounded-[24px] shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
@@ -188,7 +222,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
             <X className="w-5 h-5" />
           </button>
         </div>
-
+ 
         {/* Payment Options List */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           <LocationSelector 
@@ -224,7 +258,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
                     <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">{option.description}</p>
                   )}
                 </div>
-
+ 
                 <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
                   selectedMethod === option.id
                     ? 'border-purple-600 bg-purple-600'
@@ -236,12 +270,12 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
             ))}
           </div>
         </div>
-
+ 
         {/* Footer Actions */}
         <div className="p-6 bg-white border-t border-gray-100 space-y-3">
           <button
             onClick={handleContinue}
-            disabled={loading || !selectedLocation}
+            disabled={loading}
             className="w-full bg-purple-600 text-white font-bold py-4 px-6 rounded-2xl hover:bg-purple-700 disabled:opacity-50 transition-all shadow-lg shadow-purple-200 active:scale-[0.98] flex items-center justify-center gap-2"
           >
             {loading ? (
@@ -265,5 +299,5 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
     </div>
   );
 };
-
+ 
 export default PaymentModal;
