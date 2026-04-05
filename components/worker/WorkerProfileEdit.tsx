@@ -3,6 +3,7 @@ import { Worker, ServiceCategory, DayOfWeek, PaymentMethods } from '../../types'
 import { JOB_TYPE_OPTIONS, CURRENCIES } from '../../constants';
 // FIX: The file 'components/shared/LoginScreen.tsx' was missing. It has been created with the 'useTranslations' hook.
 import { Language } from '../shared/LoginScreen';
+import MercadoPagoConnect from './MercadoPagoConnect';
 
 // --- Types & Constants ---
 const DAYS_OF_WEEK: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -325,14 +326,8 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
                     </div>
                 </div>
                 <div className="md:col-span-2 mt-4">
-                    <label className="block text-sm font-medium text-slate-600 mb-2">Payment Methods (UI Placeholder)</label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="text" name="paymentMethod_bankAccount" value={formData.paymentMethods?.bankAccount || ''} onChange={handleChange} placeholder="Bank Account Number" className={inputStyles} />
-                        <input type="text" name="paymentMethod_stripeAccountId" value={formData.paymentMethods?.stripeAccountId || ''} onChange={handleChange} placeholder="Stripe Account ID" className={inputStyles} />
-                        <input type="text" name="paymentMethod_yapeNumber" value={formData.paymentMethods?.yapeNumber || ''} onChange={handleChange} placeholder="Yape Number" className={inputStyles} />
-                        <input type="text" name="paymentMethod_mercadoPagoAccount" value={formData.paymentMethods?.mercadoPagoAccount || ''} onChange={handleChange} placeholder="Mercado Pago Account" className={inputStyles} />
-                        <button type="button" onClick={handleLinkMercadoPago} className="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Link Mercado Pago</button>
-                    </div>
+                    <label className="block text-sm font-medium text-slate-600 mb-2">Métodos de Pago</label>
+                        <MercadoPagoConnect worker={worker} />
                 </div>
             </div>
         </div>
