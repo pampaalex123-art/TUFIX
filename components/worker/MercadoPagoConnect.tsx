@@ -5,22 +5,25 @@ interface MercadoPagoConnectProps {
   worker: Worker;
 }
 
+// Inline MP logo — always renders, no external URL
+const MPLogo = ({ size = 32 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="40" cy="40" r="40" fill="#009EE3"/>
+    <text x="40" y="52" textAnchor="middle" fontSize="32" fontWeight="bold" fill="white" fontFamily="Arial, sans-serif">MP</text>
+  </svg>
+);
+
 const MercadoPagoConnect: React.FC<MercadoPagoConnectProps> = ({ worker }) => {
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    // Check if already connected
     const payoutDetails = (worker as any).payoutDetails?.mercadoPago;
-    if (payoutDetails?.accessToken) {
-      setConnected(true);
-    }
+    if (payoutDetails?.accessToken) setConnected(true);
 
-    // Check URL params for success/error after OAuth redirect
     const params = new URLSearchParams(window.location.search);
     if (params.get('mp_success') === 'worker') {
       setConnected(true);
-      // Clean URL
       window.history.replaceState({}, '', window.location.pathname);
     }
     if (params.get('mp_error')) {
@@ -41,12 +44,10 @@ const MercadoPagoConnect: React.FC<MercadoPagoConnectProps> = ({ worker }) => {
         window.location.href = url;
       } else {
         const popup = window.open(url, 'mp_oauth', 'width=600,height=700');
-        // Poll for popup close
         const poll = setInterval(() => {
           if (popup?.closed) {
             clearInterval(poll);
             setLoading(false);
-            // Check if connected after popup closes
             window.location.reload();
           }
         }, 500);
@@ -70,11 +71,7 @@ const MercadoPagoConnect: React.FC<MercadoPagoConnectProps> = ({ worker }) => {
           <p className="text-sm font-bold text-green-800">Mercado Pago Conectado ✓</p>
           <p className="text-xs text-green-600">Recibirás el 90% de cada pago automáticamente</p>
         </div>
-        <img
-          src="https://img.icons8.com/color/48/000000/mercadopago.png"
-          alt="MP"
-          className="w-8 h-8"
-        />
+        <MPLogo size={32} />
       </div>
     );
   }
@@ -82,11 +79,7 @@ const MercadoPagoConnect: React.FC<MercadoPagoConnectProps> = ({ worker }) => {
   return (
     <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl space-y-3">
       <div className="flex items-center gap-3">
-        <img
-          src="https://img.icons8.com/color/48/000000/mercadopago.png"
-          alt="Mercado Pago"
-          className="w-10 h-10"
-        />
+        <MPLogo size={40} />
         <div>
           <p className="text-sm font-bold text-blue-900">Conecta tu Mercado Pago</p>
           <p className="text-xs text-blue-600">Necesario para recibir pagos de tus trabajos</p>
@@ -101,13 +94,13 @@ const MercadoPagoConnect: React.FC<MercadoPagoConnectProps> = ({ worker }) => {
         type="button"
         onClick={handleConnect}
         disabled={loading}
-        className="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
+        className="w-full bg-[#009EE3] hover:bg-[#0088cc] disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2"
       >
         {loading ? (
           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
         ) : (
           <>
-            <img src="https://img.icons8.com/color/48/000000/mercadopago.png" alt="" className="w-5 h-5" />
+            <MPLogo size={20} />
             Conectar Mercado Pago
           </>
         )}
