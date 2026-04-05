@@ -4,6 +4,7 @@ import { SERVICE_CATEGORIES } from '../../constants';
 import AdminTransactionsScreen from './AdminTransactionsScreen';
 import AdminDisputesScreen from '../new/AdminDisputesScreen';
 import { formatDistanceToNow } from '../../utils/time';
+import AdminPayoutPanel from './AdminPayoutPanel';
 
 // --- HELPER FUNCTIONS for CSV Download ---
 const escapeCSVCell = (cell: any): string => {
@@ -56,7 +57,7 @@ const downloadCSV = (csvString: string, filename: string) => {
 type SortDirection = 'ascending' | 'descending';
 type ClientSortKey = 'name' | 'location' | 'jobsRequested' | 'signupDate';
 type WorkerSortKey = 'name' | 'service' | 'location' | 'rating' | 'jobsCompleted' | 'totalEarnings' | 'signupDate';
-type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings';
+type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings' | 'pagos';
 
 interface ClientFilters {
     nameOrEmail: string;
@@ -482,6 +483,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                             <TabButton tabId="providers">{t('providers')}</TabButton>
                             <TabButton tabId="verifications" badgeCount={verificationsCount}>{t('verifications')}</TabButton>
                             <TabButton tabId="transactions">{t('transactions')}</TabButton>
+                            <TabButton tabId="pagos">💰 Pagos</TabButton>
                             <TabButton tabId="disputes" badgeCount={openDisputesCount}>{t('disputes')}</TabButton>
                             <TabButton tabId="support" badgeCount={openSupportChatsCount}>{t('support')}</TabButton>
                             <TabButton tabId="settings">{t('settings')}</TabButton>
@@ -719,14 +721,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                     </div>
                 )}
                 
-                {activeTab === 'disputes' && (
+                {activeTab === 'pagos' && (
                     <div className="p-4">
-                        <AdminDisputesScreen 
-                            disputes={disputes} 
-                            users={users} 
-                            workers={workers}
+                        <AdminPayoutPanel
                             jobs={allJobs}
-                            onSelectDispute={onSelectDispute} 
+                            workers={workers}
+                            users={users}
+                            invoices={invoices}
                             t={t}
                         />
                     </div>
