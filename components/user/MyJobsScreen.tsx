@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { JobRequest, Invoice, Coordinates, Worker } from '../../types';
 import PaymentModal from '../shared/PaymentModal';
+import BoliviaPaymentModal from '../shared/BoliviaPaymentModal';
 import ConfirmAndPayModal from '../new/ConfirmAndPayModal';
 import JobProgressSidebar from '../new/JobProgressSidebar';
 import LocationDisplay from '../shared/LocationDisplay';
 import { Star } from 'lucide-react';
+
 
 interface MyJobsScreenProps {
   jobRequests: JobRequest[];
@@ -107,23 +109,42 @@ const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, work
           }) : <p className="text-center text-black py-12">{t('no jobs found')}</p>}
         </div>
       </div>
-      {isPaymentModalOpen && selectedInvoice && (
-        <PaymentModal
-          invoice={selectedInvoice}
-          job={jobRequests.find(j => j.id === selectedInvoice.jobId)}
-          onClose={() => setPaymentModalOpen(false)}
-          onConfirm={() => {
-            onPayInvoice(selectedInvoice.id);
-            setPaymentModalOpen(false);
-          }}
-          onUpdateLocation={async (location, coordinates) => {
-            if (onUpdateJobLocation) {
-              await onUpdateJobLocation(selectedInvoice.jobId, location, coordinates);
-            }
-          }}
-          t={t}
-        />
-      )}
+      {isPaymentModalOpen && selectedInvoice && (() => {
+        const job = jobRequests.find(j => j.id === selectedInvoice.jobId);
+        const worker = workers.find(w => w.id === job?.workerId);
+        if (selectedInvoice.currency === 'BOB') {
+          return (
+            <BoliviaPaymentModal
+              invoice={selectedInvoice}
+              worker={worker}
+              job={job}
+              onClose={() => setPaymentModalOpen(false)}
+              onConfirm={() => {
+                onPayInvoice(selectedInvoice.id);
+                setPaymentModalOpen(false);
+              }}
+              t={t}
+            />
+          );
+        }
+  return (
+    <PaymentModal
+      invoice={selectedInvoice}
+      job={job}
+      onClose={() => setPaymentModalOpen(false)}
+      onConfirm={() => {
+        onPayInvoice(selectedInvoice.id);
+        setPaymentModalOpen(false);
+      }}
+      onUpdateLocation={async (location, coordinates) => {
+        if (onUpdateJobLocation) {
+          await onUpdateJobLocation(selectedInvoice.jobId, location, coordinates);
+        }
+      }}
+      t={t}
+    />
+  );
+})()}
       {isConfirmModalOpen && selectedJob && (
         <ConfirmAndPayModal
           invoice={invoiceMap.get(selectedJob.id)!}
