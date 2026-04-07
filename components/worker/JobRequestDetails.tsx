@@ -2,7 +2,7 @@ import React from 'react';
 import { JobRequest, Worker, User, Invoice } from '../../types';
 import StarRating from '../common/StarRating';
 import JobProgressSidebar from '../new/JobProgressSidebar';
-import LocationDisplay from '../shared/LocationDisplay';
+import WorkerLocationDisplay from './WorkerLocationDisplay';
 
 interface JobRequestDetailsProps {
   job: JobRequest;
@@ -58,17 +58,12 @@ const JobRequestDetails: React.FC<JobRequestDetailsProps> = ({ job, invoice, cli
                     </div>
                     <div className="mt-4 border-t border-slate-200 pt-4">
                         <h2 className="font-bold text-lg mb-2 text-black">{t('job_location')}</h2>
-                        {isJobPaid ? (
-                            <LocationDisplay 
-                                address={job.location || ''} 
-                                coordinates={job.coordinates} 
-                                t={t} 
-                            />
-                        ) : (
-                            <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 text-center">
-                                <p className="text-slate-500">{t('location_hidden_until_paid')}</p>
-                            </div>
-                        )}
+                        <WorkerLocationDisplay
+                            address={job.location || ''}
+                            coordinates={job.coordinates}
+                            isPaid={isJobPaid}
+                            t={t}
+                        />
                     </div>
                     <div className="mt-4 border-t border-slate-200 pt-4 flex justify-end space-x-3">
                         {renderActionButtons()}

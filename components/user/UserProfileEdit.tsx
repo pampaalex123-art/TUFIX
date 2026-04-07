@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
-import { User, Coordinates } from '../../types';
-import LocationPicker from '../shared/LocationPicker';
+import { User } from '../../types';
+import { MapPin } from 'lucide-react';
 
 interface UserProfileEditProps {
   user: User;
@@ -15,18 +15,7 @@ const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onSave, onBack,
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
-
-  const handleLocationSelect = (address: string, coordinates: Coordinates) => {
-    setFormData(prev => ({
-      ...prev,
-      location: address,
-      coordinates: coordinates,
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,10 +23,7 @@ const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onSave, onBack,
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({
-          ...prev,
-          avatarUrl: reader.result as string,
-        }));
+        setFormData(prev => ({ ...prev, avatarUrl: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
@@ -58,27 +44,18 @@ const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onSave, onBack,
         </svg>
         {t('back_to_dashboard')}
       </button>
-      
+
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow-lg p-8 space-y-8">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 mb-8 border-b border-slate-200 pb-4">{t('edit_my_profile_user')}</h1>
-          
+
+          {/* Avatar */}
           <div className="flex items-center space-x-6 mb-8">
             <img className="w-24 h-24 rounded-full object-cover ring-4 ring-purple-100" src={formData.avatarUrl} alt={formData.name} />
             <div>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleAvatarChange}
-                accept="image/*"
-                className="hidden"
-                aria-label="Upload new profile picture"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="bg-slate-100 py-2 px-4 border border-slate-300 rounded-lg shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-200"
-              >
+              <input type="file" ref={fileInputRef} onChange={handleAvatarChange} accept="image/*" className="hidden" />
+              <button type="button" onClick={() => fileInputRef.current?.click()}
+                className="bg-slate-100 py-2 px-4 border border-slate-300 rounded-lg shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-200">
                 {t('change_photo')}
               </button>
             </div>
@@ -87,34 +64,29 @@ const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onSave, onBack,
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-slate-600">{t('full_name')}</label>
-              <input
-                type="text"
-                name="name"
-                id="name"
-                value={formData.name}
-                onChange={handleChange}
-                className={inputStyles}
-              />
+              <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} className={inputStyles} />
             </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-600">{t('email_address')}</label>
-              <input
-                type="email"
-                name="email"
-                id="email"
-                value={formData.email}
-                onChange={handleChange}
-                className={inputStyles}
-              />
+              <input type="email" name="email" id="email" value={formData.email} onChange={handleChange} className={inputStyles} />
             </div>
+
+            {/* Location — simple text input, no map */}
             <div className="md:col-span-2">
-              <label htmlFor="location" className="block text-sm font-medium text-slate-600 mb-4">{t('home_location')}</label>
-              <LocationPicker 
-                initialAddress={formData.location}
-                initialCoordinates={formData.coordinates}
-                onLocationSelect={handleLocationSelect}
-                t={t}
-              />
+              <label htmlFor="location" className="block text-sm font-medium text-slate-600">{t('home_location')}</label>
+              <div className="relative mt-1">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  name="location"
+                  id="location"
+                  value={formData.location}
+                  onChange={handleChange}
+                  placeholder="Ej: Buenos Aires, Argentina"
+                  className="block w-full pl-10 p-3 bg-slate-100 border-transparent rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none sm:text-sm text-slate-900"
+                />
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Tu ubicación aproximada para encontrar trabajadores cercanos</p>
             </div>
           </div>
         </div>

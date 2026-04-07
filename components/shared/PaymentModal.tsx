@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Invoice } from '../../types';
 import { formatCurrency } from '../../constants';
-import { QrCode, Check, ChevronRight, X, CreditCard } from 'lucide-react';
-import LocationSelector from './LocationSelector';
+import { QrCode, Check, ChevronRight, X, CreditCard, MapPin } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 
@@ -17,24 +16,10 @@ interface PaymentModalProps {
 
 type PaymentMethod = 'visa' | 'mastercard' | 'stripe' | 'mercadopago' | 'qr_bob';
 
-interface PaymentOption {
-  id: PaymentMethod;
-  name: string;
-  icon: React.ReactNode;
-  description?: string;
-}
-
-// Inline logos — always render, no external URL needed
 const MPLogo = ({ size = 40 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
     <circle cx="40" cy="40" r="40" fill="#009EE3"/>
     <text x="40" y="52" textAnchor="middle" fontSize="32" fontWeight="bold" fill="white" fontFamily="Arial, sans-serif">MP</text>
-  </svg>
-);
-
-const StripeLogo = ({ size = 40 }: { size?: number }) => (
-  <svg width={size} height={size * 0.4} viewBox="0 0 80 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <text x="0" y="28" fontSize="30" fontWeight="bold" fill="#635BFF" fontFamily="Arial, sans-serif">stripe</text>
   </svg>
 );
 
@@ -52,50 +37,43 @@ const MastercardLogo = () => (
 
 const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onConfirm, onUpdateLocation, t }) => {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(
-    invoice.currency === 'ARS' ? 'mercadopago' : 
-    invoice.currency === 'BOB' ? 'qr_bob' : 
-    'stripe' // Default to Stripe for USD and others
+    invoice.currency === 'ARS' ? 'mercadopago' :
+    invoice.currency === 'BOB' ? 'qr_bob' :
+    'stripe'
   );
   const [loading, setLoading] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<{ address: string; lat: number; lng: number } | null>(
-    job?.location && job?.coordinates ? { address: job.location, lat: job.coordinates.lat, lng: job.coordinates.lng } : null
-  );
+  const [locationText, setLocationText] = useState(job?.location || '');
 
   const isCardMethod = selectedMethod === 'stripe' || selectedMethod === 'visa' || selectedMethod === 'mastercard';
 
-  const paymentOptions: PaymentOption[] = [
-    { 
-      id: 'stripe', name: 'Tarjeta de Crédito / Débito',
-      icon: (
-        <div className="flex items-center gap-1">
-          <CreditCard className="w-5 h-5 text-[#635BFF]" />
-        </div>
-      ),
+  const paymentOptions = [
+    {
+      id: 'stripe' as PaymentMethod, name: 'Tarjeta de Crédito / Débito',
+      icon: <CreditCard className="w-6 h-6 text-[#635BFF]" />,
       description: 'Visa, Mastercard, débito — pago seguro con Stripe'
     },
-    { 
-      id: 'visa', name: 'Visa',
+    {
+      id: 'visa' as PaymentMethod, name: 'Visa',
       icon: <VisaLogo />,
       description: 'Paga con tu tarjeta Visa'
     },
-    { 
-      id: 'mastercard', name: 'Mastercard',
+    {
+      id: 'mastercard' as PaymentMethod, name: 'Mastercard',
       icon: <MastercardLogo />,
       description: 'Paga con tu tarjeta Mastercard'
     },
-    { 
-      id: 'mercadopago', name: 'Mercado Pago',
+    {
+      id: 'mercadopago' as PaymentMethod, name: 'Mercado Pago',
       icon: <MPLogo size={40} />,
-      description: 'Paga con tu cuenta de Mercado Pago'
+      description: 'Visa, Mastercard, Ualá, HSBC, ICBC y más — en ARS'
     },
-    { 
-      id: 'qr_bob', name: 'QR en Bolivianos',
+    {
+      id: 'qr_bob' as PaymentMethod, name: 'QR en Bolivianos',
       icon: <QrCode className="w-6 h-6 text-green-600" />,
-      description: 'Escanea el código QR'
+      description: 'Yape, Tigo Money, $imple, todos los bancos bolivianos'
     },
   ];
 
-  // ─── Stripe Card Payment ────────────────────────────────────────────────────
   const handleStripePayment = async () => {
     try {
       const response = await fetch('/api/stripe/create-session', {
@@ -111,46 +89,35 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
           customerEmail: auth.currentUser?.email || '',
         }),
       });
-
       const data = await response.json();
-
       if (!response.ok) throw new Error(data.error || 'Failed to create Stripe session');
       if (!data.url) throw new Error('No Stripe URL returned');
-
-      // Redirect to Stripe's hosted checkout page
       window.location.href = data.url;
-
     } catch (error: any) {
-      console.error('Stripe error:', error);
       alert(`Error al iniciar el pago con tarjeta: ${error.message}`);
       setLoading(false);
     }
   };
 
-  // ─── MercadoPago Payment ────────────────────────────────────────────────────
   const handleMercadoPagoPayment = async () => {
     try {
       const response = await fetch('/api/mercadopago/create-preference', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           items: [{ title: `Pago TUFIX #${invoice.id.slice(-6)}`, unit_price: invoice.total, quantity: 1, currency_id: invoice.currency || 'ARS' }],
           payer: { email: auth.currentUser?.email || 'test@test.com' },
           external_reference: invoice.jobId,
           workerId: invoice.workerId
         }),
       });
-
       const responseText = await response.text();
       let responseData;
       try { responseData = JSON.parse(responseText); }
       catch (e) { throw new Error(`Server returned invalid JSON: ${responseText.substring(0, 100)}`); }
-
       if (!response.ok) throw new Error(responseData.error || 'Failed to create payment preference');
-
       const { init_point, mobile_init_point } = responseData;
       if (!init_point) throw new Error('No payment URL returned');
-
       const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       if (isMobile && mobile_init_point) {
         const deepLink = mobile_init_point.replace('https://', 'mercadopago://');
@@ -161,40 +128,32 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
         window.location.href = init_point;
       }
     } catch (error: any) {
-      console.error('MP error:', error);
       alert(`Error al iniciar el pago con Mercado Pago: ${error.message}`);
       setLoading(false);
     }
   };
 
-  const handleOtherPayment = (method: PaymentMethod) => {
-    if (method === 'qr_bob') { onConfirm(); }
-    else { alert(`Error inesperado con método ${method}.`); setLoading(false); }
-  };
-
   const handleContinue = async () => {
     setLoading(true);
     try {
-      // Save location if provided
-      if (selectedLocation) {
+      // Save location as plain text if provided
+      if (locationText.trim()) {
         if (onUpdateLocation) {
-          await onUpdateLocation(selectedLocation.address, { lat: selectedLocation.lat, lng: selectedLocation.lng });
-        } else {
+          await onUpdateLocation(locationText, { lat: 0, lng: 0 });
+        } else if (invoice.jobId) {
           const jobRef = doc(db, 'jobRequests', invoice.jobId);
-          await updateDoc(jobRef, { location: selectedLocation.address, coordinates: { lat: selectedLocation.lat, lng: selectedLocation.lng } });
+          await updateDoc(jobRef, { location: locationText });
         }
       }
 
-      // Route to correct payment handler
       if (isCardMethod) {
         await handleStripePayment();
       } else if (selectedMethod === 'mercadopago') {
         await handleMercadoPagoPayment();
-      } else {
-        handleOtherPayment(selectedMethod);
+      } else if (selectedMethod === 'qr_bob') {
+        onConfirm();
       }
     } catch (error) {
-      console.error('Payment error:', error);
       alert('Error al procesar. Intenta de nuevo.');
       setLoading(false);
     }
@@ -212,40 +171,59 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
               Total: <span className="font-bold text-purple-600">{formatCurrency(invoice.total, invoice.currency)}</span>
             </p>
           </div>
-          <button onClick={onClose} className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-gray-600 transition-colors">
+          <button onClick={onClose} className="p-2 bg-gray-50 rounded-full text-gray-400 hover:text-gray-600">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          <LocationSelector selectedLocation={selectedLocation} setSelectedLocation={setSelectedLocation} />
+        <div className="flex-1 overflow-y-auto p-5 space-y-4">
 
-          {/* Stripe info banner when card is selected */}
+          {/* Location — simple text field, no map */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">📍 Ubicación del trabajo</label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                value={locationText}
+                onChange={(e) => setLocationText(e.target.value)}
+                placeholder="Ej: Av. Corrientes 1234, Buenos Aires"
+                className="w-full pl-9 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+              />
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Dirección donde se realizará el trabajo</p>
+          </div>
+
+          {/* Stripe info banner */}
           {isCardMethod && (
             <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-3 flex items-center gap-3">
-              <div className="text-2xl">🔒</div>
-              <div>
-                <p className="text-xs font-bold text-indigo-800">Pago seguro con Stripe</p>
-                <p className="text-xs text-indigo-600">Serás redirigido a la página de pago de Stripe. Tus datos de tarjeta son procesados directamente por Stripe — TUFIX nunca los ve.</p>
-              </div>
+              <div className="text-xl">🔒</div>
+              <p className="text-xs text-indigo-700">Serás redirigido a la página segura de Stripe. TUFIX nunca ve los datos de tu tarjeta.</p>
             </div>
           )}
 
-          <div className="space-y-3">
+          {/* MercadoPago card note */}
+          {selectedMethod === 'mercadopago' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3">
+              <p className="text-xs text-blue-700">💳 Dentro de MercadoPago puedes pagar con cualquier tarjeta: Ualá, HSBC, ICBC, Galicia, Naranja X y más — en pesos argentinos.</p>
+            </div>
+          )}
+
+          {/* Payment options */}
+          <div className="space-y-2">
             <h3 className="text-sm font-bold text-gray-700">Selecciona un método</h3>
             {paymentOptions.map((option) => (
               <button key={option.id} onClick={() => setSelectedMethod(option.id)}
                 className={`w-full flex items-center p-4 rounded-2xl border-2 transition-all duration-200 text-left ${
-                  selectedMethod === option.id ? 'border-purple-600 bg-purple-50 ring-1 ring-purple-600/10' : 'border-gray-100 hover:border-gray-200 bg-white'}`}>
-                <div className={`w-14 h-10 rounded-xl flex items-center justify-center transition-colors ${selectedMethod === option.id ? 'bg-white shadow-sm' : 'bg-gray-50'}`}>
+                  selectedMethod === option.id ? 'border-purple-600 bg-purple-50' : 'border-gray-100 hover:border-gray-200 bg-white'}`}>
+                <div className={`w-14 h-10 rounded-xl flex items-center justify-center ${selectedMethod === option.id ? 'bg-white shadow-sm' : 'bg-gray-50'}`}>
                   {option.icon}
                 </div>
                 <div className="flex-1 ml-4">
-                  <h3 className={`text-sm font-bold transition-colors ${selectedMethod === option.id ? 'text-purple-900' : 'text-gray-900'}`}>{option.name}</h3>
-                  {option.description && <p className="text-[10px] text-gray-500 mt-0.5 leading-tight">{option.description}</p>}
+                  <p className={`text-sm font-bold ${selectedMethod === option.id ? 'text-purple-900' : 'text-gray-900'}`}>{option.name}</p>
+                  <p className="text-[10px] text-gray-500 mt-0.5">{option.description}</p>
                 </div>
-                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${selectedMethod === option.id ? 'border-purple-600 bg-purple-600' : 'border-gray-200'}`}>
+                <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${selectedMethod === option.id ? 'border-purple-600 bg-purple-600' : 'border-gray-200'}`}>
                   {selectedMethod === option.id && <Check className="w-3.5 h-3.5 text-white" />}
                 </div>
               </button>
@@ -254,23 +232,15 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
         </div>
 
         {/* Footer */}
-        <div className="p-6 bg-white border-t border-gray-100 space-y-3">
+        <div className="p-6 border-t border-gray-100 space-y-3">
           <button onClick={handleContinue} disabled={loading}
-            className="w-full bg-purple-600 text-white font-bold py-4 px-6 rounded-2xl hover:bg-purple-700 disabled:opacity-50 transition-all shadow-lg shadow-purple-200 active:scale-[0.98] flex items-center justify-center gap-2">
-            {loading ? (
-              <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <span className="text-base">
-                  {isCardMethod ? '🔒 Pagar con Tarjeta' : 'Pagar Factura'}
-                </span>
-                <ChevronRight className="w-5 h-5" />
-              </>
-            )}
+            className="w-full bg-purple-600 text-white font-bold py-4 rounded-2xl hover:bg-purple-700 disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-purple-200">
+            {loading
+              ? <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
+              : <><span>{isCardMethod ? '🔒 Pagar con Tarjeta' : 'Pagar Factura'}</span><ChevronRight className="w-5 h-5" /></>
+            }
           </button>
-          <button onClick={onClose} className="w-full py-2 px-6 text-gray-400 text-sm font-medium hover:text-gray-600 transition-colors">
-            Volver
-          </button>
+          <button onClick={onClose} className="w-full py-2 text-gray-400 text-sm font-medium hover:text-gray-600">Volver</button>
         </div>
       </div>
     </div>
