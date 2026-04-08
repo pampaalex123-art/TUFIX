@@ -327,7 +327,12 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
                 </div>
                 <div className="md:col-span-2 mt-4">
                     <label className="block text-sm font-medium text-slate-600 mb-2">Métodos de Pago</label>
+                    {worker.country === 'argentina' && (
                         <MercadoPagoConnect worker={worker} />
+                    )}
+                    {worker.country !== 'argentina' && (
+                        <p className="text-sm text-slate-500">Los pagos en Bolivia se gestionan mediante QR y transferencia bancaria.</p>
+                    )}
                 </div>
             </div>
         </div>

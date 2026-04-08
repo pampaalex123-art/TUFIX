@@ -143,6 +143,7 @@ export interface Worker {
   declineReason?: string;
   approvalDate?: string;
   adminApproverId?: string;
+  country?: 'argentina' | 'bolivia';
   userType?: 'worker' | 'admin';
   fcmToken?: string;
   has_completed_onboarding?: boolean;
@@ -164,6 +165,7 @@ export interface User {
   idNumber: string;
   phoneNumber: PhoneNumber;
   verificationStatus?: 'pending' | 'approved' | 'declined';
+  country?: 'argentina' | 'bolivia';
   userType?: 'user' | 'admin';
   fcmToken?: string;
   has_completed_onboarding?: boolean;

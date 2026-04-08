@@ -20,6 +20,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ userType, onLogin, onSignUp, onForg
     email: '',
     password: '',
     confirmPassword: '',
+    country: 'bolivia' as 'argentina' | 'bolivia',
     idNumber: '',
     countryCode: '+1',
     phoneNumber: '',
@@ -180,6 +181,19 @@ const AuthForm: React.FC<AuthFormProps> = ({ userType, onLogin, onSignUp, onForg
                 <div className="flex-grow">
                     <label htmlFor="phoneNumber" className="sr-only">{t('phone_number')}</label>
                     <input type="tel" name="phoneNumber" id="phoneNumber" placeholder={t('phone_number')} value={formData.phoneNumber} onChange={handleChange} required className={inputStyles} />
+                </div>
+                <div>
+                  <label htmlFor="country" className="sr-only">País</label>
+                  <select
+                    name="country"
+                    id="country"
+                    value={formData.country}
+                    onChange={handleChange}
+                    className={inputStyles}
+                  >
+                    <option value="bolivia">🇧🇴 Bolivia</option>
+                    <option value="argentina">🇦🇷 Argentina</option>
+                  </select>
                 </div>
             </div>
           </>

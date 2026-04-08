@@ -137,10 +137,11 @@ const BoliviaPaymentModal: React.FC<BoliviaPaymentModalProps> = ({
       a.click();
       URL.revokeObjectURL(url);
     } catch (e) {
-      // Fallback: open in new tab
-      window.open(qrUrl, '_blank');
+      // Fallback: show screenshot instruction instead of opening in new tab
+      alert('No se pudo descargar automáticamente. Por favor, toma una captura de pantalla del código QR para compartirlo o usarlo.');
+    } finally {
+      setQrDownloading(false);
     }
-    setQrDownloading(false);
   };
 
   const handleCopy = (text: string) => {

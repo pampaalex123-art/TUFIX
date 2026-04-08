@@ -492,6 +492,7 @@ const App: React.FC = () => {
           signupDate: new Date().toISOString(),
           lastLoginDate: new Date().toISOString(),
           rating: 0,
+          country: formData.country || 'bolivia',
           reviews: [],
           idNumber: formData.idNumber,
           phoneNumber: { code: formData.countryCode, number: formData.phoneNumber },
@@ -528,6 +529,7 @@ const App: React.FC = () => {
           bio: t('newly registered service provider'),
           avatarUrl: `https://picsum.photos/seed/${formData.email}/200`,
           rating: 0,
+          country: formData.country || 'bolivia',
           reviews: [],
           availability: {
             Monday: { start: '09:00', end: '17:00' },

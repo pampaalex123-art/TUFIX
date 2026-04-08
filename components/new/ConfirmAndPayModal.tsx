@@ -24,7 +24,7 @@ const ConfirmAndPayModal: React.FC<ConfirmAndPayModalProps> = ({ invoice, onClos
         </div>
         <div className="mt-6 flex justify-center space-x-4">
           <button onClick={onClose} className="bg-slate-200 text-black font-bold py-2 px-6 rounded-lg hover:bg-slate-300 transition">{t('cancel')}</button>
-          <button onClick={onConfirm} className="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition">{t('confirm_release_action')}</button>
+          <button onClick={onConfirm} className="bg-green-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-700 transition">{t('confirm release action')}</button>
         </div>
       </div>
     </div>
