@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useToast } from '../common/Toast';
 import { Dispute, JobRequest, User, Worker, Invoice } from '../../types';
 import { formatCurrency } from '../../constants';
 
@@ -38,11 +39,11 @@ const AdminDisputeResolutionScreen: React.FC<AdminDisputeResolutionScreenProps> 
 
     const handleResolve = () => {
         if (!resolutionText.trim()) {
-            alert(t('please provide a final resolution summary'));
+            showToast(t('please provide a final resolution summary'), 'warning');
             return;
         }
         if (fundAction === 'refund_partial' && (partialAmount <= 0 || partialAmount >= invoice.total)) {
-            alert(t('partial refund must be greater than 0 and less than total', {total: invoice.total.toFixed(2)}));
+            showToast(t('partial refund must be greater than 0 and less than total', {total: invoice.total.toFixed(2)}), 'warning');
             return;
         }
         onResolve(dispute.id, resolutionText, fundAction, partialAmount);

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useToast } from '../common/Toast';
 import { JobRequest, Worker } from '../../types';
 import StarRating from '../common/StarRating';
 
@@ -18,11 +19,11 @@ const LeaveReviewScreen: React.FC<LeaveReviewScreenProps> = ({ job, worker, onBa
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (rating === 0) {
-      alert(t('select_rating_alert'));
+      showToast(t('select_rating_alert'), 'warning');
       return;
     }
     if (comment.trim() === '') {
-      alert(t('leave_comment_alert'));
+      showToast(t('leave_comment_alert'), 'warning');
       return;
     }
     onSubmit(job.id, { rating, comment });

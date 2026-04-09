@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useToast } from '../common/Toast';
 import { JobRequest } from '../../types';
 
 interface RaiseDisputeScreenProps {
@@ -9,12 +10,13 @@ interface RaiseDisputeScreenProps {
 }
 
 const RaiseDisputeScreen: React.FC<RaiseDisputeScreenProps> = ({ job, onBack, onSubmit, t }) => {
+  const { showToast } = useToast();
   const [reason, setReason] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (reason.trim() === '') {
-      alert(t('provide dispute reason alert'));
+      showToast(t('provide dispute reason alert'), 'warning');
       return;
     }
     onSubmit(job.id, reason);

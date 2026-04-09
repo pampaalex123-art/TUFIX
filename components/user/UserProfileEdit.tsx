@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { User } from '../../types';
 import { MapPin } from 'lucide-react';
+import { useToast } from '../common/Toast';
 
 interface UserProfileEditProps {
   user: User;
@@ -10,10 +11,11 @@ interface UserProfileEditProps {
 }
 
 const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onSave, onBack, t }) => {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState<User>(user);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -87,6 +89,21 @@ const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onSave, onBack,
                 />
               </div>
               <p className="text-xs text-slate-400 mt-1">Tu ubicación aproximada para encontrar trabajadores cercanos</p>
+            </div>
+
+            {/* Country selector */}
+            <div className="md:col-span-2">
+              <label htmlFor="country" className="block text-sm font-medium text-slate-600">País</label>
+              <select
+                name="country"
+                id="country"
+                value={formData.country || 'bolivia'}
+                onChange={handleChange}
+                className={inputStyles}
+              >
+                <option value="bolivia">🇧🇴 Bolivia</option>
+                <option value="argentina">🇦🇷 Argentina</option>
+              </select>
             </div>
           </div>
         </div>

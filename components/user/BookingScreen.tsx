@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useToast } from '../common/Toast';
 import { Worker, User, DayOfWeek, JobRequest, Coordinates } from '../../types';
 import { formatTime12hr, generateTimeSlots } from '../../utils/time';
 import LocationPicker from '../shared/LocationPicker';
@@ -29,6 +30,7 @@ const formatDateForInput = (date: Date): string => {
 
 
 const BookingScreen: React.FC<BookingScreenProps> = ({ worker, user, allJobRequests, onBack, onSubmit, t }) => {
+  const { showToast } = useToast();
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState('');
@@ -89,7 +91,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ worker, user, allJobReque
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDate || !selectedTime || !description.trim() || !coordinates) {
-      alert(t('please select a date time provide a description and choose a location'));
+      showToast(t('please select a date time provide a description and choose a location'), 'warning');
       return;
     }
     onSubmit({ 

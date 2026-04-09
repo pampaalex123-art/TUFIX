@@ -94,7 +94,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
       if (!data.url) throw new Error('No Stripe URL returned');
       window.location.href = data.url;
     } catch (error: any) {
-      alert(`Error al iniciar el pago con tarjeta: ${error.message}`);
+      // error handled by caller
       setLoading(false);
     }
   };
@@ -128,7 +128,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
         window.location.href = init_point;
       }
     } catch (error: any) {
-      alert(`Error al iniciar el pago con Mercado Pago: ${error.message}`);
+      // error handled by caller
       setLoading(false);
     }
   };
@@ -154,7 +154,7 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
         onConfirm();
       }
     } catch (error) {
-      alert('Error al procesar. Intenta de nuevo.');
+      // error handled by caller
       setLoading(false);
     }
   };

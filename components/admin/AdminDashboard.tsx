@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useToast } from '../common/Toast';
 import { User, Worker, JobRequest, ServiceCategory, Transaction, Dispute, AppNotification, Message, Invoice } from '../../types';
 import { SERVICE_CATEGORIES } from '../../constants';
 import AdminTransactionsScreen from './AdminTransactionsScreen';
@@ -146,7 +147,8 @@ const PieChart: React.FC<{ data: { label: string; value: number; color: string }
 
 // --- MAIN COMPONENT ---
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs, transactions, disputes, notifications, messages, invoices, pendingVerifications, onSelectUser, onDeleteUser, onSelectWorker, onDeleteWorker, onSelectDispute, onSelectSupportConversation, onSelectVerification, onEditTerms, onClearAllData, t, adminId }) => {
-    const [activeTab, setActiveTab] = useState<AdminTab>('clients');
+    const { showToast } = useToast();
+  const [activeTab, setActiveTab] = useState<AdminTab>('clients');
     const [clientFilters, setClientFilters] = useState<ClientFilters>(initialClientFilters);
     const [workerFilters, setWorkerFilters] = useState<WorkerFilters>(initialWorkerFilters);
     const [clientSort, setClientSort] = useState<{ key: ClientSortKey; direction: SortDirection }>({ key: 'name', direction: 'ascending' });
@@ -164,7 +166,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
             }
             if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
                 console.log('Mercado Pago Holding Account linked successfully');
-                alert('Mercado Pago Holding Account linked successfully');
+                showToast('Mercado Pago Holding Account linked successfully', 'success');
             }
         };
         window.addEventListener('message', handleMessage);
@@ -197,7 +199,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
         } catch (error) {
             console.error('OAuth error:', error);
             if (authWindow) authWindow.close();
-            alert('Failed to initiate Mercado Pago linking.');
+            showToast('Failed to initiate Mercado Pago linking.', 'error');
         }
     };
 

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { useToast } from '../common/Toast';
 import { Worker, ServiceCategory, DayOfWeek, PaymentMethods } from '../../types';
 import { JOB_TYPE_OPTIONS, CURRENCIES } from '../../constants';
 // FIX: The file 'components/shared/LoginScreen.tsx' was missing. It has been created with the 'useTranslations' hook.
@@ -83,6 +84,7 @@ interface WorkerProfileEditProps {
 }
 
 const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, onBack, t, language }) => {
+  const { showToast } = useToast();
   const [formData, setFormData] = useState<Worker>({
     ...worker,
     avgJobCost: worker.avgJobCost || { amount: 0, currency: 'USD' },
@@ -183,7 +185,7 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
       }
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
         console.log('Mercado Pago linked successfully');
-        alert('Mercado Pago linked successfully');
+        showToast('Mercado Pago linked successfully', 'success');
       }
     };
     window.addEventListener('message', handleMessage);
@@ -216,7 +218,7 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
     } catch (error) {
       console.error('OAuth error:', error);
       if (authWindow) authWindow.close();
-      alert('Failed to initiate Mercado Pago linking.');
+      showToast('Failed to initiate Mercado Pago linking.', 'error');
     }
   };
 

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useToast } from '../common/Toast';
 import Spinner from '../common/Spinner';
 import { motion } from 'motion/react';
 import PhoneVerificationScreen from '../new/PhoneVerificationScreen';
@@ -118,7 +119,7 @@ const WorkerVerificationScreen: React.FC<WorkerVerificationScreenProps> = ({ wor
                 console.error('SMS Error:', err);
                 setPhoneError(t('sms error', { error: err.message }));
                 // Fallback for demo purposes if not configured
-                setTimeout(() => alert(`DEMO: TUFIX Verification Code: ${code}`), 500);
+                setTimeout(() => showToast(`DEMO: TUFIX Verification Code: ${code}`, 'info'), 500);
                 setStep('phone');
             }
         }
@@ -141,7 +142,7 @@ const WorkerVerificationScreen: React.FC<WorkerVerificationScreenProps> = ({ wor
                 setIsSubmitting(false);
             }
         } else {
-            alert(t('please complete all verification steps'));
+            showToast(t('please complete all verification steps'), 'warning');
         }
     };
 
@@ -273,4 +274,3 @@ const WorkerVerificationScreen: React.FC<WorkerVerificationScreenProps> = ({ wor
 };
 
 export default WorkerVerificationScreen;
-

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Worker } from '../../types';
+import { useToast } from '../common/Toast';
 
 interface MercadoPagoConnectProps {
   worker: Worker;
@@ -14,6 +15,7 @@ const MPLogo = ({ size = 32 }: { size?: number }) => (
 );
 
 const MercadoPagoConnect: React.FC<MercadoPagoConnectProps> = ({ worker }) => {
+  const { showToast } = useToast();
   const [loading, setLoading] = useState(false);
   const [connected, setConnected] = useState(false);
 
@@ -27,7 +29,7 @@ const MercadoPagoConnect: React.FC<MercadoPagoConnectProps> = ({ worker }) => {
       window.history.replaceState({}, '', window.location.pathname);
     }
     if (params.get('mp_error')) {
-      alert('Error al conectar Mercado Pago. Por favor intenta de nuevo.');
+      showToast('Error al conectar Mercado Pago. Por favor intenta de nuevo.', 'error');
       window.history.replaceState({}, '', window.location.pathname);
     }
   }, [worker]);
@@ -54,7 +56,7 @@ const MercadoPagoConnect: React.FC<MercadoPagoConnectProps> = ({ worker }) => {
       }
     } catch (error) {
       console.error('OAuth error:', error);
-      alert('Error al conectar Mercado Pago.');
+      showToast('Error al conectar Mercado Pago.', 'error');
       setLoading(false);
     }
   };

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useToast } from '../common/Toast';
 import { Worker } from '../../types';
 
 interface AdminWorkerVerificationScreenProps {
@@ -17,12 +18,13 @@ const InfoRow: React.FC<{ label: string; value: string }> = ({ label, value }) =
 );
 
 const AdminWorkerVerificationScreen: React.FC<AdminWorkerVerificationScreenProps> = ({ worker, onApprove, onDecline, onBack, t }) => {
-    const [declineReason, setDeclineReason] = useState('');
+    const { showToast } = useToast();
+  const [declineReason, setDeclineReason] = useState('');
     const [showDeclineModal, setShowDeclineModal] = useState(false);
 
     const handleDecline = () => {
         if (!declineReason.trim()) {
-            alert(t('please provide a reason for declining'));
+            showToast(t('please provide a reason for declining'), 'warning');
             return;
         }
         onDecline(worker.id, declineReason);
