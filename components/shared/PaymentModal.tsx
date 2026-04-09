@@ -212,8 +212,14 @@ const PaymentModal: React.FC<PaymentModalProps> = ({ invoice, job, onClose, onCo
           {/* Payment options */}
           <div className="space-y-2">
             <h3 className="text-sm font-bold text-gray-700">Selecciona un método</h3>
-            {paymentOptions.map((option) => (
-              <button key={option.id} onClick={() => setSelectedMethod(option.id)}
+            {paymentOptions
+              .filter(option => {
+                if (option.id === 'qr_bob') return invoice.currency === 'BOB';
+                if (option.id === 'mercadopago') return invoice.currency === 'ARS';
+                return true;
+              })
+              .map((option) => (
+                <button key={option.id} onClick={() => setSelectedMethod(option.id)}
                 className={`w-full flex items-center p-4 rounded-2xl border-2 transition-all duration-200 text-left ${
                   selectedMethod === option.id ? 'border-purple-600 bg-purple-50' : 'border-gray-100 hover:border-gray-200 bg-white'}`}>
                 <div className={`w-14 h-10 rounded-xl flex items-center justify-center ${selectedMethod === option.id ? 'bg-white shadow-sm' : 'bg-gray-50'}`}>

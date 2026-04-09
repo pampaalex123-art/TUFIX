@@ -1,15 +1,16 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { GoogleMap, Marker, useLoadScript } from '@react-google-maps/api';
-import usePlacesAutocomplete, { getGeocode, getLatLng } from 'use-places-autocomplete';
-import {
-  Combobox,
-  ComboboxInput,
-  ComboboxPopover,
-  ComboboxList,
-  ComboboxOption,
-} from '@reach/combobox';
-import '@reach/combobox/styles.css';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { Coordinates } from '../../types';
+
+// Fix default Leaflet marker icons (broken in Vite/webpack)
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 interface LocationPickerProps {
   initialCoordinates?: Coordinates;
@@ -18,128 +19,54 @@ interface LocationPickerProps {
   t: (key: string) => string;
 }
 
-const mapContainerStyle = {
-  width: '100%',
-  height: '300px',
-  borderRadius: '0.75rem',
-};
-
-const defaultCenter = {
-  lat: -16.5000, // La Paz, Bolivia default
-  lng: -68.1500,
-};
-
-const libraries: ("places")[] = ["places"];
-
-const LocationPicker: React.FC<LocationPickerProps> = (props) => {
-  const { t } = props;
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-    libraries,
-  });
-
-  if (loadError) {
-    return (
-      <div className="bg-red-50 p-4 rounded-lg border border-red-200">
-        <p className="text-sm font-medium text-red-600 mb-1">{t('location_error')}</p>
-        <p className="text-xs text-red-500">Please ensure your Google Maps API Key is correctly configured and authorized for this domain.</p>
-      </div>
-    );
-  }
-  if (!isLoaded) return <div className="animate-pulse bg-slate-200 h-[300px] rounded-xl flex items-center justify-center text-slate-400">Loading Maps...</div>;
-
-  return <LocationPickerContent {...props} />;
-};
-
-const LocationPickerContent: React.FC<LocationPickerProps> = ({ initialCoordinates, initialAddress, onLocationSelect, t }) => {
-  const [marker, setMarker] = useState<Coordinates | undefined>(initialCoordinates);
-  const [address, setAddress] = useState('');
-  const [notes, setNotes] = useState('');
-  const mapRef = useRef<google.maps.Map | null>(null);
-
-  const {
-    ready,
-    value,
-    suggestions: { status, data },
-    setValue,
-    clearSuggestions,
-  } = usePlacesAutocomplete({
-    requestOptions: {
-      locationBias: { radius: 200 * 1000, center: marker || defaultCenter },
+// Inner component that handles map click events
+const MapClickHandler = ({ onMapClick }: { onMapClick: (coords: Coordinates) => void }) => {
+  useMapEvents({
+    click(e) {
+      onMapClick({ lat: e.latlng.lat, lng: e.latlng.lng });
     },
-    debounce: 300,
   });
+  return null;
+};
 
-  useEffect(() => {
-    if (initialAddress) {
-      const parts = initialAddress.split(' | Notes: ');
-      const baseAddress = parts[0];
-      const parsedNotes = parts.length > 1 ? parts[1] : '';
-      
-      setAddress(baseAddress);
-      setValue(baseAddress, false);
-      setNotes(parsedNotes);
-    }
-  }, [initialAddress, setValue]);
+const DEFAULT_CENTER: Coordinates = { lat: -16.5, lng: -68.15 }; // La Paz, Bolivia
 
-  const onMapLoad = useCallback((map: google.maps.Map) => {
-    mapRef.current = map;
-    
-    // If no marker is set, try to center on user's current location
-    if (!marker && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const pos = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          map.panTo(pos);
-          map.setZoom(14);
-        },
-        () => {
-          console.log("Geolocation permission denied or error.");
-        }
-      );
-    }
-  }, [marker]);
+const LocationPicker: React.FC<LocationPickerProps> = ({
+  initialCoordinates,
+  initialAddress,
+  onLocationSelect,
+  t,
+}) => {
+  const [marker, setMarker] = useState<Coordinates | undefined>(initialCoordinates);
+  const [address, setAddress] = useState(initialAddress?.split(' | Notes: ')[0] || '');
+  const [notes, setNotes] = useState(initialAddress?.split(' | Notes: ')[1] || '');
+  const [loadingAddress, setLoadingAddress] = useState(false);
 
-  const handleMapClick = useCallback(async (e: google.maps.MapMouseEvent) => {
-    if (e.latLng) {
-      const lat = e.latLng.lat();
-      const lng = e.latLng.lng();
-      const coords = { lat, lng };
-      setMarker(coords);
-      
-      try {
-        const results = await getGeocode({ location: coords });
-        const addr = results[0].formatted_address;
-        setAddress(addr);
-        setValue(addr, false);
-        const finalAddress = notes ? `${addr} | Notes: ${notes}` : addr;
-        onLocationSelect(finalAddress, coords);
-      } catch (error) {
-        console.error("Error fetching address: ", error);
-      }
-    }
-  }, [onLocationSelect, setValue, notes]);
-
-  const handleSelect = async (selectedAddress: string) => {
-    setValue(selectedAddress, false);
-    clearSuggestions();
-
+  // Reverse geocode using Nominatim (free, no API key)
+  const reverseGeocode = async (coords: Coordinates) => {
+    setLoadingAddress(true);
     try {
-      const results = await getGeocode({ address: selectedAddress });
-      const { lat, lng } = await getLatLng(results[0]);
-      const coords = { lat, lng };
-      setMarker(coords);
-      setAddress(selectedAddress);
-      const finalAddress = notes ? `${selectedAddress} | Notes: ${notes}` : selectedAddress;
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${coords.lat}&lon=${coords.lng}&format=json`,
+        { headers: { 'Accept-Language': 'es' } }
+      );
+      const data = await res.json();
+      const addr = data.display_name || `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
+      setAddress(addr);
+      const finalAddress = notes ? `${addr} | Notes: ${notes}` : addr;
       onLocationSelect(finalAddress, coords);
-      mapRef.current?.panTo(coords);
-      mapRef.current?.setZoom(15);
-    } catch (error) {
-      console.error("Error: ", error);
+    } catch {
+      const fallback = `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`;
+      setAddress(fallback);
+      onLocationSelect(fallback, coords);
+    } finally {
+      setLoadingAddress(false);
     }
+  };
+
+  const handleMapClick = (coords: Coordinates) => {
+    setMarker(coords);
+    reverseGeocode(coords);
   };
 
   const handleNotesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,31 +78,42 @@ const LocationPickerContent: React.FC<LocationPickerProps> = ({ initialCoordinat
     }
   };
 
+  // Try to center on user's location if no initial coords
+  useEffect(() => {
+    if (!initialCoordinates && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          // Just update marker without reverse geocoding on load
+          // User must tap to confirm location
+        },
+        () => {}
+      );
+    }
+  }, []);
+
+  const center = marker || initialCoordinates || DEFAULT_CENTER;
+
   return (
     <div className="space-y-4">
-      <div className="relative">
-        <label className="block text-sm font-medium text-slate-600 mb-1">{t('search_location')}</label>
-        <Combobox onSelect={handleSelect}>
-          <ComboboxInput
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            disabled={!ready}
-            className="w-full p-3 bg-slate-100 border-transparent rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none sm:text-sm text-slate-900"
-            placeholder={t('search_address_placeholder')}
-          />
-          <ComboboxPopover className="z-50 bg-white shadow-xl rounded-lg border border-slate-200 mt-1">
-            <ComboboxList>
-              {status === "OK" &&
-                data.map(({ place_id, description }) => (
-                  <ComboboxOption key={place_id} value={description} className="p-3 hover:bg-slate-50 cursor-pointer text-sm border-b border-slate-100 last:border-0" />
-                ))}
-            </ComboboxList>
-          </ComboboxPopover>
-        </Combobox>
+      <div>
+        <label className="block text-sm font-medium text-slate-600 mb-1">
+          {t('search_location')}
+        </label>
+        <div className="w-full p-3 bg-slate-100 border-transparent rounded-lg text-sm text-slate-900 min-h-[44px]">
+          {loadingAddress ? (
+            <span className="text-slate-400 italic">Obteniendo dirección...</span>
+          ) : address ? (
+            address
+          ) : (
+            <span className="text-slate-400 italic">{t('search_address_placeholder')}</span>
+          )}
+        </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-slate-600 mb-1">{t('location_notes')}</label>
+        <label className="block text-sm font-medium text-slate-600 mb-1">
+          {t('location_notes')}
+        </label>
         <input
           type="text"
           value={notes}
@@ -185,24 +123,25 @@ const LocationPickerContent: React.FC<LocationPickerProps> = ({ initialCoordinat
         />
       </div>
 
-      <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm">
-        <GoogleMap
-          mapContainerStyle={mapContainerStyle}
+      <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm" style={{ height: 300 }}>
+        <MapContainer
+          center={[center.lat, center.lng]}
           zoom={marker ? 15 : 12}
-          center={marker || defaultCenter}
-          onClick={handleMapClick}
-          onLoad={onMapLoad}
-          options={{
-            disableDefaultUI: true,
-            zoomControl: true,
-          }}
+          style={{ width: '100%', height: '100%' }}
+          scrollWheelZoom={false}
+          // One-finger scroll on mobile: gestureHandling not needed in react-leaflet
+          // dragging works with one finger by default on touch devices
         >
-          {marker && <Marker position={marker} />}
-        </GoogleMap>
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          <MapClickHandler onMapClick={handleMapClick} />
+          {marker && <Marker position={[marker.lat, marker.lng]} />}
+        </MapContainer>
       </div>
-      <p className="text-xs text-slate-400 italic">
-        {t('map_click_hint')}
-      </p>
+
+      <p className="text-xs text-slate-400 italic">{t('map_click_hint')}</p>
     </div>
   );
 };
