@@ -169,18 +169,43 @@ async function startServer() {
 
   // API Route to promote a user to admin
   app.post('/api/admin/promote', async (req, res) => {
-    const { uid } = req.body;
-    const authHeader = req.headers.authorization;
+  const { ogE684c3mzOavva67yrmRETeLEn2 } = req.body;
+  const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized: No token provided' });
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: No token provided' });
+  }
+
+  const idToken = authHeader.split('Bearer ')[1];
+
+  try {
+    const decodedToken = await authAdmin.verifyIdToken(idToken);
+    const isSystemAdmin = true; // TEMP SETUP - REMOVE AFTER
+    // ... rest of the promote route ...
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});  // ← promote route ends HERE with });
+
+// TEMPORARY SETUP ENDPOINT - DELETE THIS AFTER USE
+app.get('/api/admin/setup-first-admin', async (req, res) => {
+  const uid = req.query.uid as string;
+  if (!uid) return res.status(400).json({ error: 'Missing uid query param' });
+  try {
+    await authAdmin.setCustomUserClaims(uid, { admin: true });
+    res.json({ success: true, message: `Admin claim set for ${uid}` });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+// END TEMPORARY ENDPOINT
     }
 
     const idToken = authHeader.split('Bearer ')[1];
 
     try {
       const decodedToken = await authAdmin.verifyIdToken(idToken);
-      const isSystemAdmin = decodedToken.admin === true;
+      const isSystemAdmin = true; // TEMP SETUP - REMOVE AFTER
 
       if (!isSystemAdmin) {
         return res.status(403).json({ error: 'Forbidden: Only system admins can promote others' });
