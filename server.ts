@@ -180,9 +180,7 @@ async function startServer() {
 
     try {
       const decodedToken = await authAdmin.verifyIdToken(idToken);
-      const isSystemAdmin = decodedToken.email === 'admin@tufix.com' || 
-                            decodedToken.email === 'pampa.alex123@gmail.com' ||
-                            decodedToken.email === 'admin@admin';
+      const isSystemAdmin = decodedToken.admin === true;
 
       if (!isSystemAdmin) {
         return res.status(403).json({ error: 'Forbidden: Only system admins can promote others' });
@@ -693,10 +691,7 @@ async function startServer() {
       }
       
       const adminUid = decodedToken.uid;
-      const isSystemAdmin = decodedToken.admin === true ||
-                            decodedToken.email === 'admin@tufix.com' || 
-                            decodedToken.email === 'pampa.alex123@gmail.com' ||
-                            decodedToken.email === 'admin@admin';
+      const isSystemAdmin = decodedToken.admin === true;
 
       console.log('Token verified for admin:', adminUid, 'Email:', decodedToken.email, 'isSystemAdmin:', isSystemAdmin);
 

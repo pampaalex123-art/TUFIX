@@ -152,9 +152,7 @@ const App: React.FC = () => {
     const syncAdminClaim = async () => {
       if (!currentUser || !auth.currentUser) return;
       
-      const isSystemAdmin = currentUser.email === 'admin@tufix.com' || 
-                            currentUser.email === 'pampa.alex123@gmail.com' ||
-                            currentUser.email === 'admin@admin';
+      const isSystemAdmin = currentUser.userType === 'admin';
       
       if (isSystemAdmin) {
         try {
