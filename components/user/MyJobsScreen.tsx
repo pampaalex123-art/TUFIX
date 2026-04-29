@@ -12,6 +12,7 @@ interface MyJobsScreenProps {
   jobRequests: JobRequest[];
   invoices: Invoice[];
   workers?: Worker[];
+  userCountry?: 'bolivia' | 'argentina';
   onLeaveReview: (job: JobRequest) => void;
   onCancelJob: (jobId: string, reason: string) => void;
   onBack: () => void;
@@ -23,7 +24,7 @@ interface MyJobsScreenProps {
   t: (key: string, replacements?: Record<string, string | number>) => string;
 }
 
-const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, workers = [], onLeaveReview, onCancelJob, onBack, onPayInvoice, onConfirmAndReleasePayment, onRaiseDispute, onViewDispute, onUpdateJobLocation, t }) => {
+const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, workers = [], userCountry, onLeaveReview, onCancelJob, onBack, onPayInvoice, onConfirmAndReleasePayment, onRaiseDispute, onViewDispute, onUpdateJobLocation, t }) => {
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -143,7 +144,7 @@ const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, work
       {isPaymentModalOpen && selectedInvoice && (() => {
         const job = jobRequests.find(j => j.id === selectedInvoice.jobId);
         const worker = workers.find(w => w.id === job?.workerId);
-        if (selectedInvoice.currency === 'BOB') {
+        if (userCountry === 'bolivia') {
           return (
             <BoliviaPaymentModal
               invoice={selectedInvoice}

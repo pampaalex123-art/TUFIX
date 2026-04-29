@@ -1798,6 +1798,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
           jobRequests={jobRequests.filter(j => j.user.id === currentUser?.id)}
           invoices={invoices}
           workers={workers}
+          userCountry={currentUser?.country}
           onLeaveReview={handleLeaveUserReview}
           onCancelJob={handleCancelJob}
           onBack={() => setView({ screen: 'USER_DASHBOARD' })}

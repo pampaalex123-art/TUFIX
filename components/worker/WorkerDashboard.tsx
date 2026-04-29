@@ -26,7 +26,23 @@ const formatDate = (dateString: string): string => {
 
 const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ worker, jobRequests, invoices, onContactClient, onEditProfile, onSelectJob, onRaiseDispute, onViewDispute, t }) => {
   const invoiceMap = new Map<string, Invoice>(invoices.map(inv => [inv.jobId, inv]));
-  
+
+  // --- NEW: Split jobs into active and past ---
+  const [showPastJobs, setShowPastJobs] = React.useState(false);
+  const [pastJobsCount, setPastJobsCount] = React.useState(5);
+
+  const activeStatuses = ['pending', 'accepted', 'in_progress', 'invoice_sent', 'paid', 'awaiting_confirmation'];
+
+  const allSorted = [...jobRequests].sort(
+    (a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime()
+  );
+
+  const activeJobs = allSorted.filter(j => activeStatuses.includes(j.status));
+  const pastJobs = allSorted.filter(j => !activeStatuses.includes(j.status));
+
+  const jobsToShow = showPastJobs ? pastJobs.slice(0, pastJobsCount) : activeJobs;
+  // --- END NEW ---
+
   return (
     <div className="container mx-auto max-w-5xl space-y-8">
       <div className="bg-slate-50 border border-slate-200 p-6 rounded-xl shadow-sm flex justify-between items-center">
@@ -37,15 +53,42 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ worker, jobRequests, 
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold text-black mb-4">{t('incoming jobs')}</h2>
-        {jobRequests.length === 0 ? (
+        <h2 className="text-2xl font-bold text-black mb-4">{t('incoming_jobs')}</h2>
+
+        {/* --- NEW: Tab buttons --- */}
+        <div className="flex space-x-2 mb-6">
+          <button
+            onClick={() => setShowPastJobs(false)}
+            className={`flex-1 py-2 rounded-lg font-semibold text-sm transition ${
+              !showPastJobs
+                ? 'bg-purple-600 text-white shadow'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Trabajos Activos ({activeJobs.length})
+          </button>
+          <button
+            onClick={() => setShowPastJobs(true)}
+            className={`flex-1 py-2 rounded-lg font-semibold text-sm transition ${
+              showPastJobs
+                ? 'bg-purple-600 text-white shadow'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Historial ({pastJobs.length})
+          </button>
+        </div>
+        {/* --- END NEW --- */}
+
+        {jobsToShow.length === 0 ? (
            <div className="bg-slate-50 border border-slate-200 rounded-xl shadow-sm p-12 text-center">
-            <p className="text-black">{t('no job requests')}</p>
+            <p className="text-black">
+              {showPastJobs ? 'No tienes trabajos pasados.' : t('no_job_requests')}
+            </p>
            </div>
         ) : (
-          
           <div className="space-y-6">
-            {jobRequests.map((request: JobRequest) => {
+            {jobsToShow.map((request: JobRequest) => {
               const requestDate = new Date(`${request.date}T00:00:00`);
               const dayOfWeek = getDayOfWeekForDate(requestDate);
               const isAvailable = !!worker.availability[dayOfWeek];
@@ -102,6 +145,20 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ worker, jobRequests, 
             })}
           </div>
         )}
+
+        {/* --- NEW: Load More button for past jobs --- */}
+        {showPastJobs && pastJobs.length > pastJobsCount && (
+          <div className="text-center pt-4">
+            <button
+              onClick={() => setPastJobsCount(c => c + 5)}
+              className="text-sm font-semibold text-purple-600 hover:text-purple-800 hover:underline"
+            >
+              Cargar más trabajos ({pastJobs.length - pastJobsCount} restantes)
+            </button>
+          </div>
+        )}
+        {/* --- END NEW --- */}
+
       </div>
     </div>
   );
