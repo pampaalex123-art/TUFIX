@@ -40,9 +40,9 @@ const NotificationIcon: React.FC<{ type: AppNotification['type'] }> = ({ type })
       bgClass = "bg-orange-500";
       break;
     case 'dispute_update':
-        iconPath = <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />;
-        bgClass = "bg-yellow-500";
-        break;
+      iconPath = <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />;
+      bgClass = "bg-yellow-500";
+      break;
     default:
       return null;
   }
@@ -70,8 +70,8 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ notifications
       <div className="flex justify-between items-center bg-white border border-slate-200 p-4 rounded-xl shadow-lg">
         <h1 className="text-2xl font-bold text-black">{t('notifications')}</h1>
         {notifications.some(n => !n.isRead) && (
-          <button 
-            onClick={onMarkAllAsRead} 
+          <button
+            onClick={onMarkAllAsRead}
             className="text-sm bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition">
             {t('mark_all_as_read')}
           </button>
@@ -84,34 +84,34 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ notifications
             <p className="text-black">{t('no_notifications')}</p>
           </div>
         ) : (
-          <ul className="divide-y divide-slate-100">
+          <div>
             <ul className="divide-y divide-slate-100">
-            {visible.map(notification => (
-              <li 
-                key={notification.id} 
-                className={`p-4 flex items-start space-x-4 transition duration-150 hover:bg-slate-50 ${!notification.isRead ? 'bg-purple-50' : ''}`}
-              >
-                {!notification.isRead && (
+              {visible.map(notification => (
+                <li
+                  key={notification.id}
+                  className={`p-4 flex items-start space-x-4 transition duration-150 hover:bg-slate-50 ${!notification.isRead ? 'bg-purple-50' : ''}`}
+                >
+                  {!notification.isRead && (
                     <div className="w-2 h-2 rounded-full bg-purple-500 mt-3 flex-shrink-0" aria-label="Unread notification"></div>
-                )}
-                <div className={notification.isRead ? 'pl-6' : ''}>
-                  <NotificationIcon type={notification.type} />
-                </div>
-                <div className="flex-1">
-                  <button onClick={() => onNotificationClick(notification)} className="text-left w-full focus:outline-none">
-                    <p className={`text-sm leading-snug ${!notification.isRead ? 'text-black font-semibold' : 'text-black'}`}>
-                      {notification.message}
-                    </p>
-                    <p className="text-xs text-black mt-1">
-                      {formatDistanceToNow(notification.timestamp, t)}
-                    </p>
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-          {sorted.length > visibleCount && (
-              <div className="p-4 text-center">
+                  )}
+                  <div className={notification.isRead ? 'pl-6' : ''}>
+                    <NotificationIcon type={notification.type} />
+                  </div>
+                  <div className="flex-1">
+                    <button onClick={() => onNotificationClick(notification)} className="text-left w-full focus:outline-none">
+                      <p className={`text-sm leading-snug ${!notification.isRead ? 'text-black font-semibold' : 'text-black'}`}>
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-black mt-1">
+                        {formatDistanceToNow(notification.timestamp, t)}
+                      </p>
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {sorted.length > visibleCount && (
+              <div className="p-4 text-center border-t border-slate-100">
                 <button
                   onClick={() => setVisibleCount(v => v + 5)}
                   className="text-sm font-semibold text-purple-600 hover:text-purple-800 hover:underline"
@@ -120,7 +120,9 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ notifications
                 </button>
               </div>
             )}
+          </div>
         )}
+      </div>
     </div>
   );
 };
