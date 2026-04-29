@@ -1405,10 +1405,14 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         body: JSON.stringify({ uid: userToDelete.id, collectionName: 'users' }),
       });
 
-      const data = await response.json();
+      let data: any = {};
+      const text = await response.text();
+      if (text) {
+        try { data = JSON.parse(text); } catch { data = { error: text }; }
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || t('Failed to delete user'));
+        throw new Error(data.error || `Server error ${response.status}: ${response.statusText}`);
       }
 
       // UI Feedback & Automatic Refresh
@@ -1445,10 +1449,14 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         body: JSON.stringify({ uid: workerToDelete.id, collectionName: 'workers' }),
       });
 
-      const data = await response.json();
+      let data: any = {};
+      const text = await response.text();
+      if (text) {
+        try { data = JSON.parse(text); } catch { data = { error: text }; }
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || t('Failed to delete worker'));
+        throw new Error(data.error || `Server error ${response.status}: ${response.statusText}`);
       }
 
       // UI Feedback & Automatic Refresh
