@@ -329,24 +329,24 @@ const App: React.FC = () => {
   };
 
 const handleLogin = async (type: UserType, formData: any): Promise<string | null> => {
-    // Block the old admin@admin login entirely
+    // Block old admin panel login entirely
     if (type === 'admin') {
-      return 'Admin login is no longer available from this panel. Please log in as a regular user with your email.';
+      return 'Ingresá con tu email y contraseña normales.';
     }
+
+    const ALEJANDRO_EMAIL = 'alejandro.finochietti@yahoo.com.ar';
+    const isAlejandro = (formData.email || '').toLowerCase() === ALEJANDRO_EMAIL.toLowerCase();
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      const data = userCredential;
-      const error = null;
+      const uid = userCredential.user?.uid || `user-${Date.now()}`;
 
       if (type === 'user') {
         let user = users.find(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase());
         if (!user) {
-          // Recreate user if missing from local storage but exists in Supabase
-          const isAdminEmail = (formData.email || '').toLowerCase() === 'alejandro.finochietti@yahoo.com.ar';
           user = {
-            id: data.user?.uid || `user-${Date.now()}`,
-            name: (formData.email || '').split('@')[0], // Fallback name
+            id: uid,
+            name: (formData.email || '').split('@')[0],
             email: formData.email,
             password: formData.password,
             location: 'New City, NC',
@@ -358,28 +358,30 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
             idNumber: '000-00-0000',
             phoneNumber: { code: '+1', number: '555-555-5555' },
             verificationStatus: 'approved',
-            userType: isAdminEmail ? 'admin' : 'user',
+            userType: isAlejandro ? 'admin' : 'user',
           };
           setUsers(prev => {
             if (prev.find(u => u.id === user!.id)) return prev;
             return [...prev, user!];
           });
         }
-        // If this is the admin email, show a dialog to choose Admin or User mode
-        if (isAdminEmail) {
-          setPendingAdminLoginData({ uid: user.id, email: formData.email, password: formData.password });
-          return null; // Don't set current user yet — wait for dialog choice
+
+        // If this is Alejandro's email, show the Admin/User choice dialog
+        if (isAlejandro) {
+          setPendingAdminLoginData({ uid: user.id, email: user.email, name: user.name });
+          return null;
         }
+
         setCurrentUser(user);
         setUserType(user.userType as UserType);
         return null;
+
       } else if (type === 'worker') {
         let worker = workers.find(w => (w.email || '').toLowerCase() === (formData.email || '').toLowerCase());
         if (!worker) {
-          // Recreate worker if missing from local storage but exists in Supabase
           worker = {
-            id: data.user?.uid || `worker-${Date.now()}`,
-            name: (formData.email || '').split('@')[0], // Fallback name
+            id: uid,
+            name: (formData.email || '').split('@')[0],
             email: formData.email,
             password: formData.password,
             service: ServiceCategory.HANDYMAN,
@@ -404,7 +406,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
             lastLoginDate: new Date().toISOString(),
             idNumber: '000-00-0000',
             phoneNumber: { code: '+1', number: '555-555-5555' },
-            verificationStatus: 'approved', // Auto-approve restored workers to avoid getting stuck
+            verificationStatus: 'approved',
             userType: 'worker',
           };
           setWorkers(prev => {
@@ -414,10 +416,10 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         }
 
         if (worker.verificationStatus === 'pending') {
-            return "Your account is awaiting verification. You will be notified once it's approved.";
+          return "Your account is awaiting verification. You will be notified once it's approved.";
         }
         if (worker.verificationStatus === 'declined') {
-            return `Your account application was declined. Reason: ${worker.declineReason || 'No reason provided.'}`;
+          return `Your account application was declined. Reason: ${worker.declineReason || 'No reason provided.'}`;
         }
 
         setCurrentUser(worker);
@@ -1495,9 +1497,9 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
                     onClick={async () => {
                       const user = users.find(u => u.id === pendingAdminLoginData.uid) || {
                         id: pendingAdminLoginData.uid,
-                        name: 'Alejandro',
+                        name: pendingAdminLoginData.name,
                         email: pendingAdminLoginData.email,
-                        password: pendingAdminLoginData.password,
+                        password: '',
                         location: 'Admin HQ',
                         avatarUrl: `https://picsum.photos/seed/${pendingAdminLoginData.email}/200`,
                         signupDate: new Date().toISOString(),
