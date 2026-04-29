@@ -55,20 +55,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`Admin ${decodedToken.email} deleting ${collectionName} user: ${uid}`);
 
     // 1. Delete from Firebase Auth
-    try {
-      await auth.deleteUser(uid);
-      console.log(`Deleted Firebase Auth user: ${uid}`);
-    } catch (authError: any) {
-      // If user doesn't exist in auth, continue with Firestore deletion
-      if (authError.code !== 'auth/user-not-found') {
-        throw authError;
-      }
-      console.log(`User ${uid} not found in Firebase Auth, continuing with Firestore deletion`);
+  try {
+    await auth.deleteUser(uid);
+  } catch (authError: any) {
+    if (authError.code !== 'auth/user-not-found') {
+      throw authError;
     }
+  console.log(`User ${uid} not in Firebase Auth, skipping auth deletion`);
+}
 
-    // 2. Delete from Firestore
+  // 2. Delete from Firestore
+  try {
     await db.collection(collectionName).doc(uid).delete();
-    console.log(`Deleted Firestore ${collectionName} document: ${uid}`);
+  } catch (fsError: any) {
+    // Firestore delete on a non-existent doc throws in some SDK versions
+  console.warn(`Firestore doc ${uid} not found, may already be deleted`);
+}
 
     // 3. Clean up related data
     const batch = db.batch();

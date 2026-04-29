@@ -444,7 +444,8 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         }
         const isAdminEmail = (formData.email || '').toLowerCase() === 'alejandro.finochietti@yahoo.com.ar';
         const newUser: User = {
-          id: data.user?.uid || `user-${Date.now()}`,
+          if (!data.user?.uid) throw new Error('Registration failed: no UID returned');
+          id: data.user.uid,
           name: formData.name,
           email: formData.email,
           password: formData.password,
