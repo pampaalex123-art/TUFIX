@@ -37,12 +37,13 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ worker, jobRequests, 
       </div>
 
       <div>
-        <h2 className="text-2xl font-bold text-black mb-4">{t('incoming_jobs')}</h2>
+        <h2 className="text-2xl font-bold text-black mb-4">{t('incoming jobs')}</h2>
         {jobRequests.length === 0 ? (
            <div className="bg-slate-50 border border-slate-200 rounded-xl shadow-sm p-12 text-center">
-            <p className="text-black">{t('no_job_requests')}</p>
+            <p className="text-black">{t('no job requests')}</p>
            </div>
         ) : (
+          
           <div className="space-y-6">
             {jobRequests.map((request: JobRequest) => {
               const requestDate = new Date(`${request.date}T00:00:00`);

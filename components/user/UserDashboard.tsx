@@ -16,6 +16,8 @@ const DAYS_OF_WEEK: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', '
 interface Filters {
   searchTerm: string;
   region: string;
+  neighbourhood: string;
+  hasCertificate: boolean;
   date: string;
   priceMin: string;
   priceMax: string;
@@ -28,6 +30,8 @@ interface Filters {
 const initialFilters: Filters = {
   searchTerm: '',
   region: '',
+  neighbourhood: '',
+  hasCertificate: false,
   date: '',
   priceMin: '',
   priceMax: '',
@@ -62,7 +66,63 @@ const WorkerCard: React.FC<{ worker: Worker; onSelectWorker: (worker: Worker) =>
         </div>
     </div>
 );
+const BOLIVIAN_CITIES = [
+  'La Paz','El Alto','Cochabamba','Santa Cruz de la Sierra','Oruro','Potosí','Sucre',
+  'Tarija','Trinidad','Cobija','Sacaba','Montero','Quillacollo','Riberalta','Yacuiba',
+  'Warnes','Colcapirhua','Viacha','Camiri','Villazón','Bermejo','Guayaramerín',
+  'San Ignacio de Velasco','Llallagua','Tupiza','Tiquipaya','Punata','Huanuni',
+  'Mizque','Villa Tunari'
+];
 
+const ARGENTINIAN_CITIES = [
+  'Buenos Aires','Córdoba','Rosario','Mendoza','La Plata','Tucumán','Mar del Plata',
+  'Salta','Santa Fe','San Juan','Resistencia','Santiago del Estero','Corrientes',
+  'Posadas','Neuquén','Bahía Blanca','Paraná','Formosa','San Salvador de Jujuy',
+  'San Luis','Río Cuarto','Comodoro Rivadavia','Quilmes','Lanús','Lomas de Zamora',
+  'Florencio Varela','Almirante Brown','Merlo','Moreno','Tigre','San Isidro',
+  'Vicente López','Tres de Febrero','Morón','Hurlingham','Ituzaingó','La Matanza',
+  'Esteban Echeverría','San Martín','San Miguel','José C. Paz','Malvinas Argentinas',
+  'Pilar','Escobar','Berazategui','Ensenada','Berisso'
+];
+
+const ALL_CITIES = [...BOLIVIAN_CITIES, ...ARGENTINIAN_CITIES].sort();
+
+const LocalidadSelector: React.FC<{ value: string; onChange: (v: string) => void }> = ({ value, onChange }) => {
+  const [search, setSearch] = React.useState('');
+  const [open, setOpen] = React.useState(false);
+  const filtered = ALL_CITIES.filter(c => c.toLowerCase().includes(search.toLowerCase()));
+  return (
+    <div className="relative">
+      <div
+        className="w-full p-2 border rounded-md flex justify-between items-center cursor-pointer bg-white"
+        onClick={() => setOpen(o => !o)}
+      >
+        <span className={value ? 'text-black' : 'text-slate-400'}>{value || 'Todas las localidades'}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+      </div>
+      {open && (
+        <div className="absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-xl mt-1 max-h-56 overflow-y-auto">
+          <div className="p-2 border-b sticky top-0 bg-white">
+            <input
+              autoFocus
+              type="text"
+              placeholder="Buscar ciudad..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full p-1.5 border border-slate-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-purple-400"
+            />
+          </div>
+          <div>
+            <button onClick={() => { onChange(''); setOpen(false); setSearch(''); }} className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 text-slate-500">Todas las localidades</button>
+            {filtered.map(c => (
+              <button key={c} onClick={() => { onChange(c); setOpen(false); setSearch(''); }} className={`w-full text-left px-3 py-2 text-sm hover:bg-purple-50 ${value === c ? 'bg-purple-100 font-semibold text-purple-700' : 'text-black'}`}>{c}</button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 const UserDashboard: React.FC<UserDashboardProps> = ({
     workers,
     selectedCategory,
@@ -123,6 +183,8 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
                 if (!matchesName && !matchesService && !matchesJobTypes) return false;
             }
             if (filters.region && !worker.regions.includes(filters.region)) return false;
+            if (filters.neighbourhood && !(worker.regions || []).some(r => r.toLowerCase().includes(filters.neighbourhood.toLowerCase()))) return false;
+            if (filters.hasCertificate && !(worker as any).certificates?.length) return false;
             if (filters.date) {
                 const filterDate = new Date(filters.date + 'T00:00:00');
                 if (!checkAvailability(worker, filterDate)) return false;
@@ -265,7 +327,16 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
                 {showFilters && (
                     <div className="absolute top-full left-0 mt-2 w-full max-w-4xl bg-white border border-slate-200 rounded-xl shadow-2xl p-4 z-20">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-sm text-black">
-                            <div><label className="font-semibold block mb-1 text-black">{t('region')}</label><select value={filters.region} onChange={e => handleFilterChange('region', e.target.value)} className="w-full p-2 border rounded-md"><option value="">{t('all regions')}</option>{uniqueRegions.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
+                            <div>
+                              <label className="font-semibold block mb-1 text-black">Localidad</label>
+                              <LocalidadSelector value={filters.neighbourhood} onChange={v => handleFilterChange('neighbourhood', v)} />
+                            </div>
+                            <div>
+                              <label className="font-semibold block mb-1 text-black">
+                                <input type="checkbox" className="mr-2 accent-purple-600" checked={filters.hasCertificate} onChange={e => handleFilterChange('hasCertificate', e.target.checked)} />
+                                Solo con títulos / certificados
+                              </label>
+                            </div>
                             <div><label className="font-semibold block mb-1 text-black">{t('date available')}</label><input type="date" value={filters.date} onChange={e => handleFilterChange('date', e.target.value)} className="w-full p-2 border rounded-md" /></div>
                             <div><label className="font-semibold block mb-1 text-black">{t('min rating')}</label><select value={filters.rating} onChange={e => handleFilterChange('rating', Number(e.target.value))} className="w-full p-2 border rounded-md"><option value="0">{t('any rating')}</option>{[4,3,2,1].map(r => <option key={r} value={r}>{r} ★ &amp; Up</option>)}</select></div>
                             <div><label className="font-semibold block mb-1 text-black">{t('price range')}</label><div className="flex space-x-2"><input type="number" placeholder={t('min price')} value={filters.priceMin} onChange={e => handleFilterChange('priceMin', e.target.value)} className="w-1/2 p-2 border rounded-md" /><input type="number" placeholder={t('max price')} value={filters.priceMax} onChange={e => handleFilterChange('priceMax', e.target.value)} className="w-1/2 p-2 border rounded-md" /></div></div>

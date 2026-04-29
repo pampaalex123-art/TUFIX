@@ -19,7 +19,7 @@ const ApproximateMap: React.FC<{ coordinates: Coordinates }> = ({ coordinates })
   const offsetLng = coordinates.lng + (Math.random() - 0.5) * 0.002;
 
   // OpenStreetMap embed URL with a marker at the approximate location
-  const osmUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${offsetLng - 0.008},${offsetLat - 0.006},${offsetLng + 0.008},${offsetLat + 0.006}&layer=mapnik&marker=${offsetLat},${offsetLng}`;
+  const osmUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${offsetLng - 0.008},${offsetLat - 0.006},${offsetLng + 0.008},${offsetLat + 0.006}&layer=mapnik`;
 
   if (!showMap) {
     return (
@@ -95,17 +95,30 @@ const WorkerLocationDisplay: React.FC<WorkerLocationDisplayProps> = ({ address, 
         </div>
       </div>
       {/* Link to open in maps app */}
-      {baseAddress && (
-        <a
-          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(baseAddress)}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 text-xs font-bold text-green-700 hover:text-green-900 mt-2 bg-green-100 px-3 py-2 rounded-lg w-fit"
-        >
-          <MapPin className="w-3 h-3" />
-          Abrir en Google Maps
-        </a>
-      )}
+      {baseAddress && (() => {
+        // Build a proper geo URI with lat/lng if available so Maps opens the pin directly
+        const geoUri = coordinates
+          ? `geo:${coordinates.lat},${coordinates.lng}?q=${coordinates.lat},${coordinates.lng}(${encodeURIComponent(baseAddress)})`
+          : `geo:0,0?q=${encodeURIComponent(baseAddress)}`;
+        // Fallback for iOS / desktop — uses universal maps link
+        const universalLink = coordinates
+          ? `https://maps.apple.com/?ll=${coordinates.lat},${coordinates.lng}&q=${encodeURIComponent(baseAddress)}`
+          : `https://maps.apple.com/?q=${encodeURIComponent(baseAddress)}`;
+        return (
+          <button
+            onClick={() => {
+              // On Android/mobile, geo: URI triggers the system "Open with" dialog
+              // On iOS, maps.apple.com also triggers the OS dialog
+              const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+              window.open(isIOS ? universalLink : geoUri, '_blank');
+            }}
+            className="flex items-center gap-2 text-xs font-bold text-green-700 hover:text-green-900 mt-2 bg-green-100 px-3 py-2 rounded-lg w-fit"
+          >
+            <MapPin className="w-3 h-3" />
+            Abrir en Mapa
+          </button>
+        );
+      })()}
     </div>
   );
 };

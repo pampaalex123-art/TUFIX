@@ -41,12 +41,33 @@ const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, work
       setConfirmModalOpen(true);
   };
 
-  const sortedJobs = [...jobRequests].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const [showPastJobs, setShowPastJobs] = React.useState(false);
+  const [pastJobsCount, setPastJobsCount] = React.useState(5);
+
+  const activeStatuses = ['pending', 'accepted', 'in_progress', 'invoice_sent', 'paid', 'awaiting_confirmation'];
+  const allSorted = [...jobRequests].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const activeJobs = allSorted.filter(j => activeStatuses.includes(j.status));
+  const pastJobs = allSorted.filter(j => !activeStatuses.includes(j.status)); // completed, cancelled, disputed resolved
+  const sortedJobs = showPastJobs ? pastJobs.slice(0, pastJobsCount) : activeJobs;
 
   return (
     <>
       <div className="container mx-auto max-w-5xl">
         <h1 className="text-3xl font-bold text-black mb-6">{t('my jobs')}</h1>
+        <div className="flex space-x-2 mb-6">
+          <button
+            onClick={() => setShowPastJobs(false)}
+            className={`flex-1 py-2 rounded-lg font-semibold text-sm transition ${!showPastJobs ? 'bg-purple-600 text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            Trabajos Activos ({activeJobs.length})
+          </button>
+          <button
+            onClick={() => setShowPastJobs(true)}
+            className={`flex-1 py-2 rounded-lg font-semibold text-sm transition ${showPastJobs ? 'bg-purple-600 text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            Historial
+          </button>
+        </div>
         <div className="space-y-6">
           {sortedJobs.length > 0 ? sortedJobs.map(job => {
             const invoice = invoiceMap.get(job.id);
@@ -64,6 +85,16 @@ const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, work
                       t={t} 
                     />
                   </div>
+                  {showPastJobs && pastJobs.length > pastJobsCount && (
+                    <div className="text-center pt-2">
+                      <button
+                        onClick={() => setPastJobsCount(c => c + 5)}
+                        className="text-sm font-semibold text-purple-600 hover:underline"
+                      >
+                        Cargar más trabajos pasados
+                      </button>
+                    </div>
+                  )}
                   
                   {job.workerId && (
                     <div className="mt-6 border-t border-slate-100 pt-4">

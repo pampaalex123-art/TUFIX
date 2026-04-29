@@ -87,7 +87,7 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
   const { showToast } = useToast();
   const [formData, setFormData] = useState<Worker>({
     ...worker,
-    avgJobCost: worker.avgJobCost || { amount: 0, currency: 'USD' },
+    avgJobCost: worker.avgJobCost || { amount: 0, currency: worker.country === 'bolivia' ? 'BOB' : worker.country === 'argentina' ? 'ARS' : 'USD' },
     paymentMethods: worker.paymentMethods || {},
     regions: worker.regions || [],
     jobTypes: worker.jobTypes || [],
@@ -321,8 +321,36 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
                     <textarea name="bio" id="bio" rows={4} value={formData.bio} onChange={handleChange} className={inputStyles}></textarea>
                 </div>
                  <div className="md:col-span-2">
-                    <label htmlFor="regions" className="block text-sm font-medium text-slate-600">{t('service areas')}</label>
-                    <input type="text" id="regions" value={newRegion} onChange={(e) => setNewRegion(e.target.value)} onKeyDown={handleAddRegion} placeholder={t('type region enter')} className={inputStyles} />
+                    <label className="block text-sm font-medium text-slate-600 mb-1">Área de Servicio</label>
+                    <p className="text-xs text-slate-400 mb-2">Elige las ciudades y barrios donde ofreces tus servicios. Los clientes te filtrarán por esto.</p>
+                    <div className="flex gap-2 mb-2">
+                      <select
+                        value=""
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val && !formData.regions.includes(val)) {
+                            setFormData(prev => ({ ...prev, regions: [...prev.regions, val] }));
+                          }
+                        }}
+                        className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="">+ Agregar ciudad / localidad</option>
+                        <optgroup label="🇧🇴 Bolivia">
+                          {['La Paz','El Alto','Cochabamba','Santa Cruz de la Sierra','Oruro','Potosí','Sucre','Tarija','Trinidad','Cobija','Sacaba','Montero','Quillacollo','Riberalta','Yacuiba','Warnes','Colcapirhua','Viacha','Camiri','Villazón','Bermejo','Guayaramerín','Tiquipaya','Punata','Huanuni'].map(c => <option key={c}>{c}</option>)}
+                        </optgroup>
+                        <optgroup label="🇦🇷 Argentina">
+                          {['Buenos Aires','Córdoba','Rosario','Mendoza','La Plata','Tucumán','Mar del Plata','Salta','Santa Fe','San Juan','Corrientes','Posadas','Neuquén','Bahía Blanca','Paraná','San Luis','Río Cuarto','Quilmes','Lanús','Lomas de Zamora','Moreno','Tigre','San Isidro','La Matanza','Pilar','Berazategui'].map(c => <option key={c}>{c}</option>)}
+                        </optgroup>
+                      </select>
+                      <input
+                        type="text"
+                        value={newRegion}
+                        onChange={e => setNewRegion(e.target.value)}
+                        onKeyDown={handleAddRegion}
+                        placeholder="O escribe un barrio..."
+                        className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                      />
+                    </div>
                     <div className="flex flex-wrap gap-2 mt-2">
                         {formData.regions.map(region => (<span key={region} className="flex items-center bg-purple-100 text-purple-800 text-sm font-medium px-3 py-1 rounded-full">{region}<button type="button" onClick={() => handleRemoveRegion(region)} className="ml-2" aria-label={t('remove region', { region })}>&times;</button></span>))}
                     </div>
@@ -337,6 +365,50 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
                     )}
                 </div>
             </div>
+        </div>
+
+        {/* Certificates & Degrees */}
+        <div className="pt-8 border-t border-slate-200">
+          <h2 className="text-xl font-bold text-slate-900 mb-4">Títulos y Certificados</h2>
+          <p className="text-sm text-slate-500 mb-4">Sube tus títulos, diplomas o certificados de formación. Estos se mostrarán en tu perfil público y aumentarán la confianza de los clientes.</p>
+          <div className="space-y-3">
+            {(formData as any).certificates?.map((url: string, i: number) => (
+              <div key={i} className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg p-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-green-600 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-green-700 font-medium flex-1 truncate">Certificado {i + 1}</a>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, certificates: (prev as any).certificates?.filter((_: any, idx: number) => idx !== i) }))}
+                  className="text-red-500 hover:text-red-700 text-xs"
+                >
+                  Eliminar
+                </button>
+              </div>
+            ))}
+            <label className="flex items-center gap-2 cursor-pointer w-full border-2 border-dashed border-slate-300 hover:border-purple-400 rounded-lg p-4 transition">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+              <span className="text-sm text-slate-500">Subir certificado (JPG, PNG o PDF)</span>
+              <input
+                type="file"
+                accept="image/*,application/pdf"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  // Convert to base64 data URL for local preview (replace with Firebase Storage upload in production)
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const url = ev.target?.result as string;
+                    setFormData(prev => ({
+                      ...prev,
+                      certificates: [...((prev as any).certificates || []), url]
+                    }));
+                  };
+                  reader.readAsDataURL(file);
+                }}
+              />
+            </label>
+          </div>
         </div>
 
         {/* Weekly Availability */}

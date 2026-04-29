@@ -33,9 +33,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Check if requester is admin
     const adminEmails = [
-      'admin@tufix.com',
-      'pampa.alex123@gmail.com',
-      'admin@admin'
+      'alejandro.finochietti@yahoo.com.ar',
     ];
     const isAdmin = decodedToken.admin === true || adminEmails.includes(decodedToken.email || '');
 

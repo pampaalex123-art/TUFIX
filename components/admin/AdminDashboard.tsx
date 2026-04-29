@@ -157,6 +157,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [boliviaBankAccount, setBoliviaBankAccount] = useState(() => localStorage.getItem('tufix_bolivia_account') || '');
+    const [boliviaBankName, setBoliviaBankName] = useState(() => localStorage.getItem('tufix_bolivia_bank') || '');
+    const [boliviaBankHolder, setBoliviaBankHolder] = useState(() => localStorage.getItem('tufix_bolivia_holder') || '');
+    const [boliviaBankSaved, setBoliviaBankSaved] = useState(false);
+
+  const handleSaveBoliviaBank = () => {
+    localStorage.setItem('tufix_bolivia_account', boliviaBankAccount);
+    localStorage.setItem('tufix_bolivia_bank', boliviaBankName);
+    localStorage.setItem('tufix_bolivia_holder', boliviaBankHolder);
+    setBoliviaBankSaved(true);
+    setTimeout(() => setBoliviaBankSaved(false), 3000);
+  };
 
     React.useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -777,6 +789,62 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                         <h3 className="text-lg font-bold text-black">{t('mercado pago holding account')}</h3>
                                         <p className="text-sm text-slate-600 max-w-md">{t('mercado pago holding account desc')}</p>
                                     </div>
+                                    {/* Bolivia Bank Account */}
+                          <div className="border border-slate-200 rounded-xl p-5 mt-4">
+                            <h3 className="font-semibold text-black mb-1">🏦 Cuenta Bancaria Bolivia (BOB)</h3>
+                            <p className="text-sm text-slate-500 mb-4">Los pagos en Bolivia mediante QR o transferencia se acreditarán en esta cuenta. El 10% de comisión quedará retenido aquí.</p>
+                            <div className="space-y-3">
+                              <div>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Número de Cuenta</label>
+                                <input
+                                  type="text"
+                                  value={boliviaBankAccount}
+                                  onChange={e => setBoliviaBankAccount(e.target.value)}
+                                  placeholder="Ej: 1234567890"
+                                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-black focus:ring-2 focus:ring-purple-500"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Banco</label>
+                                <select
+                                  value={boliviaBankName}
+                                  onChange={e => setBoliviaBankName(e.target.value)}
+                                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-black focus:ring-2 focus:ring-purple-500"
+                                >
+                                  <option value="">Seleccionar banco...</option>
+                                  <option>Banco Union</option>
+                                  <option>BNB - Banco Nacional de Bolivia</option>
+                                  <option>Banco Mercantil Santa Cruz</option>
+                                  <option>BISA</option>
+                                  <option>Banco Económico</option>
+                                  <option>Banco Solidario (BancoSol)</option>
+                                  <option>Banco de Crédito de Bolivia</option>
+                                  <option>Banco Los Andes Procredit</option>
+                                  <option>Banco FIE</option>
+                                  <option>Banco Fortaleza</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">Titular de la cuenta</label>
+                                <input
+                                  type="text"
+                                  value={boliviaBankHolder}
+                                  onChange={e => setBoliviaBankHolder(e.target.value)}
+                                  placeholder="Nombre completo del titular"
+                                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-black focus:ring-2 focus:ring-purple-500"
+                                />
+                              </div>
+                              <button
+                                onClick={handleSaveBoliviaBank}
+                                className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 transition"
+                              >
+                                Guardar Cuenta Bolivia
+                              </button>
+                              {boliviaBankSaved && (
+                                <p className="text-sm text-green-600 font-medium text-center">✅ Cuenta guardada correctamente</p>
+                              )}
+                            </div>
+                          </div>
                                     <button 
                                         onClick={handleLinkHoldingAccount}
                                         className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition flex items-center justify-center space-x-2 shadow-md"

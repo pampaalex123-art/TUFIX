@@ -126,28 +126,28 @@ const EarningsScreen: React.FC<EarningsScreenProps> = ({ worker, jobRequests, on
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <StatCard title={t('total_earnings_all_time')} value={`$${stats.totalEarnings.toFixed(2)}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v.01" /></svg>} />
-        <StatCard title={t('jobs_completed_all_time')} value={stats.jobsCompleted.toString()} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>} />
-        <StatCard title={t('average_job_value')} value={`$${stats.avgJobValue.toFixed(2)}`} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>} />
+        <StatCard title={t('total earnings all time')} value={`${worker.country === 'bolivia' ? 'Bs.' : worker.country === 'argentina' ? 'AR$' : '$'}${stats.totalEarnings.toFixed(2)}`} />
+        <StatCard title={t('jobs completed all time')} value={stats.jobsCompleted.toString()} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>} />
+        <StatCard title={t('average job value')} value={`${worker.country === 'bolivia' ? 'Bs.' : worker.country === 'argentina' ? 'AR$' : '$'}${stats.avgJobValue.toFixed(2)}`} />
       </div>
 
       <div className="bg-white p-6 rounded-xl shadow-lg mb-8">
-        <h2 className="text-xl font-bold text-black mb-4">{t('period_earnings', { period: t(timePeriod.toLowerCase()) })}</h2>
+        <h2 className="text-xl font-bold text-black mb-4">{t('period earnings', { period: t(timePeriod.toLowerCase()) })}</h2>
         <div style={{ height: '350px' }}>
           <EarningsChart data={chartData} t={t} />
         </div>
       </div>
       
       <div className="bg-white rounded-xl shadow-lg">
-        <h2 className="text-xl font-bold text-black p-6 border-b border-slate-200">{t('job_history')}</h2>
+        <h2 className="text-xl font-bold text-black p-6 border-b border-slate-200">{t('job history')}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left text-black">
             <thead className="text-xs text-black uppercase bg-slate-50">
               <tr>
                 <th scope="col" className="px-6 py-3">{t('client')}</th>
                 <th scope="col" className="px-6 py-3">{t('service')}</th>
-                <th scope="col" className="px-6 py-3">{t('date_completed')}</th>
-                <th scope="col" className="px-6 py-3 text-right">{t('amount_earned')}</th>
+                <th scope="col" className="px-6 py-3">{t('date completed')}</th>
+                <th scope="col" className="px-6 py-3 text-right">{t('amount earned')}</th>
               </tr>
             </thead>
             <tbody>
@@ -156,7 +156,7 @@ const EarningsScreen: React.FC<EarningsScreenProps> = ({ worker, jobRequests, on
                   <td className="px-6 py-4 font-medium text-black whitespace-nowrap">{job.user.name}</td>
                   <td className="px-6 py-4">{t(job.service)}</td>
                   <td className="px-6 py-4">{formatDate(job.date)}</td>
-                  <td className="px-6 py-4 text-right font-semibold text-green-600">${job.finalPrice!.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-right font-semibold text-green-600">{worker.country === 'bolivia' ? 'Bs.' : worker.country === 'argentina' ? 'AR$' : '$'}{job.finalPrice!.toFixed(2)}</td>
                 </tr>
               )) : (
                 <tr>

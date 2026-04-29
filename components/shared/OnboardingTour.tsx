@@ -12,8 +12,10 @@ interface OnboardingTourProps {
 const OnboardingTour: React.FC<OnboardingTourProps> = ({ currentUser, userType, onComplete }) => {
   const [run, setRun] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [neverShowAgain, setNeverShowAgain] = useState(false);
 
   useEffect(() => {
+    if (localStorage.getItem('tufix_onboarding_skip') === 'true') return;
     if (currentUser && currentUser.has_completed_onboarding === undefined) {
       setRun(true);
     } else if (currentUser && currentUser.has_completed_onboarding === false) {
@@ -23,6 +25,9 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ currentUser, userType, 
 
   const handleComplete = () => {
     setRun(false);
+    if (neverShowAgain) {
+      localStorage.setItem('tufix_onboarding_skip', 'true');
+    }
     onComplete();
   };
 
@@ -128,12 +133,23 @@ const OnboardingTour: React.FC<OnboardingTourProps> = ({ currentUser, userType, 
               transition={{ delay: 0.4, duration: 0.3 }}
               className="w-full flex items-center justify-between mt-auto"
             >
-              <button
-                onClick={handleComplete}
-                className="text-slate-500 hover:text-slate-800 font-semibold text-sm transition-colors px-2 py-1"
-              >
-                Omitir
-              </button>
+              <div className="flex flex-col items-start gap-1">
+                <button
+                  onClick={handleComplete}
+                  className="text-slate-500 hover:text-slate-800 font-semibold text-sm transition-colors px-2 py-1"
+                >
+                  Omitir
+                </button>
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs text-slate-400 hover:text-slate-600 px-2">
+                  <input
+                    type="checkbox"
+                    checked={neverShowAgain}
+                    onChange={e => setNeverShowAgain(e.target.checked)}
+                    className="w-3.5 h-3.5 rounded accent-purple-600"
+                  />
+                  No mostrar de nuevo
+                </label>
+              </div>
               
               <div className="flex items-center space-x-3">
                 {currentStep > 0 && (

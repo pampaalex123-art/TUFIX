@@ -94,6 +94,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useLocalStorage<User | Worker | null>('currentUser_v5', null);
   const [userType, setUserType] = useLocalStorage<UserType | null>('userType_v5', null);
   const [view, setView] = useState<View>({ screen: 'AUTH' });
+  const [pendingAdminLoginData, setPendingAdminLoginData] = useState<{ uid: string; email: string; password: string } | null>(null);
 
   useEffect(() => {
     // Handle Mercado Pago confirmation redirect
@@ -200,9 +201,9 @@ const App: React.FC = () => {
 
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
 
-  const adminUser = users.find(u => u.userType === 'admin' || u.email === 'admin@tufix.com' || u.email === 'pampa.alex123@gmail.com');
-  const currentAdminId = (currentUser?.email === 'pampa.alex123@gmail.com' || currentUser?.email === 'admin@tufix.com' || currentUser?.userType === 'admin' ? currentUser.id : null) || adminUser?.id || ADMIN_ID;
-
+  const adminUser = users.find(u => u.userType === 'admin' || u.email === 'alejandro.finochietti@yahoo.com.ar');
+  const currentAdminId = (currentUser?.email === 'alejandro.finochietti@yahoo.com.ar' || currentUser?.userType === 'admin' ? currentUser.id : null) || adminUser?.id || ADMIN_ID;
+  
   const unreadNotificationsCount = currentUser 
     ? notifications.filter(n => n.userId === currentUser.id && !n.isRead).length 
     : 0;
@@ -327,57 +328,10 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogin = async (type: UserType, formData: any): Promise<string | null> => {
-    if (type === 'admin' || (type === 'user' && formData.email === 'admin@admin' && formData.password === 'admin')) {
-      if (formData.email !== 'admin@admin') {
-          return 'Invalid admin credentials.';
-      }
-      if (formData.email === 'admin@admin' && formData.password === 'admin') {
-        let adminUid = ADMIN_ID;
-        try {
-          const cred = await signInWithEmailAndPassword(auth, 'admin@tufix.com', 'admin123');
-          adminUid = cred.user.uid;
-        } catch (e: any) {
-          try {
-            const cred = await createUserWithEmailAndPassword(auth, 'admin@tufix.com', 'admin123');
-            adminUid = cred.user.uid;
-          } catch (err) {
-            console.error("Failed to create admin user", err);
-          }
-        }
-        const adminUser: User = {
-          id: adminUid,
-          name: 'Admin User',
-          email: 'admin@admin',
-          password: 'admin',
-          location: 'System HQ',
-          avatarUrl: 'https://picsum.photos/seed/admin/200',
-          signupDate: new Date().toISOString(),
-          lastLoginDate: new Date().toISOString(),
-          rating: 0,
-          reviews: [],
-          idNumber: '000-00-0000',
-          phoneNumber: { code: '+1', number: '555-555-5555' },
-          userType: 'admin',
-        };
-        
-        // Ensure admin user exists in users collection so rules pass
-        try {
-          const adminRef = doc(db, 'users', adminUid);
-          await setDoc(adminRef, adminUser, { merge: true });
-        } catch (err) {
-          console.error('Failed to save admin user to Firestore:', err);
-        }
-
-        if (!users.find(u => u.id === adminUid)) {
-          setUsers(prev => [...prev, adminUser]);
-        }
-        setCurrentUser(adminUser);
-        setUserType('admin');
-        return null;
-      } else {
-        return 'Incorrect admin password.';
-      }
+const handleLogin = async (type: UserType, formData: any): Promise<string | null> => {
+    // Block the old admin@admin login entirely
+    if (type === 'admin') {
+      return 'Admin login is no longer available from this panel. Please log in as a regular user with your email.';
     }
 
     try {
@@ -389,7 +343,7 @@ const App: React.FC = () => {
         let user = users.find(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase());
         if (!user) {
           // Recreate user if missing from local storage but exists in Supabase
-          const isAdminEmail = (formData.email || '').toLowerCase() === 'pampa.alex123@gmail.com' || (formData.email || '').toLowerCase() === 'admin@tufix.com';
+          const isAdminEmail = (formData.email || '').toLowerCase() === 'alejandro.finochietti@yahoo.com.ar';
           user = {
             id: data.user?.uid || `user-${Date.now()}`,
             name: (formData.email || '').split('@')[0], // Fallback name
@@ -410,6 +364,11 @@ const App: React.FC = () => {
             if (prev.find(u => u.id === user!.id)) return prev;
             return [...prev, user!];
           });
+        }
+        // If this is the admin email, show a dialog to choose Admin or User mode
+        if (isAdminEmail) {
+          setPendingAdminLoginData({ uid: user.id, email: formData.email, password: formData.password });
+          return null; // Don't set current user yet — wait for dialog choice
         }
         setCurrentUser(user);
         setUserType(user.userType as UserType);
@@ -481,7 +440,7 @@ const App: React.FC = () => {
         if (users.some(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase())) {
           return 'An account with this email already exists. Please log in.';
         }
-        const isAdminEmail = (formData.email || '').toLowerCase() === 'pampa.alex123@gmail.com' || (formData.email || '').toLowerCase() === 'admin@tufix.com';
+        const isAdminEmail = (formData.email || '').toLowerCase() === 'alejandro.finochietti@yahoo.com.ar';
         const newUser: User = {
           id: data.user?.uid || `user-${Date.now()}`,
           name: formData.name,
@@ -1520,7 +1479,67 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (view.screen) {
       case 'AUTH':
-        return <AuthScreen onLogin={handleLogin} onSignUp={handleSignUp} onForgotPassword={handleForgotPassword} t={t} termsContent={termsContent} />;
+        if (pendingAdminLoginData) {
+          return (
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
+                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold text-black mb-2">Bienvenido, Alejandro</h2>
+                <p className="text-slate-500 mb-6">¿Cómo deseas ingresar?</p>
+                <div className="space-y-3">
+                  <button
+                    onClick={async () => {
+                      const user = users.find(u => u.id === pendingAdminLoginData.uid) || {
+                        id: pendingAdminLoginData.uid,
+                        name: 'Alejandro',
+                        email: pendingAdminLoginData.email,
+                        password: pendingAdminLoginData.password,
+                        location: 'Admin HQ',
+                        avatarUrl: `https://picsum.photos/seed/${pendingAdminLoginData.email}/200`,
+                        signupDate: new Date().toISOString(),
+                        lastLoginDate: new Date().toISOString(),
+                        rating: 0,
+                        reviews: [],
+                        idNumber: '000-00-0000',
+                        phoneNumber: { code: '+54', number: '000000000' },
+                        userType: 'admin' as const,
+                      };
+                      const adminUser = { ...user, userType: 'admin' as const };
+                      try {
+                        const adminRef = doc(db, 'users', adminUser.id);
+                        await setDoc(adminRef, adminUser, { merge: true });
+                      } catch (err) { console.error(err); }
+                      setCurrentUser(adminUser);
+                      setUserType('admin');
+                      setPendingAdminLoginData(null);
+                    }}
+                    className="w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-purple-700 transition"
+                  >
+                    🛡️ Entrar como Administrador
+                  </button>
+                  <button
+                    onClick={() => {
+                      const user = users.find(u => u.id === pendingAdminLoginData.uid);
+                      if (user) {
+                        setCurrentUser({ ...user, userType: 'user' });
+                        setUserType('user');
+                      }
+                      setPendingAdminLoginData(null);
+                    }}
+                    className="w-full bg-slate-100 text-black font-bold py-3 px-4 rounded-xl hover:bg-slate-200 transition"
+                  >
+                    👤 Entrar como Usuario Regular
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return <AuthScreen onLogin={handleLogin} onSignUp={handleSignUp} onForgotPassword={handleForgotPassword} t={t} termsContent={termsContent} />;;
       case 'PASSWORD_RECOVERY':
         return <PasswordRecoveryScreen
             error={recoveryError}

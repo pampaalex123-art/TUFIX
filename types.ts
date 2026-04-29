@@ -148,6 +148,7 @@ export interface Worker {
   fcmToken?: string;
   has_completed_onboarding?: boolean;
   has_completed_menu_onboarding?: boolean;
+  certificates?: string[]; // Array of file URLs
 }
 
 export interface User {

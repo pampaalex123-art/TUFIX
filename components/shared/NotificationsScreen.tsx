@@ -57,6 +57,14 @@ const NotificationIcon: React.FC<{ type: AppNotification['type'] }> = ({ type })
 };
 
 const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ notifications, onNotificationClick, onMarkAllAsRead, t }) => {
+  const [visibleCount, setVisibleCount] = React.useState(4);
+
+  // Sort: newest first
+  const sorted = [...notifications].sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
+  const visible = sorted.slice(0, visibleCount);
+
   return (
     <div className="container mx-auto max-w-2xl space-y-6">
       <div className="flex justify-between items-center bg-white border border-slate-200 p-4 rounded-xl shadow-lg">
@@ -71,13 +79,14 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ notifications
       </div>
 
       <div className="bg-white rounded-xl shadow-lg overflow-hidden">
-        {notifications.length === 0 ? (
+        {sorted.length === 0 ? (
           <div className="p-12 text-center">
             <p className="text-black">{t('no_notifications')}</p>
           </div>
         ) : (
           <ul className="divide-y divide-slate-100">
-            {notifications.map(notification => (
+            <ul className="divide-y divide-slate-100">
+            {visible.map(notification => (
               <li 
                 key={notification.id} 
                 className={`p-4 flex items-start space-x-4 transition duration-150 hover:bg-slate-50 ${!notification.isRead ? 'bg-purple-50' : ''}`}
@@ -101,8 +110,17 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ notifications
               </li>
             ))}
           </ul>
+          {sorted.length > visibleCount && (
+              <div className="p-4 text-center">
+                <button
+                  onClick={() => setVisibleCount(v => v + 5)}
+                  className="text-sm font-semibold text-purple-600 hover:text-purple-800 hover:underline"
+                >
+                  Cargar más notificaciones ({sorted.length - visibleCount} restantes)
+                </button>
+              </div>
+            )}
         )}
-      </div>
     </div>
   );
 };
