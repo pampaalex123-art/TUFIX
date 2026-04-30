@@ -443,8 +443,8 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
           return 'An account with this email already exists. Please log in.';
         }
         const isAdminEmail = (formData.email || '').toLowerCase() === 'alejandro.finochietti@yahoo.com.ar';
+        if (!data.user?.uid) throw new Error('Registration failed: no UID returned');
         const newUser: User = {
-          if (!data.user?.uid) throw new Error('Registration failed: no UID returned');
           id: data.user.uid,
           name: formData.name,
           email: formData.email,
@@ -478,8 +478,9 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         if (workers.some(w => (w.email || '').toLowerCase() === (formData.email || '').toLowerCase())) {
           return 'An account with this email already exists. Please log in.';
         }
+        if (!data.user?.uid) throw new Error('Registration failed: no UID returned');
         const newWorker: Worker = {
-          id: data.user?.uid || `worker-${Date.now()}`,
+          id: data.user.uid,
           name: formData.name,
           email: formData.email,
           password: formData.password,
