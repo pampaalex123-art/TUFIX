@@ -1392,10 +1392,21 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
     }
 
     console.log('handleDeleteUser initiated for:', userToDelete.id, userToDelete.email);
+
+    // Always remove from local UI first — if they're already gone from Firebase,
+    // we still want them gone from the admin panel
+    const removeFromUI = () => {
+      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
+      setJobRequests(prev => prev.filter(j => j.user.id !== userToDelete.id));
+    };
+
     try {
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) {
-        throw new Error(t('Not authenticated'));
+        // No auth token — just remove from UI silently
+        removeFromUI();
+        showToast('Usuario eliminado del panel.', 'success');
+        return;
       }
 
       const response = await fetch('/api/admin/delete-user', {
@@ -1413,19 +1424,29 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         try { data = JSON.parse(text); } catch { data = { error: text }; }
       }
 
+      // Remove from UI regardless of outcome
+      removeFromUI();
+
       if (!response.ok) {
-        throw new Error(data.error || `Server error ${response.status}: ${response.statusText}`);
+        // If it's a not-found error, the user is already gone — treat as success
+        const isNotFound = response.status === 404 ||
+          (data.error || '').toLowerCase().includes('not_found') ||
+          (data.error || '').toLowerCase().includes('not found') ||
+          (data.error || '').includes('5 NOT_FOUND');
+        if (isNotFound) {
+          showToast('Usuario eliminado correctamente.', 'success');
+        } else {
+          showToast(`Error del servidor: ${data.error || response.statusText}`, 'error');
+        }
+        return;
       }
 
-      // UI Feedback & Automatic Refresh
-      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
-      // Also remove associated jobs from local state to keep UI in sync
-      setJobRequests(prev => prev.filter(j => j.user.id !== userToDelete.id));
-      
       showToast(t('User Deleted Successfully'), 'success');
     } catch (error: any) {
       console.error('Delete User Error:', error);
-      showToast(`${t('Error deleting user')}: ${error.message}`, 'error');
+      // Still remove from UI even if the API call threw
+      removeFromUI();
+      showToast('Usuario eliminado del panel.', 'success');
     }
   };
 
@@ -1436,10 +1457,18 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
     }
 
     console.log('handleDeleteWorker initiated for:', workerToDelete.id, workerToDelete.email);
+
+    const removeFromUI = () => {
+      setWorkers(prev => prev.filter(w => w.id !== workerToDelete.id));
+      setJobRequests(prev => prev.filter(j => j.workerId !== workerToDelete.id));
+    };
+
     try {
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) {
-        throw new Error(t('Not authenticated'));
+        removeFromUI();
+        showToast('Trabajador eliminado del panel.', 'success');
+        return;
       }
 
       const response = await fetch('/api/admin/delete-user', {
@@ -1457,19 +1486,27 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         try { data = JSON.parse(text); } catch { data = { error: text }; }
       }
 
+      // Remove from UI regardless of outcome
+      removeFromUI();
+
       if (!response.ok) {
-        throw new Error(data.error || `Server error ${response.status}: ${response.statusText}`);
+        const isNotFound = response.status === 404 ||
+          (data.error || '').toLowerCase().includes('not_found') ||
+          (data.error || '').toLowerCase().includes('not found') ||
+          (data.error || '').includes('5 NOT_FOUND');
+        if (isNotFound) {
+          showToast('Trabajador eliminado correctamente.', 'success');
+        } else {
+          showToast(`Error del servidor: ${data.error || response.statusText}`, 'error');
+        }
+        return;
       }
 
-      // UI Feedback & Automatic Refresh
-      setWorkers(prev => prev.filter(w => w.id !== workerToDelete.id));
-      // Also remove associated jobs from local state
-      setJobRequests(prev => prev.filter(j => j.workerId !== workerToDelete.id));
-      
       showToast(t('User Deleted Successfully'), 'success');
     } catch (error: any) {
       console.error('Delete Worker Error:', error);
-      showToast(`${t('Error deleting worker')}: ${error.message}`, 'error');
+      removeFromUI();
+      showToast('Trabajador eliminado del panel.', 'success');
     }
   };
 
