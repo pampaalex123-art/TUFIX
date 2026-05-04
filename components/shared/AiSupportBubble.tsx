@@ -63,25 +63,42 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
               : "¡Hola! Soy tu asistente de IA de TUFIX. Por favor, inicia sesión para que pueda ayudarte con tus trabajos y finanzas. ¿En qué puedo ayudarte hoy?";
             setMessages([{ role: 'model', parts: [{ text: welcomeMessage }] }]);
           }, 2000);
-        } else if (aiResponse.functionCall === 'findWorkers') {
-          const { service, minRating, location, maxPrice } = (aiResponse.functionArgs as any) || {};
-          let filteredWorkers = workers;
-          if (service) filteredWorkers = filteredWorkers.filter(w => w.service === service);
-          if (minRating) filteredWorkers = filteredWorkers.filter(w => w.rating >= minRating);
-          if (location) filteredWorkers = filteredWorkers.filter(w => w.location.toLowerCase().includes(location.toLowerCase()));
-          if (maxPrice) filteredWorkers = filteredWorkers.filter(w => w.avgJobCost.amount <= maxPrice);
+        // AFTER:
+} else if (aiResponse.functionCall === 'findWorkers') {
+  const { service, minRating, location, maxPrice, jobDescription } = (aiResponse.functionArgs as any) || {};
+  let filteredWorkers = [...workers];
 
-          const resultText = filteredWorkers.length > 0 
-            ? `He encontrado ${filteredWorkers.length} trabajadores que coinciden con tu búsqueda:\n` + 
-              filteredWorkers.slice(0, 3).map(w => `- **${w.name}**: ${t(w.service)} en ${w.location}, Calificación: ${w.rating}, Precio aprox: ${w.avgJobCost.amount} ${w.avgJobCost.currency}`).join('\n')
-            : "No encontré trabajadores que coincidan exactamente con esos criterios.";
+  // Apply filters
+  if (service) filteredWorkers = filteredWorkers.filter(w => w.service === service);
+  if (minRating) filteredWorkers = filteredWorkers.filter(w => w.rating >= minRating);
+  if (location) filteredWorkers = filteredWorkers.filter(w =>
+    w.location.toLowerCase().includes(location.toLowerCase()) ||
+    w.regions?.some((r: string) => r.toLowerCase().includes(location.toLowerCase()))
+  );
+  if (maxPrice) filteredWorkers = filteredWorkers.filter(w => w.avgJobCost.amount <= maxPrice);
 
-          const functionResponseMessage: Content = { 
-            role: 'model', 
-            parts: [{ text: resultText }] 
-          };
-          setMessages(prev => [...prev, functionResponseMessage]);
-        }
+  // Sort by rating descending and take top 5
+  const top5 = filteredWorkers
+    .sort((a, b) => b.rating - a.rating)
+    .slice(0, 5);
+
+  const resultText = top5.length > 0
+    ? `Aquí están los **mejores ${top5.length} trabajadores** que encontré para ti:\n\n` +
+      top5.map((w, i) => 
+        `**${i + 1}. ${w.name}** ⭐ ${w.rating}\n` +
+        `   📍 ${w.location}\n` +
+        `   🔧 ${w.jobTypes?.join(', ') || w.service}\n` +
+        `   💰 Precio aprox: ${w.avgJobCost.amount} ${w.avgJobCost.currency}\n` +
+        `   📝 ${w.bio}`
+      ).join('\n\n')
+    : "No encontré trabajadores que coincidan con esos criterios. ¿Quieres que amplíe la búsqueda o cambies algún filtro?";
+
+  const functionResponseMessage: Content = { 
+    role: 'model', 
+    parts: [{ text: resultText }] 
+  };
+  setMessages(prev => [...prev, functionResponseMessage]);
+}
       } else {
         const modelMessage: Content = { role: 'model', parts: [{ text: aiResponse.text }] };
         setMessages(prev => [...prev, modelMessage]);

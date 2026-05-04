@@ -125,11 +125,12 @@ export const generateMockWorkers = async (count: number, service: ServiceCategor
   }
 };
 
+// AFTER:
 const findWorkersFunctionDeclaration: FunctionDeclaration = {
   name: 'findWorkers',
   parameters: {
     type: Type.OBJECT,
-    description: 'Busca trabajadores en la plataforma TUFIX basados en criterios específicos como servicio, calificación mínima o ubicación.',
+    description: 'Busca y recomienda los mejores trabajadores en la plataforma TUFIX basados en la descripción natural del usuario.',
     properties: {
       service: { 
         type: Type.STRING, 
@@ -137,8 +138,9 @@ const findWorkersFunctionDeclaration: FunctionDeclaration = {
         enum: Object.values(ServiceCategory)
       },
       minRating: { type: Type.NUMBER, description: 'Calificación mínima de estrellas (0-5).' },
-      location: { type: Type.STRING, description: 'Ciudad o estado para filtrar.' },
-      maxPrice: { type: Type.NUMBER, description: 'Precio máximo promedio por trabajo.' }
+      location: { type: Type.STRING, description: 'Ciudad, zona o barrio para filtrar.' },
+      maxPrice: { type: Type.NUMBER, description: 'Precio máximo promedio por trabajo.' },
+      jobDescription: { type: Type.STRING, description: 'Descripción libre del trabajo que necesita el usuario, para encontrar el match más adecuado.' },
     },
   },
 };
@@ -240,7 +242,8 @@ REGLAS CRÍTICAS:
 7. Mantén un tono profesional, servicial y cercano.
 
 TAREAS COMPLEJAS - GUÍA DE RESPUESTA:
-- "Encontrar a la persona adecuada": Pregunta detalles si faltan (servicio, ubicación, presupuesto). Luego usa 'findWorkers'.
+- // AFTER:
+- "Encontrar a la persona adecuada": Cuando el usuario describa lo que necesita (ej. "necesito alguien que arregle una canilla en Palermo"), extrae el servicio, zona y presupuesto de su descripción y usa 'findWorkers' directamente. Si faltan datos clave, haz UNA sola pregunta para obtenerlos. Siempre devuelve los top 5 ordenados por calificación..
 - "Gasto/Ingreso en un periodo": Revisa las fechas en el JSON de transacciones. Si no hay transacciones en ese periodo, indícalo claramente.
 - "Clientes más valorados": Cuenta cuántos trabajos has hecho con cada cliente (clientId/clientName) y suma los montos. Menciona nombres específicos si están disponibles.
 - "Resumen de actividad": Da un resumen de trabajos completados, pendientes y el balance financiero total basado en los datos.
