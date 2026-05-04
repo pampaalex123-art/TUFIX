@@ -45,6 +45,11 @@ import OnboardingTour from './components/shared/OnboardingTour';
 import MenuOnboardingTour from './components/shared/MenuOnboardingTour';
 import { addWorkerToSpreadsheet, updateSpreadsheetVerificationStatus } from './services/spreadsheetService';
 import { ToastProvider, useToast } from './components/common/Toast';
+import UserIdVerificationModal from './components/user/UserIdVerificationModal';
+import ApprovalPopup from './components/user/ApprovalPopup';
+import CompanyDashboard from './components/company/CompanyDashboard';
+import CompanyRegister from './components/company/CompanyRegister';
+
 
 const DUMMY_USERS: User[] = [];
 
@@ -86,7 +91,9 @@ type View =
   | { screen: 'VERIFICATION_PENDING' }
   | { screen: 'NOTIFICATIONS' }
   | { screen: 'ADMIN_WORKER_VERIFICATION'; worker: Worker }
-  | { screen: 'CONFIRMATION' };
+  | { screen: 'CONFIRMATION' }
+  | { screen: 'COMPANY_REGISTER' }
+  | { screen: 'COMPANY_DASHBOARD' };
 
 const App: React.FC = () => {
   const { showToast } = useToast();
@@ -95,6 +102,8 @@ const App: React.FC = () => {
   const [userType, setUserType] = useLocalStorage<UserType | null>('userType_v5', null);
   const [view, setView] = useState<View>({ screen: 'AUTH' });
   const [pendingAdminLoginData, setPendingAdminLoginData] = useState<{ uid: string; email: string; password: string } | null>(null);
+  const [showUserIdVerification, setShowUserIdVerification] = useState(false);
+  const [showApprovalPopup, setShowApprovalPopup] = useState(false);
 
   useEffect(() => {
     // Handle Mercado Pago confirmation redirect
@@ -343,6 +352,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
 
       if (type === 'user') {
         let user = users.find(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase());
+        const isNewRegistration = !user;
         if (!user) {
           user = {
             id: uid,
@@ -357,7 +367,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
             reviews: [],
             idNumber: '000-00-0000',
             phoneNumber: { code: '+1', number: '555-555-5555' },
-            verificationStatus: 'approved',
+            verificationStatus: isAlejandro ? 'approved' : 'pending',
             userType: isAlejandro ? 'admin' : 'user',
           };
           setUsers(prev => {
@@ -374,6 +384,9 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
 
         setCurrentUser(user);
         setUserType(user.userType as UserType);
+        if (isNewRegistration) {
+          setTimeout(() => setShowUserIdVerification(true), 1500);
+        }
         return null;
 
       } else if (type === 'worker') {
@@ -599,6 +612,45 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
     return true;
   };
 
+  const handleUserIdVerificationSubmit = (data: { idFront: string; idBack: string; selfie: string }) => {
+    if (!currentUser) return;
+    setUsers(prev => prev.map(u => {
+      if (u.id === currentUser.id) {
+        return { ...u, idPhotoFront: data.idFront, idPhotoBack: data.idBack, selfiePhotoUrl: data.selfie, verificationStatus: 'pending' as const };
+      }
+      return u;
+    }));
+    setNotifications(prev => [...prev, {
+      id: `notif-user-verify-${Date.now()}`,
+      userId: 'admin-1',
+      type: 'new_registration' as const,
+      message: `New user ${currentUser.name} requires identity verification.`,
+      isRead: false,
+      timestamp: new Date().toISOString(),
+      relatedEntityId: currentUser.id,
+    }]);
+    setShowUserIdVerification(false);
+  };
+
+  const handleApproveUser = (userId: string) => {
+    setUsers(prev => prev.map(u =>
+      u.id === userId ? { ...u, verificationStatus: 'approved' as const } : u
+    ));
+    setNotifications(prev => [...prev, {
+      id: `notif-user-approved-${Date.now()}`,
+      userId: userId,
+      type: 'status_update' as const,
+      message: '¡Tu cuenta TUFIX fue aprobada! Ya podés comenzar a buscar ayuda.',
+      isRead: false,
+      timestamp: new Date().toISOString(),
+      relatedEntityId: userId,
+    }]);
+    showToast('Usuario aprobado exitosamente', 'success');
+    if (currentUser?.id === userId) {
+      setShowApprovalPopup(true);
+    }
+    setView({ screen: 'ADMIN_DASHBOARD' });
+  };
   const handleVerificationSubmit = (workerId: string, idPhotoUrl: string, selfiePhotoUrl: string) => {
     let workerName = '';
     setWorkers(prev => prev.map(w => {
@@ -1760,6 +1812,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
             return { ...u, reviews: reviewsFromWorkers };
         });
         const pendingWorkers = workers.filter(w => w.verificationStatus === 'pending');
+        const pendingUsers = users.filter(u => (u as any).verificationStatus === 'pending');
         return <AdminDashboard 
             users={usersWithUpdatedData} 
             workers={workers} 
@@ -1770,6 +1823,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
             messages={messages}
             invoices={invoices}
             pendingVerifications={pendingWorkers}
+            pendingUsers={pendingUsers}
             onSelectUser={(user) => setView({ screen: 'ADMIN_CLIENT_PROFILE', user })}
             onDeleteUser={handleDeleteUser}
             onSelectWorker={(worker) => setView({ screen: 'ADMIN_WORKER_PROFILE', worker })}
@@ -1791,6 +1845,11 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
             invoices={invoices}
             onViewConversation={handleAdminViewConversation}
             onBack={() => setView({ screen: 'ADMIN_DASHBOARD' })}
+            onApproveUser={handleApproveUser}
+            onDeclineUser={(userId) => {
+              setUsers(prev => prev.map(u => u.id === userId ? { ...u, verificationStatus: 'declined' as const } : u));
+              setView({ screen: 'ADMIN_DASHBOARD' });
+            }}
             t={t}
         />
       case 'ADMIN_WORKER_PROFILE':
@@ -2008,6 +2067,19 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
           workers={workers} 
           users={users}
           simple={true}
+        />
+      )}
+      {showUserIdVerification && currentUser && (
+        <UserIdVerificationModal
+          onSubmit={handleUserIdVerificationSubmit}
+          onClose={() => setShowUserIdVerification(false)}
+          t={t}
+        />
+      )}
+      {showApprovalPopup && (
+        <ApprovalPopup
+          onStart={() => setShowApprovalPopup(false)}
+          t={t}
         />
       )}
     </div>

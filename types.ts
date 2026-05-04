@@ -78,6 +78,7 @@ export enum ServiceCategory {
   FIREFIGHTER = 'Firefighter',
   SECURITY_GUARD = 'Security Guard',
   PHONE_REPAIR = 'Phone Repair',
+  DJ = 'DJ'
 }
 
 export type DayOfWeek = 'Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday';
@@ -249,7 +250,7 @@ export interface AppNotification {
   relatedEntityId: string; // e.g., jobId or conversationId
 }
 
-export type UserType = 'user' | 'worker' | 'admin';
+export type UserType = 'user' | 'worker' | 'admin' | 'company';
 
 export interface Transaction {
   id: string;

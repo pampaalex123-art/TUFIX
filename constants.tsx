@@ -155,6 +155,7 @@ export const SERVICE_CATEGORIES = [
   { name: ServiceCategory.FIREFIGHTER, icon: <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h7.5" /> },
   { name: ServiceCategory.SECURITY_GUARD, icon: <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /> },
   { name: ServiceCategory.PHONE_REPAIR, icon: <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H10.5zM9 5.25h6M9 18.75h6" /> },
+  { name: ServiceCategory.DJ, icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9 9l10.5-3m0 6.553v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 11-.99-3.467l2.31-.66a2.25 2.25 0 001.632-2.163zm0 0V2.25L9 5.25v10.303m0 0v3.75a2.25 2.25 0 01-1.632 2.163l-1.32.377a1.803 1.803 0 01-.99-3.467l2.31-.66A2.25 2.25 0 009 15.553z" /> },
 ];
 
 export const SUPER_CATEGORIES = [
@@ -205,6 +206,7 @@ export const SUPER_CATEGORIES = [
             ServiceCategory.BARBER,
             ServiceCategory.MAIL_CARRIER,
             ServiceCategory.LOCKSMITH,
+            ServiceCategory.DJ,
         ]
     },
     {
@@ -355,6 +357,7 @@ export const JOB_TYPE_OPTIONS: Record<ServiceCategory, string[]> = {
   [ServiceCategory.FIREFIGHTER]: ['Fire Safety Inspection', 'First Aid Training', 'Event Standby'],
   [ServiceCategory.SECURITY_GUARD]: ['Event Security', 'Personal Bodyguard', 'Property Surveillance', 'Mobile Patrol'],
   [ServiceCategory.PHONE_REPAIR]: ['Screen Replacement', 'Battery Replacement', 'Charging Port Repair', 'Water Damage Repair', 'Software Troubleshooting', 'Data Recovery'],
+  [ServiceCategory.DJ]: ['Club Events', 'Private Parties', 'Weddings', 'Small Events', 'Corporate Events', 'Festival Sets', 'Live Mixing', 'Themed Parties'],
 };
 
 export const CURRENCIES = [

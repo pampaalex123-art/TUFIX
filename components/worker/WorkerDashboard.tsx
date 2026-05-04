@@ -31,14 +31,12 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ worker, jobRequests, 
   const [showPastJobs, setShowPastJobs] = React.useState(false);
   const [pastJobsCount, setPastJobsCount] = React.useState(5);
 
-  const activeStatuses = ['pending', 'accepted', 'in_progress', 'invoice_sent', 'paid', 'awaiting_confirmation'];
-
   const allSorted = [...jobRequests].sort(
     (a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime()
   );
 
-  const activeJobs = allSorted.filter(j => activeStatuses.includes(j.status));
-  const pastJobs = allSorted.filter(j => !activeStatuses.includes(j.status));
+  const activeJobs = allSorted.filter(j => j.status !== 'completed' && j.status !== 'cancelled' && j.status !== 'canceled');
+  const pastJobs = allSorted.filter(j => j.status === 'completed' || j.status === 'cancelled' || j.status === 'canceled');
 
   const jobsToShow = showPastJobs ? pastJobs.slice(0, pastJobsCount) : activeJobs;
   // --- END NEW ---

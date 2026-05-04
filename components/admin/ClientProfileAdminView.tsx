@@ -10,6 +10,8 @@ interface ClientProfileAdminViewProps {
   invoices: Invoice[];
   onBack: () => void;
   onViewConversation: (conversationId: string) => void;
+  onApproveUser?: (userId: string) => void;
+  onDeclineUser?: (userId: string) => void;
   t: (key: string) => string;
 }
 
@@ -28,7 +30,7 @@ const getStatusBadge = (status: JobRequest['status'], t: (key: string) => string
     }
 };
 
-const ClientProfileAdminView: React.FC<ClientProfileAdminViewProps> = ({ user, jobs, workers, messages, invoices, onBack, onViewConversation, t }) => {
+const ClientProfileAdminView: React.FC<ClientProfileAdminViewProps> = ({ user, jobs, workers, messages, invoices, onBack, onViewConversation, onApproveUser, onDeclineUser, t }) => {
 
   const workerMap = new Map<string, Worker>(workers.map(w => [w.id, w]));
   const sortedJobs = [...jobs].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -70,6 +72,58 @@ const ClientProfileAdminView: React.FC<ClientProfileAdminViewProps> = ({ user, j
                     <span className="text-black font-semibold">{user.rating.toFixed(1)}</span>
                     <span className="text-black opacity-60">({user.reviews.length} {t('reviews')})</span>
                   </div>
+                  <div className="mt-3 flex items-center gap-3 flex-wrap">
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+                      (user as any).verificationStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                      (user as any).verificationStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {(user as any).verificationStatus === 'approved' ? '✓ Verificado' :
+                       (user as any).verificationStatus === 'pending' ? '⏳ Pendiente de Verificación' :
+                       '✗ Rechazado'}
+                    </span>
+                    {(user as any).verificationStatus === 'pending' && onApproveUser && (
+                      <button
+                        onClick={() => onApproveUser(user.id)}
+                        className="bg-green-600 text-white text-xs font-bold px-4 py-1.5 rounded-full hover:bg-green-700 transition"
+                      >
+                        ✓ Aprobar Usuario
+                      </button>
+                    )}
+                    {(user as any).verificationStatus === 'pending' && onDeclineUser && (
+                      <button
+                        onClick={() => onDeclineUser(user.id)}
+                        className="bg-red-500 text-white text-xs font-bold px-4 py-1.5 rounded-full hover:bg-red-600 transition"
+                      >
+                        ✗ Rechazar
+                      </button>
+                    )}
+                  </div>
+                  {((user as any).idPhotoFront || (user as any).idPhotoBack || (user as any).selfiePhotoUrl) && (
+                    <div className="mt-4 border-t border-slate-200 pt-4">
+                      <p className="text-xs font-semibold text-slate-500 mb-3">🪪 Documentos de Identidad</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(user as any).idPhotoFront && (
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Frente DNI</p>
+                            <img src={(user as any).idPhotoFront} alt="ID Front" className="w-full rounded-lg border border-slate-200" />
+                          </div>
+                        )}
+                        {(user as any).idPhotoBack && (
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Dorso DNI</p>
+                            <img src={(user as any).idPhotoBack} alt="ID Back" className="w-full rounded-lg border border-slate-200" />
+                          </div>
+                        )}
+                        {(user as any).selfiePhotoUrl && (
+                          <div>
+                            <p className="text-xs text-slate-400 mb-1">Selfie</p>
+                            <img src={(user as any).selfiePhotoUrl} alt="Selfie" className="w-full rounded-lg border border-slate-200" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="text-sm text-black opacity-80 self-start md:self-center">
                     <p><strong>{t('joined_label')}</strong> {formatDate(user.signupDate)}</p>

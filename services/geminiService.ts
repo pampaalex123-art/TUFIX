@@ -252,8 +252,8 @@ DATOS DISPONIBLES:
 Si el usuario pide hablar con un humano, usa 'requestHumanSupport'.
 
 Información de contacto de respaldo:
-- Email: support@tufix.app
-- Teléfono: +1 (555) 123-4567`;
+- Email: alejandro.finochietti@yahoo.com.ar
+- Teléfono: +541160444473 `;
 
   try {
     const ai = getAi();

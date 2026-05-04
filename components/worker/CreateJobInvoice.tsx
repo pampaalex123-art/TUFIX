@@ -13,8 +13,10 @@ interface CreateJobInvoiceProps {
 const CreateJobInvoice: React.FC<CreateJobInvoiceProps> = ({ job, worker, onBack, onSubmit, t }) => {
     const [items, setItems] = useState<InvoiceLineItem[]>([{ description: '', amount: 0 }]);
     const [error, setError] = useState('');
+    const [paymentType, setPaymentType] = useState<'one_time' | 'monthly'>('one_time');
+    const [billingDay, setBillingDay] = useState(new Date().getDate());
     const currency = worker.avgJobCost.currency;
-    const platformFeeRate = 0.10; // 10%
+    const platformFeeRate = 0.10;
 
     const handleItemChange = (index: number, field: keyof InvoiceLineItem, value: string) => {
         const newItems = [...items];
@@ -52,7 +54,7 @@ const CreateJobInvoice: React.FC<CreateJobInvoiceProps> = ({ job, worker, onBack
             setError(t('you must add at least one item to the invoice'));
             return;
         }
-        onSubmit(job.id, { items, subtotal, platformFee, total });
+        onSubmit(job.id, { items, subtotal, platformFee, total, paymentType, billingDay: paymentType === 'monthly' ? billingDay : undefined } as any);
     };
 
     return (
@@ -117,6 +119,45 @@ const CreateJobInvoice: React.FC<CreateJobInvoiceProps> = ({ job, worker, onBack
             </div>
         </div>
         
+        <div className="border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50">
+          <p className="text-sm font-bold text-slate-700">💳 Tipo de Pago</p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setPaymentType('one_time')}
+              className={`p-3 rounded-lg border-2 text-sm font-semibold transition ${paymentType === 'one_time' ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-200 bg-white text-slate-600 hover:border-purple-300'}`}
+            >
+              <div className="text-xl mb-1">💰</div>
+              Pago Único
+              <div className="text-xs font-normal mt-1 opacity-70">Se cobra una sola vez</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentType('monthly')}
+              className={`p-3 rounded-lg border-2 text-sm font-semibold transition ${paymentType === 'monthly' ? 'border-purple-600 bg-purple-50 text-purple-700' : 'border-slate-200 bg-white text-slate-600 hover:border-purple-300'}`}
+            >
+              <div className="text-xl mb-1">🔄</div>
+              Pago Mensual
+              <div className="text-xs font-normal mt-1 opacity-70">Se debita automáticamente</div>
+            </button>
+          </div>
+          {paymentType === 'monthly' && (
+            <div className="mt-2 space-y-2">
+              <label className="block text-xs font-semibold text-slate-600">Día de cobro mensual</label>
+              <select
+                value={billingDay}
+                onChange={e => setBillingDay(Number(e.target.value))}
+                className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+              >
+                {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                  <option key={d} value={d}>Día {d} de cada mes</option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-400">El cliente deberá aprobar el débito. Para Bolivia se enviará un recordatorio con QR ese día.</p>
+            </div>
+          )}
+        </div>
+
         {error && <p className="text-sm text-red-500 text-center">{error}</p>}
         
         <div className="pt-5 flex justify-end space-x-3">

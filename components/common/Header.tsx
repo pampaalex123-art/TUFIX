@@ -52,26 +52,17 @@ const Header: React.FC<HeaderProps> = ({ user, userType, onLogout, notifications
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center">
             <button onClick={() => onNavigate('dashboard')} className="flex-shrink-0 flex items-center space-x-2">
-              <svg className="h-8 w-8" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                      <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stopColor="#FCD34D" /> {/* from-yellow-300 */}
-                          <stop offset="50%" stopColor="#EC4899" /> {/* via-pink-500 */}
-                          <stop offset="100%" stopColor="#6D28D9" /> {/* to-purple-700 */}
-                      </linearGradient>
-                  </defs>
-                  <rect width="24" height="24" rx="5" fill="url(#logoGradient)" />
-                  <text 
-                      x="50%" 
-                      y="50%" 
-                      fill="white" 
-                      textAnchor="middle" 
-                      dominantBaseline="central" 
-                      fontFamily="sans-serif" 
-                      fontSize="12" 
-                      fontWeight="bold">
-                      TF
-                  </text>
+              <svg className="h-8 w-8" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="tfGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#FBBF24"/>
+                    <stop offset="30%" stopColor="#EC4899"/>
+                    <stop offset="70%" stopColor="#DB2777"/>
+                    <stop offset="100%" stopColor="#7C3AED"/>
+                  </linearGradient>
+                </defs>
+                <rect width="100" height="100" rx="22" fill="url(#tfGrad)"/>
+                <text x="50" y="62" fill="white" textAnchor="middle" fontFamily="Arial Black, sans-serif" fontSize="52" fontWeight="900">TF</text>
               </svg>
               <span className="font-bold text-xl text-black">TUFIX</span>
             </button>

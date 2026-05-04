@@ -95,6 +95,10 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newRegion, setNewRegion] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState<'argentina' | 'bolivia' | ''>((formData.country as any) || '');
+  const [selectedCity, setSelectedCity] = useState('');
+  const [newCustomJobType, setNewCustomJobType] = useState('');
+  const [customJobTypes, setCustomJobTypes] = useState<string[]>([]);
 
   // State for the override calendar
   const [calendarDate, setCalendarDate] = useState(new Date());
@@ -301,11 +305,46 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
                                 <label htmlFor={`jobType-${jobType}`} className="ml-2 block text-sm text-slate-800">{t(jobType)}</label>
                             </div>
                         ))}
+                        {customJobTypes.map(jobType => (
+                            <div key={jobType} className="flex items-center">
+                                <input type="checkbox" id={`custom-${jobType}`} value={jobType} checked={formData.jobTypes.includes(jobType)} onChange={(e) => handleJobTypeChange(jobType, e.target.checked)} className="h-4 w-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500" />
+                                <label htmlFor={`custom-${jobType}`} className="ml-2 block text-sm text-slate-800 flex-1">{jobType}</label>
+                                <button type="button" onClick={() => { setCustomJobTypes(prev => prev.filter(j => j !== jobType)); setFormData(prev => ({ ...prev, jobTypes: prev.jobTypes.filter(j => j !== jobType) })); }} className="text-red-400 hover:text-red-600 text-xs ml-1">&times;</button>
+                            </div>
+                        ))}
                     </div>
-                </div>
-                <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-slate-600">{t('location')}</label>
-                    <input type="text" name="location" id="location" value={formData.location} onChange={handleChange} className={inputStyles} />
+                    <div className="flex gap-2 mt-2">
+                        <input
+                            type="text"
+                            value={newCustomJobType}
+                            onChange={e => setNewCustomJobType(e.target.value)}
+                            onKeyDown={e => {
+                                if (e.key === 'Enter' && newCustomJobType.trim()) {
+                                    e.preventDefault();
+                                    if (!customJobTypes.includes(newCustomJobType.trim())) {
+                                        const newType = newCustomJobType.trim();
+                                        setCustomJobTypes(prev => [...prev, newType]);
+                                        setFormData(prev => ({ ...prev, jobTypes: [...prev.jobTypes, newType] }));
+                                    }
+                                    setNewCustomJobType('');
+                                }
+                            }}
+                            placeholder="Agregar especialidad personalizada..."
+                            className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                if (newCustomJobType.trim() && !customJobTypes.includes(newCustomJobType.trim())) {
+                                    const newType = newCustomJobType.trim();
+                                    setCustomJobTypes(prev => [...prev, newType]);
+                                    setFormData(prev => ({ ...prev, jobTypes: [...prev.jobTypes, newType] }));
+                                    setNewCustomJobType('');
+                                }
+                            }}
+                            className="px-3 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700"
+                        >+ Agregar</button>
+                    </div>
                 </div>
                 <div>
                     <label htmlFor="avgJobCostAmount" className="block text-sm font-medium text-slate-600">{t('avg job cost')}</label>
@@ -322,46 +361,119 @@ const WorkerProfileEdit: React.FC<WorkerProfileEditProps> = ({ worker, onSave, o
                 </div>
                  <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-slate-600 mb-1">Área de Servicio</label>
-                    <p className="text-xs text-slate-400 mb-2">Elige las ciudades y barrios donde ofreces tus servicios. Los clientes te filtrarán por esto.</p>
-                    <div className="flex gap-2 mb-2">
+                    <p className="text-xs text-slate-400 mb-3">Seleccioná tu país, luego la ciudad y los barrios donde ofrecés tus servicios.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                      <select
+                        value={selectedCountry}
+                        onChange={e => { setSelectedCountry(e.target.value as any); setSelectedCity(''); }}
+                        className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                      >
+                        <option value="">🌎 Seleccionar país</option>
+                        <option value="argentina">🇦🇷 Argentina</option>
+                        <option value="bolivia">🇧🇴 Bolivia</option>
+                      </select>
+                      <select
+                        value={selectedCity}
+                        onChange={e => setSelectedCity(e.target.value)}
+                        disabled={!selectedCountry}
+                        className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                      >
+                        <option value="">🏙️ Seleccionar ciudad</option>
+                        {selectedCountry === 'argentina' && ['Buenos Aires','Córdoba','Rosario','Mendoza','La Plata','Tucumán','Mar del Plata','Salta','Santa Fe','San Juan','Corrientes','Posadas','Neuquén','Bahía Blanca','Paraná','San Luis','Río Cuarto','Quilmes','Lanús','Lomas de Zamora','Moreno','Tigre','San Isidro','La Matanza','Pilar','Berazategui'].map(c => <option key={c} value={c}>{c}</option>)}
+                        {selectedCountry === 'bolivia' && ['La Paz','El Alto','Cochabamba','Santa Cruz de la Sierra','Oruro','Potosí','Sucre','Tarija','Trinidad','Cobija','Sacaba','Montero','Quillacollo','Riberalta','Yacuiba','Warnes','Colcapirhua','Viacha','Camiri','Villazón','Bermejo','Guayaramerín','Tiquipaya','Punata','Huanuni'].map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
                       <select
                         value=""
+                        disabled={!selectedCity}
                         onChange={e => {
                           const val = e.target.value;
                           if (val && !formData.regions.includes(val)) {
                             setFormData(prev => ({ ...prev, regions: [...prev.regions, val] }));
                           }
                         }}
-                        className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+                        className="p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
                       >
-                        <option value="">+ Agregar ciudad / localidad</option>
-                        <optgroup label="🇧🇴 Bolivia">
-                          {['La Paz','El Alto','Cochabamba','Santa Cruz de la Sierra','Oruro','Potosí','Sucre','Tarija','Trinidad','Cobija','Sacaba','Montero','Quillacollo','Riberalta','Yacuiba','Warnes','Colcapirhua','Viacha','Camiri','Villazón','Bermejo','Guayaramerín','Tiquipaya','Punata','Huanuni'].map(c => <option key={c}>{c}</option>)}
-                        </optgroup>
-                        <optgroup label="🇦🇷 Argentina">
-                          {['Buenos Aires','Córdoba','Rosario','Mendoza','La Plata','Tucumán','Mar del Plata','Salta','Santa Fe','San Juan','Corrientes','Posadas','Neuquén','Bahía Blanca','Paraná','San Luis','Río Cuarto','Quilmes','Lanús','Lomas de Zamora','Moreno','Tigre','San Isidro','La Matanza','Pilar','Berazategui'].map(c => <option key={c}>{c}</option>)}
-                        </optgroup>
+                        <option value="">🏘️ Seleccionar barrio</option>
+                        {selectedCity === 'Buenos Aires' && ['Palermo','Recoleta','Belgrano','Caballito','Flores','San Telmo','La Boca','Almagro','Villa Crespo','Barracas','Núñez','Saavedra','Colegiales','Chacarita','Villa del Parque','Mataderos','Liniers','Villa Devoto','Villa Urquiza','Parque Chacabuco'].map(n => <option key={n} value={`${selectedCity} - ${n}`}>{n}</option>)}
+                        {selectedCity === 'Córdoba' && ['Nueva Córdoba','Güemes','Alta Córdoba','Villa Cabrera','Cerro de las Rosas','Argüello','Villa El Libertador','San Vicente','Buen Pastor','Urca','Cofico','General Paz','Pueyrredón','Juniors','Jardín','Parque Vélez Sársfield','Empalme','Talleres','Maipú','Centro'].map(n => <option key={n} value={`${selectedCity} - ${n}`}>{n}</option>)}
+                        {selectedCity === 'Rosario' && ['Centro','Pichincha','República de la Sexta','Echesortu','Alberdi','Belgrano','La Florida','Parque Casas','Fisherton','Puerto Norte','Tablada','Saladillo','Triángulo','Refinería','Las Flores','Rambla Catalunya','Ludueña','Las Palmeras','Zona Norte','Zona Sur'].map(n => <option key={n} value={`${selectedCity} - ${n}`}>{n}</option>)}
+                        {selectedCity === 'Mendoza' && ['Centro','Godoy Cruz','Guaymallén','Las Heras','Maipú','Luján de Cuyo','Ciudad','Palmares','Dorrego','Rodeo del Medio','Perdriel','Chacras de Coria','Vistalba','Carrodilla','El Challao'].map(n => <option key={n} value={`${selectedCity} - ${n}`}>{n}</option>)}
+                        {selectedCity === 'La Plata' && ['Centro','Altos de San Lorenzo','Villa Elvira','Los Hornos','Tolosa','Ringuelet','City Bell','Villa Elisa','Gonnet','Olmos','Melchor Romero','Lisandro Olmos'].map(n => <option key={n} value={`${selectedCity} - ${n}`}>{n}</option>)}
+                        {selectedCity === 'Santa Cruz de la Sierra' && ['Plan 3000','Equipetrol','Zona Norte','Zona Sur','UV 14','Hamacas','Las Palmas','Sarteneja','Urbarí','Los Lotes','Paragua','Km 7','Km 8','La Guardia','Cotoca','Warnes Este','Pie de la Cuesta','Villa Primero de Mayo','Casco Viejo','Barrio 6 de Agosto'].map(n => <option key={n} value={`${selectedCity} - ${n}`}>{n}</option>)}
+                        {selectedCity === 'La Paz' && ['Sopocachi','Miraflores','San Pedro','Obrajes','Calacoto','La Florida','Irpavi','Achumani','Cota Cota','Mallasa','Villa Fátima','Max Paredes','Periférica','Centro','Zona Sur','Zona Norte'].map(n => <option key={n} value={`${selectedCity} - ${n}`}>{n}</option>)}
+                        {selectedCity === 'Cochabamba' && ['Queru Queru','Sarco','Temporal','Mayorazgo','Alalay','Colcapirhua Sur','Tiquipaya Norte','Pacata','Tupuraya','Cala Cala','El Paso','Muyurina','Valle Hermoso','Hipódromo','Entre Ríos'].map(n => <option key={n} value={`${selectedCity} - ${n}`}>{n}</option>)}
+                        {selectedCity === 'El Alto' && ['Ciudad Satélite','Villa Dolores','Río Seco','16 de Julio','Ventilla','Senkata','Ballivián','Rosas Pampa','Santiago II','Huayna Potosí'].map(n => <option key={n} value={`${selectedCity} - ${n}`}>{n}</option>)}
+                        {selectedCity && !['Buenos Aires','Córdoba','Rosario','Mendoza','La Plata','Santa Cruz de la Sierra','La Paz','Cochabamba','El Alto'].includes(selectedCity) && <option value={selectedCity}>Agregar toda la ciudad</option>}
                       </select>
+                    </div>
+                    <div className="flex gap-2 mb-3">
                       <input
                         type="text"
                         value={newRegion}
                         onChange={e => setNewRegion(e.target.value)}
                         onKeyDown={handleAddRegion}
-                        placeholder="O escribe un barrio..."
+                        placeholder="O escribí tu propio barrio y presioná Enter..."
                         className="flex-1 p-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
                       />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newRegion.trim() && !formData.regions.includes(newRegion.trim())) {
+                            setFormData(prev => ({ ...prev, regions: [...prev.regions, newRegion.trim()] }));
+                            setNewRegion('');
+                          }
+                        }}
+                        className="px-3 py-2 bg-purple-600 text-white rounded-lg text-sm font-semibold hover:bg-purple-700"
+                      >+</button>
                     </div>
                     <div className="flex flex-wrap gap-2 mt-2">
                         {formData.regions.map(region => (<span key={region} className="flex items-center bg-purple-100 text-purple-800 text-sm font-medium px-3 py-1 rounded-full">{region}<button type="button" onClick={() => handleRemoveRegion(region)} className="ml-2" aria-label={t('remove region', { region })}>&times;</button></span>))}
                     </div>
                 </div>
+
                 <div className="md:col-span-2 mt-4">
-                    <label className="block text-sm font-medium text-slate-600 mb-2">Métodos de Pago</label>
-                    {worker.country === 'argentina' && (
-                        <MercadoPagoConnect worker={worker} />
+                    <label className="block text-sm font-medium text-slate-600 mb-2">Métodos de Cobro</label>
+                    <p className="text-xs text-slate-400 mb-3">Seleccioná cómo querés recibir tus pagos.</p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {[
+                        { id: 'mercadopago', label: 'Mercado Pago', icon: '💳', desc: 'Recibí pagos vía Mercado Pago' },
+                        { id: 'qr', label: 'Código QR', icon: '📲', desc: 'Generá un QR para cobrar' },
+                        { id: 'bank', label: 'Transferencia Bancaria', icon: '🏦', desc: 'Directo a tu cuenta bancaria' },
+                        { id: 'stripe', label: 'Stripe', icon: '💰', desc: 'Pagos internacionales con Stripe' },
+                        { id: 'card', label: 'Tarjeta Predeterminada', icon: '💳', desc: 'Cobro a tarjeta guardada' },
+                      ].map(method => (
+                        <label key={method.id} className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${(formData.paymentMethods as any)?.[method.id] ? 'border-purple-500 bg-purple-50' : 'border-slate-200 bg-slate-50'}`}>
+                          <input
+                            type="checkbox"
+                            checked={!!(formData.paymentMethods as any)?.[method.id]}
+                            onChange={e => setFormData(prev => ({ ...prev, paymentMethods: { ...(prev.paymentMethods || {}), [method.id]: e.target.checked } as any }))}
+                            className="h-4 w-4 text-purple-600 rounded focus:ring-purple-500"
+                          />
+                          <span className="text-lg">{method.icon}</span>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">{method.label}</p>
+                            <p className="text-xs text-slate-500">{method.desc}</p>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    {(formData.paymentMethods as any)?.bank && (
+                      <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                        <p className="text-xs font-semibold text-slate-600 mb-2">Datos bancarios</p>
+                        <input type="text" placeholder="Banco" name="paymentMethod_bankName" onChange={handleChange} className="block w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                        <input type="text" placeholder="Número de cuenta / CBU / CVU" name="paymentMethod_bankAccount" onChange={handleChange} className="block w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                        <input type="text" placeholder="Alias (opcional)" name="paymentMethod_bankAlias" onChange={handleChange} className="block w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                      </div>
                     )}
-                    {worker.country !== 'argentina' && (
-                        <p className="text-sm text-slate-500">Los pagos en Bolivia se gestionan mediante QR y transferencia bancaria.</p>
+                    {(formData.paymentMethods as any)?.card && (
+                      <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2">
+                        <p className="text-xs font-semibold text-slate-600 mb-2">Datos de tarjeta</p>
+                        <input type="text" placeholder="Número de tarjeta" name="paymentMethod_cardNumber" onChange={handleChange} className="block w-full p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                        <div className="flex gap-2">
+                          <input type="text" placeholder="MM/AA" name="paymentMethod_cardExpiry" onChange={handleChange} className="w-1/2 p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                          <input type="text" placeholder="Nombre en tarjeta" name="paymentMethod_cardName" onChange={handleChange} className="w-1/2 p-2 bg-white border border-slate-200 rounded-lg text-sm" />
+                        </div>
+                      </div>
                     )}
                 </div>
             </div>

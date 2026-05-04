@@ -97,6 +97,7 @@ interface AdminDashboardProps {
     messages: Message[];
     invoices: Invoice[];
     pendingVerifications: Worker[];
+    pendingUsers?: User[];
     onSelectUser: (user: User) => void;
     onDeleteUser: (user: User) => void;
     onSelectWorker: (worker: Worker) => void;
@@ -146,7 +147,7 @@ const PieChart: React.FC<{ data: { label: string; value: number; color: string }
 };
 
 // --- MAIN COMPONENT ---
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs, transactions, disputes, notifications, messages, invoices, pendingVerifications, onSelectUser, onDeleteUser, onSelectWorker, onDeleteWorker, onSelectDispute, onSelectSupportConversation, onSelectVerification, onEditTerms, onClearAllData, t, adminId }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs, transactions, disputes, notifications, messages, invoices, pendingVerifications, pendingUsers = [], onSelectUser, onDeleteUser, onSelectWorker, onDeleteWorker, onSelectDispute, onSelectSupportConversation, onSelectVerification, onEditTerms, onClearAllData, t, adminId }) => {
     const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<AdminTab>('clients');
     const [clientFilters, setClientFilters] = useState<ClientFilters>(initialClientFilters);
@@ -466,7 +467,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
 
     const openDisputesCount = disputes.filter(d => d.status === 'open' || d.status === 'under_review').length;
     const openSupportChatsCount = supportConversations.filter(c => c.unreadCount > 0).length;
-    const verificationsCount = pendingVerifications.length;
+    const verificationsCount = pendingVerifications.length + pendingUsers.length;
 
     return (
         <div className="container mx-auto space-y-8 px-4 sm:px-0">
@@ -500,6 +501,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                             <TabButton tabId="pagos">💰 Pagos</TabButton>
                             <TabButton tabId="disputes" badgeCount={openDisputesCount}>{t('disputes')}</TabButton>
                             <TabButton tabId="support" badgeCount={openSupportChatsCount}>{t('support')}</TabButton>
+                            <TabButton tabId="ai_analytics">🤖 Analytics IA</TabButton>
                             <TabButton tabId="settings">{t('settings')}</TabButton>
                         </nav>
                     </div>
@@ -700,32 +702,58 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                     </div>
                 )}
                 
-                {activeTab === 'verifications' && (
-                    <div className="p-4">
-                        <h2 className="text-xl font-bold text-black mb-4">{t('pending verifications')} ({verificationsCount})</h2>
-                        {verificationsCount > 0 ? (
-                            <div className="space-y-2">
-                                {pendingVerifications.map(worker => (
-                                    <button 
-                                        key={worker.id} 
-                                        onClick={() => onSelectVerification(worker)} 
-                                        className="w-full text-left p-3 flex items-center space-x-4 rounded-lg hover:bg-slate-100"
-                                    >
-                                        <img className="w-12 h-12 rounded-full" src={worker.avatarUrl} alt={worker.name} />
-                                        <div className="flex-1">
-                                            <p className="font-bold text-black">{worker.name}</p>
-                                            <p className="text-sm text-black">{worker.email}</p>
-                                        </div>
-                                        <div className="text-sm text-black">
-                                            <p>{t('submitted')} {formatDistanceToNow(worker.signupDate, t)}</p>
-                                        </div>
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                                    </button>
-                                ))}
-                            </div>
-                        ) : (
-                             <p className="text-center py-8 text-black">{t('no pending verifications')}</p>
-                        )}
+               {activeTab === 'verifications' && (
+                    <div className="p-4 space-y-6">
+                        <div>
+                          <h2 className="text-xl font-bold text-black mb-3">🔧 Proveedores Pendientes ({pendingVerifications.length})</h2>
+                          {pendingVerifications.length > 0 ? (
+                              <div className="space-y-2">
+                                  {pendingVerifications.map(worker => (
+                                      <button
+                                          key={worker.id}
+                                          onClick={() => onSelectVerification(worker)}
+                                          className="w-full text-left p-3 flex items-center space-x-4 rounded-lg hover:bg-slate-100"
+                                      >
+                                          <img className="w-12 h-12 rounded-full" src={worker.avatarUrl} alt={worker.name} />
+                                          <div className="flex-1">
+                                              <p className="font-bold text-black">{worker.name}</p>
+                                              <p className="text-sm text-black">{worker.email}</p>
+                                          </div>
+                                          <div className="text-sm text-black">
+                                              <p>{t('submitted')} {formatDistanceToNow(worker.signupDate, t)}</p>
+                                          </div>
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                      </button>
+                                  ))}
+                              </div>
+                          ) : (
+                               <p className="text-center py-4 text-slate-400 text-sm">{t('no pending verifications')}</p>
+                          )}
+                        </div>
+                        <div className="border-t border-slate-200 pt-6">
+                          <h2 className="text-xl font-bold text-black mb-3">👤 Usuarios Pendientes ({pendingUsers.length})</h2>
+                          {pendingUsers.length > 0 ? (
+                              <div className="space-y-2">
+                                  {pendingUsers.map(user => (
+                                      <button
+                                          key={user.id}
+                                          onClick={() => onSelectUser(user)}
+                                          className="w-full text-left p-3 flex items-center space-x-4 rounded-lg hover:bg-slate-100"
+                                      >
+                                          <img className="w-12 h-12 rounded-full" src={user.avatarUrl} alt={user.name} />
+                                          <div className="flex-1">
+                                              <p className="font-bold text-black">{user.name}</p>
+                                              <p className="text-sm text-black">{user.email}</p>
+                                          </div>
+                                          <span className="text-xs bg-yellow-100 text-yellow-800 font-bold px-2 py-1 rounded-full">⏳ Pendiente</span>
+                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                      </button>
+                                  ))}
+                              </div>
+                          ) : (
+                              <p className="text-center py-4 text-slate-400 text-sm">No hay usuarios pendientes de verificación.</p>
+                          )}
+                        </div>
                     </div>
                 )}
 
@@ -777,6 +805,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                 ))}
                             </div>
                         )}
+                    </div>
+                )}
+                {activeTab === 'ai_analytics' && (
+                    <div className="p-6 space-y-6">
+                        <h2 className="text-2xl font-bold text-black">Analítica del Chatbot IA</h2>
+                        <p className="text-slate-500 text-sm">Resumen de las conversaciones del asistente IA.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
+                            <p className="text-sm text-purple-600 font-medium">Total Conversaciones</p>
+                            <p className="text-3xl font-bold text-purple-800">{(messages || []).length}</p>
+                          </div>
+                          <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
+                            <p className="text-sm text-blue-600 font-medium">Usuarios Activos</p>
+                            <p className="text-3xl font-bold text-blue-800">{users.length}</p>
+                          </div>
+                          <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                            <p className="text-sm text-green-600 font-medium">Trabajadores Activos</p>
+                            <p className="text-3xl font-bold text-green-800">{workers.length}</p>
+                          </div>
+                        </div>
+                        <div className="bg-white rounded-xl border border-slate-200 p-5">
+                          <h3 className="text-lg font-bold text-slate-800 mb-4">📞 Contacto de Soporte</h3>
+                          <p className="text-sm text-slate-600">Teléfono: <span className="font-bold">+541160444473</span></p>
+                          <p className="text-sm text-slate-600 mt-1">Email: <span className="font-bold">alejandro.finochietti@yahoo.com.ar</span></p>
+                        </div>
                     </div>
                 )}
                 {activeTab === 'settings' && (
