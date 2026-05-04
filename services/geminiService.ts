@@ -102,7 +102,7 @@ export const generateMockWorkers = async (count: number, service: ServiceCategor
     const prompt = `Generate a list of ${count} realistic profiles for ${service} professionals. The final output must be a JSON object with a single key "workers" which contains the array of profiles. Include email, a simple but secure-looking password (like "pass123WORD" or "MySecureP@ss!"), signup date, last login date, an average job cost as an object with an 'amount' and a 'currency' (from this list: ${currencyCodes.join(', ')}), and 2-4 specific job types they specialize in from the following list if relevant: [Furniture Assembly, TV Mounting, Wiring, Fixture Installation, Leak Repair, Drain Cleaning, Interior Painting, Exterior Painting, Custom Shelving, Deck Building, Standard Cleaning, Deep Cleaning, Lockout Service, Rekeying, Lawn Mowing, Weeding & Planting]. Ensure diverse names, locations within the USA, and detailed, plausible bios and reviews. For some workers, add an 'availabilityOverrides' object to demonstrate taking a day off (e.g., '2024-12-25': null) or adding a special shift on a weekend. IMPORTANT: The output must be a valid JSON object adhering to the provided schema. All string values within the JSON must be properly escaped. For instance, any double quote characters inside a string value (like in a bio or review) must be preceded by a backslash (e.g., "He said, \\"hello there\\"."). Do not include unescaped newline characters within strings.`;
     
     const response = await getAi().models.generateContent({
-      model: "gemini-2.5-flash-preview-04-17",
+      model: "gemini-2.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -258,7 +258,7 @@ Información de contacto de respaldo:
   try {
     const ai = getAi();
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-04-17",
+      model: "gemini-2.5-flash",
       contents: recentHistory,
       config: {
         systemInstruction: systemInstruction + "\n\n" + userContext,
