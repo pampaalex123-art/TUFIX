@@ -2,7 +2,7 @@ import { GoogleGenAI, Type, Content, FunctionDeclaration, ThinkingLevel } from "
 import { ServiceCategory, Worker, User } from '../types';
 
 const getAi = () => {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+  const apiKey = "AIzaSyD18MLQJ2Zoa1NHFjuioaWNqwROQu4q58g";
   if (!apiKey) {
     console.error("Gemini API key not found in environment variables.");
     throw new Error("API_KEY_MISSING");
