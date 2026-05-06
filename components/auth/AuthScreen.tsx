@@ -5,7 +5,7 @@ import { SERVICE_CATEGORIES } from '../../constants';
 import AdminTransactionsScreen from '../admin/AdminTransactionsScreen';
 import AdminDisputesScreen from '../new/AdminDisputesScreen';
 import { formatDistanceToNow } from '../../utils/time';
-import AdminPayoutPanel from './AdminPayoutPanel';
+import AdminPayoutPanel from '../admin/AdminPayoutPanel';
 import AppAnalyticsDashboard from './AppAnalyticsDashboard';
 
 // --- HELPER FUNCTIONS for CSV Download ---
