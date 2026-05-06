@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useToast } from '../common/Toast';
 import { User, Worker, JobRequest, ServiceCategory, Transaction, Dispute, AppNotification, Message, Invoice } from '../../types';
 import { SERVICE_CATEGORIES } from '../../constants';
-import AdminTransactionsScreen from './AdminTransactionsScreen';
+import AdminTransactionsScreen from '../admin/AdminTransactionsScreen';
 import AdminDisputesScreen from '../new/AdminDisputesScreen';
 import { formatDistanceToNow } from '../../utils/time';
 import AdminPayoutPanel from './AdminPayoutPanel';
