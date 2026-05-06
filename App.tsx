@@ -1641,6 +1641,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
           );
         }
         return <AuthScreen onLogin={handleLogin} onSignUp={handleSignUp} onForgotPassword={handleForgotPassword} t={t} termsContent={termsContent} />;;
+
       case 'PASSWORD_RECOVERY':
         return <PasswordRecoveryScreen
             error={recoveryError}
@@ -1986,7 +1987,47 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
             t={t}
           />
         );
-      case 'CONFIRMATION':
+      case 'COMPANY_REGISTER':
+        return <CompanyRegister
+          onBack={() => setView({ screen: 'AUTH' })}
+          onSubmit={(data) => {
+            const newCompany = {
+              id: `company-${Date.now()}`,
+              name: data.companyName,
+              companyName: data.companyName,
+              email: data.email,
+              password: data.password,
+              industry: data.industry,
+              country: data.country,
+              phone: data.phone,
+              taxId: data.taxId || '',
+              description: data.description || '',
+              employeeCount: data.employeeCount || '',
+              avatarUrl: `https://picsum.photos/seed/${data.email}/200`,
+              location: data.country === 'argentina' ? 'Argentina' : data.country === 'bolivia' ? 'Bolivia' : 'Otro',
+              signupDate: new Date().toISOString(),
+              lastLoginDate: new Date().toISOString(),
+              verificationStatus: 'pending' as const,
+              serviceTypes: [],
+              userType: 'company' as const,
+            };
+            setCurrentUser(newCompany as any);
+            setUserType('company');
+            setView({ screen: 'COMPANY_DASHBOARD' });
+          }}
+          t={t}
+        />;
+
+      case 'COMPANY_DASHBOARD':
+        return <CompanyDashboard
+          company={currentUser}
+          t={t}
+          onNavigate={(screen) => setView({ screen: screen as any })}
+          onUpdateCompany={(data) => {
+            setCurrentUser(prev => ({ ...prev, ...data } as any));
+          }}
+        />;
+        case 'CONFIRMATION':
         return (
           <ConfirmationPage 
             onBack={() => {
