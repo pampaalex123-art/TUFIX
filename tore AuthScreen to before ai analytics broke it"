@@ -1,0 +1,80 @@
+[1mdiff --git a/components/auth/AuthScreen.tsx b/components/auth/AuthScreen.tsx[m
+[1mindex 4e0229f..558117f 100644[m
+[1m--- a/components/auth/AuthScreen.tsx[m
+[1m+++ b/components/auth/AuthScreen.tsx[m
+[36m@@ -5,8 +5,8 @@[m [mimport { SERVICE_CATEGORIES } from '../../constants';[m
+ import AdminTransactionsScreen from '../admin/AdminTransactionsScreen';[m
+ import AdminDisputesScreen from '../new/AdminDisputesScreen';[m
+ import { formatDistanceToNow } from '../../utils/time';[m
+[31m-import AdminPayoutPanel from '../admin/AdminPayoutPanel';[m
+[31m-import AppAnalyticsDashboard from '../admin/AppAnalyticsDashboard';[m
+[32m+[m[32mimport AdminPayoutPanel from './AdminPayoutPanel';[m
+[32m+[m[32mimport AppAnalyticsDashboard from './AppAnalyticsDashboard';[m
+ [m
+ // --- HELPER FUNCTIONS for CSV Download ---[m
+ const escapeCSVCell = (cell: any): string => {[m
+[36m@@ -219,8 +219,8 @@[m [mconst AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs[m
+ [m
+     const participantMap = useMemo(() => {[m
+         const map = new Map<string, User | Worker>();[m
+[31m-        (users ?? []).forEach(u => map.set(u.id, u));[m
+[31m-        (workers ?? []).forEach(w => map.set(w.id, w));[m
+[32m+[m[32m        users.forEach(u => map.set(u.id, u));[m
+[32m+[m[32m        workers.forEach(w => map.set(w.id, w));[m
+         return map;[m
+     }, [users, workers]);[m
+ [m
+[36m@@ -228,17 +228,17 @@[m [mconst AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs[m
+     const workerAnalytics = useMemo(() => {[m
+         const categoryCounts = new Map<ServiceCategory, number>();[m
+         SERVICE_CATEGORIES.forEach(cat => categoryCounts.set(cat.name, 0));[m
+[31m-        (workers ?? []).forEach(worker => categoryCounts.set(worker.service, (categoryCounts.get(worker.service) || 0) + 1));[m
+[31m-        const totalWorkers = (workers ?? []).length;[m
+[32m+[m[32m        workers.forEach(worker => categoryCounts.set(worker.service, (categoryCounts.get(worker.service) || 0) + 1));[m
+[32m+[m[32m        const totalWorkers = workers.length;[m
+         const colors = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#6366F1', '#14B8A6'];[m
+         return Array.from(categoryCounts.entries()).map(([category, count], index) => ({[m
+             category, count, percentage: totalWorkers > 0 ? ((count / totalWorkers) * 100).toFixed(1) : '0.0', color: colors[index % colors.length][m
+         })).sort((a, b) => b.count - a.count);[m
+     }, [workers]);[m
+ [m
+[31m-    const usersWithStats = useMemo(() => (users ?? []).map(user => ({ ...user, jobsRequested: (allJobs ?? []).filter(job => job.user.id === user.id).length })), [users, allJobs]);[m
+[31m-    const workersWithStats = useMemo(() => (workers ?? []).map(worker => {[m
+[31m-        const completed = (allJobs ?? []).filter(j => j.workerId === worker.id && j.status === 'completed');[m
+[32m+[m[32m    const usersWithStats = useMemo(() => users.map(user => ({ ...user, jobsRequested: allJobs.filter(job => job.user.id === user.id).length })), [users, allJobs]);[m
+[32m+[m[32m    const workersWithStats = useMemo(() => workers.map(worker => {[m
+[32m+[m[32m        const completed = allJobs.filter(j => j.workerId === worker.id && j.status === 'completed');[m
+         return { ...worker, jobsCompleted: completed.length, totalEarnings: completed.reduce((sum, j) => sum + (j.finalPrice || 0), 0) };[m
+     }), [workers, allJobs]);[m
+ [m
+[36m@@ -359,7 +359,7 @@[m [mconst AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs[m
+             [m
+             const participant = participantMap.get(otherParticipantId);[m
+              if (participant) {[m
+[31m-                const conversationMessages = (messages ?? []).filter(m => [m
+[32m+[m[32m                const conversationMessages = messages.filter(m =>[m[41m [m
+                     (m.senderId === participant.id && (m.receiverId === adminId || m.receiverId === 'admin-1')) || [m
+                     ((m.senderId === adminId || m.senderId === 'admin-1') && m.receiverId === participant.id)[m
+                 );[m
+[36m@@ -466,7 +466,7 @@[m [mconst AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs[m
+         </button>[m
+     );[m
+ [m
+[31m-    const openDisputesCount = (disputes ?? []).filter(d => d.status === 'open' || d.status === 'under_review').length;[m
+[32m+[m[32m    const openDisputesCount = disputes.filter(d => d.status === 'open' || d.status === 'under_review').length;[m
+     const openSupportChatsCount = supportConversations.filter(c => c.unreadCount > 0).length;[m
+     const verificationsCount = pendingVerifications.length + pendingUsers.length;[m
+ [m
+[36m@@ -485,9 +485,9 @@[m [mconst AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs[m
+                 </button>[m
+             </div>[m
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">[m
+[31m-                <StatCard title={t('total clients')} value={(users ?? []).length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M17 20v-2a3 3 0 00-3-3H10a3 3 0 00-3 3v2m7-10a3 3 0 11-6 0 3 3 0 016 0zm-7 4a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} />[m
+[31m-                <StatCard title={t('total workers')} value={(workers ?? []).length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 12c0 2.42-.943 4.638-2.464 6.313M15.75 10.5a3 3 0 01-3 3M15.75 10.5a3 3 0 00-3-3M15.75 10.5V18m-4.5-3.375a3 3 0 01-3 3m3-3a3 3 0 00-3-3m3 3V18m-9-3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v6.75a1.5 1.5 0 001.5 1.5z" /></svg>} />[m
+[31m-                <StatCard title={t('jobs completed')} value={(allJobs ?? []).filter(j=>j.status === 'completed').length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />[m
+[32m+[m[32m                <StatCard title={t('total clients')} value={users.length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M17 20v-2a3 3 0 00-3-3H10a3 3 0 00-3 3v2m7-10a3 3 0 11-6 0 3 3 0 016 0zm-7 4a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} />[m
+[32m+[m[32m                <StatCard title={t('total workers')} value={workers.length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 12c0 2.42-.943 4.638-2.464 6.313M15.75 10.5a3 3 0 01-3 3M15.75 10.5a3 3 0 00-3-3M15.75 10.5V18m-4.5-3.375a3 3 0 01-3 3m3-3a3 3 0 00-3-3m3 3V18m-9-3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v6.75a1.5 1.5 0 001.5 1.5z" /></svg>} />[m
+[32m+[m[32m                <StatCard title={t('jobs completed')} value={allJobs.filter(j=>j.status === 'completed').length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />[m
+                 <StatCard title={t('open disputes')} value={openDisputesCount} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>} />[m
+             </div>[m
+             [m
