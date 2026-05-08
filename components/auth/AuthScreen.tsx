@@ -243,7 +243,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
     }), [workers, allJobs]);
 
     const filteredAndSortedClients = useMemo(() => {
-        let filtered = usersWithStats.filter(user => {
+        let filtered = (usersWithStats || []).filter(user => {
             const minJobs = parseInt(clientFilters.minJobs) || 0;
             const maxJobs = parseInt(clientFilters.maxJobs) || Infinity;
             return (
@@ -284,7 +284,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
     }, [usersWithStats, clientFilters, clientSort]);
 
     const filteredAndSortedWorkers = useMemo(() => {
-        let filtered = workersWithStats.filter(worker => {
+        let filtered = (workersWithStats || []).filter(worker => {
             const minRating = parseFloat(workerFilters.minRating) || 0;
             const maxRating = parseFloat(workerFilters.maxRating) || 5;
             const minJobs = parseInt(workerFilters.minJobs) || 0;
@@ -467,7 +467,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
     );
 
     const openDisputesCount = (disputes ?? []).filter(d => d.status === 'open' || d.status === 'under_review').length;
-    const openSupportChatsCount = supportConversations.filter(c => c.unreadCount > 0).length;
+    const openSupportChatsCount = (supportConversations || []).filter(c => c.unreadCount > 0).length;
     const verificationsCount = pendingVerifications.length + pendingUsers.length;
 
     return (

@@ -69,13 +69,13 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
   let filteredWorkers = [...workers];
 
   // Apply filters
-  if (service) filteredWorkers = filteredWorkers.filter(w => w.service === service);
-  if (minRating) filteredWorkers = filteredWorkers.filter(w => w.rating >= minRating);
-  if (location) filteredWorkers = filteredWorkers.filter(w =>
+  if (service) filteredWorkers = (filteredWorkers || []).filter(w => w.service === service);
+  if (minRating) filteredWorkers = (filteredWorkers || []).filter(w => w.rating >= minRating);
+  if (location) filteredWorkers = (filteredWorkers || []).filter(w =>
     w.location.toLowerCase().includes(location.toLowerCase()) ||
     w.regions?.some((r: string) => r.toLowerCase().includes(location.toLowerCase()))
   );
-  if (maxPrice) filteredWorkers = filteredWorkers.filter(w => w.avgJobCost.amount <= maxPrice);
+  if (maxPrice) filteredWorkers = (filteredWorkers || []).filter(w => w.avgJobCost.amount <= maxPrice);
 
   // Sort by rating descending and take top 5
   const top5 = filteredWorkers

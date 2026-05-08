@@ -143,7 +143,7 @@ const MiniPie: React.FC<{ data: { label: string; value: number; color: string }[
     const total = data.reduce((a, d) => a + d.value, 0);
     if (total === 0) return <div className="text-center text-gray-400 py-4 text-sm">Sin datos</div>;
     let cum = 0;
-    const slices = data.filter(d => d.value > 0).map(d => {
+    const slices = (data || []).filter(d => d.value > 0).map(d => {
         const pct = (d.value / total) * 100;
         const start = (cum / 100) * 360;
         const end = ((cum + pct) / 100) * 360;
