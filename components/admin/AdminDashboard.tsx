@@ -219,8 +219,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
 
     const participantMap = useMemo(() => {
         const map = new Map<string, User | Worker>();
-        users.forEach(u => map.set(u.id, u));
-        workers.forEach(w => map.set(w.id, w));
+        (users ?? []).forEach(u => map.set(u.id, u));
+        (workers ?? []).forEach(w => map.set(w.id, w));
         return map;
     }, [users, workers]);
 
@@ -228,17 +228,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
     const workerAnalytics = useMemo(() => {
         const categoryCounts = new Map<ServiceCategory, number>();
         SERVICE_CATEGORIES.forEach(cat => categoryCounts.set(cat.name, 0));
-        workers.forEach(worker => categoryCounts.set(worker.service, (categoryCounts.get(worker.service) || 0) + 1));
-        const totalWorkers = workers.length;
+        (workers ?? []).forEach(worker => categoryCounts.set(worker.service, (categoryCounts.get(worker.service) || 0) + 1));
+        const totalWorkers = (workers ?? []).length;
         const colors = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#6366F1', '#14B8A6'];
         return Array.from(categoryCounts.entries()).map(([category, count], index) => ({
             category, count, percentage: totalWorkers > 0 ? ((count / totalWorkers) * 100).toFixed(1) : '0.0', color: colors[index % colors.length]
         })).sort((a, b) => b.count - a.count);
     }, [workers]);
 
-    const usersWithStats = useMemo(() => users.map(user => ({ ...user, jobsRequested: allJobs.filter(job => job.user.id === user.id).length })), [users, allJobs]);
-    const workersWithStats = useMemo(() => workers.map(worker => {
-        const completed = allJobs.filter(j => j.workerId === worker.id && j.status === 'completed');
+    const usersWithStats = useMemo(() => (users ?? []).map(user => ({ ...user, jobsRequested: (allJobs ?? []).filter(job => job.user.id === user.id).length })), [users, allJobs]);
+    const workersWithStats = useMemo(() => (workers ?? []).map(worker => {
+        const completed = (allJobs ?? []).filter(j => j.workerId === worker.id && j.status === 'completed');
         return { ...worker, jobsCompleted: completed.length, totalEarnings: completed.reduce((sum, j) => sum + (j.finalPrice || 0), 0) };
     }), [workers, allJobs]);
 
@@ -344,7 +344,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
 
         // Get all unique conversation IDs involving the admin (including the legacy admin-1 ID)
         const adminConvoIds = new Set<string>(
-            messages
+            (messages ?? [])
                 .filter(m => m.senderId === adminId || m.receiverId === adminId || m.senderId === 'admin-1' || m.receiverId === 'admin-1')
                 .map(m => {
                     const otherId = [m.senderId, m.receiverId].find(id => id !== adminId && id !== 'admin-1');
@@ -359,7 +359,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
             
             const participant = participantMap.get(otherParticipantId);
              if (participant) {
-                const conversationMessages = messages.filter(m => 
+                const conversationMessages = (messages ?? []).filter(m => 
                     (m.senderId === participant.id && (m.receiverId === adminId || m.receiverId === 'admin-1')) || 
                     ((m.senderId === adminId || m.senderId === 'admin-1') && m.receiverId === participant.id)
                 );
@@ -466,7 +466,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
         </button>
     );
 
-    const openDisputesCount = disputes.filter(d => d.status === 'open' || d.status === 'under_review').length;
+    const openDisputesCount = (disputes ?? []).filter(d => d.status === 'open' || d.status === 'under_review').length;
     const openSupportChatsCount = supportConversations.filter(c => c.unreadCount > 0).length;
     const verificationsCount = pendingVerifications.length + pendingUsers.length;
 
@@ -485,9 +485,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title={t('total clients')} value={users.length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M17 20v-2a3 3 0 00-3-3H10a3 3 0 00-3 3v2m7-10a3 3 0 11-6 0 3 3 0 016 0zm-7 4a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} />
-                <StatCard title={t('total workers')} value={workers.length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 12c0 2.42-.943 4.638-2.464 6.313M15.75 10.5a3 3 0 01-3 3M15.75 10.5a3 3 0 00-3-3M15.75 10.5V18m-4.5-3.375a3 3 0 01-3 3m3-3a3 3 0 00-3-3m3 3V18m-9-3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v6.75a1.5 1.5 0 001.5 1.5z" /></svg>} />
-                <StatCard title={t('jobs completed')} value={allJobs.filter(j=>j.status === 'completed').length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
+                <StatCard title={t('total clients')} value={(users ?? []).length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M17 20v-2a3 3 0 00-3-3H10a3 3 0 00-3 3v2m7-10a3 3 0 11-6 0 3 3 0 016 0zm-7 4a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} />
+                <StatCard title={t('total workers')} value={(workers ?? []).length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 12c0 2.42-.943 4.638-2.464 6.313M15.75 10.5a3 3 0 01-3 3M15.75 10.5a3 3 0 00-3-3M15.75 10.5V18m-4.5-3.375a3 3 0 01-3 3m3-3a3 3 0 00-3-3m3 3V18m-9-3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v6.75a1.5 1.5 0 001.5 1.5z" /></svg>} />
+                <StatCard title={t('jobs completed')} value={(allJobs ?? []).filter(j=>j.status === 'completed').length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
                 <StatCard title={t('open disputes')} value={openDisputesCount} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>} />
             </div>
             
