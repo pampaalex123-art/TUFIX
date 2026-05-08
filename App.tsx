@@ -210,7 +210,7 @@ const App: React.FC = () => {
 
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
 
-  const adminUser = users.find(u => u.userType === 'admin' || u.email === 'alejandro.finochietti@yahoo.com.ar');
+  const adminUser = (users ?? []).find(u => u.userType === 'admin' || u.email === 'alejandro.finochietti@yahoo.com.ar');
   const currentAdminId = (currentUser?.email === 'alejandro.finochietti@yahoo.com.ar' || currentUser?.userType === 'admin' ? currentUser.id : null) || adminUser?.id || ADMIN_ID;
   
   const unreadNotificationsCount = currentUser 
