@@ -348,6 +348,7 @@ const AppAnalyticsDashboard: React.FC<AppAnalyticsDashboardProps> = ({ users, wo
     const revenueData = useMemo(() => {
         const bucketRev = new Map<string, number>();
         transactions.forEach(tx => {
+            if (!tx.paidAt) return;
             const b = buckets.getBucket(tx.paidAt);
             bucketRev.set(b, (bucketRev.get(b) || 0) + tx.platformFee);
         });

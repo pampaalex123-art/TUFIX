@@ -6,7 +6,7 @@ import AdminTransactionsScreen from '../admin/AdminTransactionsScreen';
 import AdminDisputesScreen from '../new/AdminDisputesScreen';
 import { formatDistanceToNow } from '../../utils/time';
 import AdminPayoutPanel from '../admin/AdminPayoutPanel';
-import AppAnalyticsDashboard from './AppAnalyticsDashboard';
+import AppAnalyticsDashboard from '../admin/AppAnalyticsDashboard';
 
 // --- HELPER FUNCTIONS for CSV Download ---
 const escapeCSVCell = (cell: any): string => {

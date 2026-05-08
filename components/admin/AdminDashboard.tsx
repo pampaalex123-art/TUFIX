@@ -6,6 +6,7 @@ import AdminTransactionsScreen from './AdminTransactionsScreen';
 import AdminDisputesScreen from '../new/AdminDisputesScreen';
 import { formatDistanceToNow } from '../../utils/time';
 import AdminPayoutPanel from './AdminPayoutPanel';
+import AppAnalyticsDashboard from './AppAnalyticsDashboard';
 
 // --- HELPER FUNCTIONS for CSV Download ---
 const escapeCSVCell = (cell: any): string => {
@@ -58,7 +59,7 @@ const downloadCSV = (csvString: string, filename: string) => {
 type SortDirection = 'ascending' | 'descending';
 type ClientSortKey = 'name' | 'location' | 'jobsRequested' | 'signupDate';
 type WorkerSortKey = 'name' | 'service' | 'location' | 'rating' | 'jobsCompleted' | 'totalEarnings' | 'signupDate';
-type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings' | 'pagos';
+type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings' | 'pagos' | 'ai_analytics';
 
 interface ClientFilters {
     nameOrEmail: string;
@@ -501,7 +502,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                             <TabButton tabId="pagos">💰 Pagos</TabButton>
                             <TabButton tabId="disputes" badgeCount={openDisputesCount}>{t('disputes')}</TabButton>
                             <TabButton tabId="support" badgeCount={openSupportChatsCount}>{t('support')}</TabButton>
-                            <TabButton tabId="ai_analytics">🤖 Analytics IA</TabButton>
+                            <TabButton tabId="ai_analytics">📊 Analytics App</TabButton>
                             <TabButton tabId="settings">{t('settings')}</TabButton>
                         </nav>
                     </div>
@@ -808,29 +809,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                     </div>
                 )}
                 {activeTab === 'ai_analytics' && (
-                    <div className="p-6 space-y-6">
-                        <h2 className="text-2xl font-bold text-black">Analítica del Chatbot IA</h2>
-                        <p className="text-slate-500 text-sm">Resumen de las conversaciones del asistente IA.</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
-                            <p className="text-sm text-purple-600 font-medium">Total Conversaciones</p>
-                            <p className="text-3xl font-bold text-purple-800">{(messages || []).length}</p>
-                          </div>
-                          <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-                            <p className="text-sm text-blue-600 font-medium">Usuarios Activos</p>
-                            <p className="text-3xl font-bold text-blue-800">{users.length}</p>
-                          </div>
-                          <div className="bg-green-50 rounded-xl p-4 border border-green-100">
-                            <p className="text-sm text-green-600 font-medium">Trabajadores Activos</p>
-                            <p className="text-3xl font-bold text-green-800">{workers.length}</p>
-                          </div>
-                        </div>
-                        <div className="bg-white rounded-xl border border-slate-200 p-5">
-                          <h3 className="text-lg font-bold text-slate-800 mb-4">📞 Contacto de Soporte</h3>
-                          <p className="text-sm text-slate-600">Teléfono: <span className="font-bold">+541160444473</span></p>
-                          <p className="text-sm text-slate-600 mt-1">Email: <span className="font-bold">alejandro.finochietti@yahoo.com.ar</span></p>
-                        </div>
-                    </div>
+                    <AppAnalyticsDashboard
+                        users={users}
+                        workers={workers}
+                        allJobs={allJobs}
+                        transactions={transactions}
+                    />
                 )}
                 {activeTab === 'settings' && (
                     <div className="p-8 space-y-8">
