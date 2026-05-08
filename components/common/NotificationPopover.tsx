@@ -58,7 +58,7 @@ const NotificationPopover: React.FC<NotificationPopoverProps> = ({ notifications
     <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-black/30 backdrop-blur-xl rounded-xl shadow-lg border border-white/30 overflow-hidden">
       <div className="p-3 flex justify-between items-center border-b border-white/30">
         <h3 className="font-bold text-white">{t('notifications')}</h3>
-        {notifications.some(n => !n.isRead) && (
+        {(notifications ?? []).some(n => !n.isRead) && (
             <button 
               onClick={onMarkAllAsRead} 
               className="text-sm text-blue-300 hover:text-white hover:underline">
@@ -71,7 +71,7 @@ const NotificationPopover: React.FC<NotificationPopoverProps> = ({ notifications
           <p className="text-center text-gray-300 py-8">{t('no notifications')}</p>
         ) : (
           <ul className="divide-y divide-white/20">
-            {notifications.map(notification => (
+            {(notifications ?? []).map(notification => (
               <li 
                 key={notification.id} 
                 className={`p-3 flex items-start space-x-3 transition duration-150 hover:bg-white/10 ${!notification.isRead ? 'bg-white/10' : ''}`}

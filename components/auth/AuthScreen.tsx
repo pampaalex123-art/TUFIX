@@ -219,8 +219,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
 
     const participantMap = useMemo(() => {
         const map = new Map<string, User | Worker>();
-        users.forEach(u => map.set(u.id, u));
-        workers.forEach(w => map.set(w.id, w));
+        (users ?? []).forEach(u => map.set(u.id, u));
+        (workers ?? []).forEach(w => map.set(w.id, w));
         return map;
     }, [users, workers]);
 
@@ -228,17 +228,17 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
     const workerAnalytics = useMemo(() => {
         const categoryCounts = new Map<ServiceCategory, number>();
         SERVICE_CATEGORIES.forEach(cat => categoryCounts.set(cat.name, 0));
-        workers.forEach(worker => categoryCounts.set(worker.service, (categoryCounts.get(worker.service) || 0) + 1));
-        const totalWorkers = workers.length;
+        (workers ?? []).forEach(worker => categoryCounts.set(worker.service, (categoryCounts.get(worker.service) || 0) + 1));
+        const totalWorkers = (workers ?? []).length;
         const colors = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#6366F1', '#14B8A6'];
         return Array.from(categoryCounts.entries()).map(([category, count], index) => ({
             category, count, percentage: totalWorkers > 0 ? ((count / totalWorkers) * 100).toFixed(1) : '0.0', color: colors[index % colors.length]
         })).sort((a, b) => b.count - a.count);
     }, [workers]);
 
-    const usersWithStats = useMemo(() => users.map(user => ({ ...user, jobsRequested: allJobs.filter(job => job.user.id === user.id).length })), [users, allJobs]);
-    const workersWithStats = useMemo(() => workers.map(worker => {
-        const completed = allJobs.filter(j => j.workerId === worker.id && j.status === 'completed');
+    const usersWithStats = useMemo(() => (users ?? []).map(user => ({ ...user, jobsRequested: (allJobs ?? []).filter(job => job.user.id === user.id).length })), [users, allJobs]);
+    const workersWithStats = useMemo(() => (workers ?? []).map(worker => {
+        const completed = (allJobs ?? []).filter(j => j.workerId === worker.id && j.status === 'completed');
         return { ...worker, jobsCompleted: completed.length, totalEarnings: completed.reduce((sum, j) => sum + (j.finalPrice || 0), 0) };
     }), [workers, allJobs]);
 
@@ -359,7 +359,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
             
             const participant = participantMap.get(otherParticipantId);
              if (participant) {
-                const conversationMessages = messages.filter(m => 
+                const conversationMessages = (messages ?? []).filter(m => 
                     (m.senderId === participant.id && (m.receiverId === adminId || m.receiverId === 'admin-1')) || 
                     ((m.senderId === adminId || m.senderId === 'admin-1') && m.receiverId === participant.id)
                 );
@@ -466,7 +466,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
         </button>
     );
 
-    const openDisputesCount = disputes.filter(d => d.status === 'open' || d.status === 'under_review').length;
+    const openDisputesCount = (disputes ?? []).filter(d => d.status === 'open' || d.status === 'under_review').length;
     const openSupportChatsCount = supportConversations.filter(c => c.unreadCount > 0).length;
     const verificationsCount = pendingVerifications.length + pendingUsers.length;
 

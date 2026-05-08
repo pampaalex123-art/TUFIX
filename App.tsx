@@ -452,7 +452,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       const error = null;
 
       if (type === 'user') {
-        if (users.some(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase())) {
+        if ((users ?? []).some(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase())) {
           return 'An account with this email already exists. Please log in.';
         }
         const isAdminEmail = (formData.email || '').toLowerCase() === 'alejandro.finochietti@yahoo.com.ar';
@@ -488,7 +488,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         }]);
         return null;
       } else if (type === 'worker') {
-        if (workers.some(w => (w.email || '').toLowerCase() === (formData.email || '').toLowerCase())) {
+        if ((workers ?? []).some(w => (w.email || '').toLowerCase() === (formData.email || '').toLowerCase())) {
           return 'An account with this email already exists. Please log in.';
         }
         if (!data.user?.uid) throw new Error('Registration failed: no UID returned');

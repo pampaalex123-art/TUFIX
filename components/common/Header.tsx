@@ -28,7 +28,7 @@ const Header: React.FC<HeaderProps> = ({ user, userType, onLogout, notifications
   const notificationsRef = useRef<HTMLDivElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = (notifications ?? []).filter(n => !n.isRead).length;
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

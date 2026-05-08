@@ -34,7 +34,7 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
 
   const isCurrentUserWorker = 'service' in currentUser;
 
-  const hasUnreadMessages = messages.some(m => !m.isRead && m.receiverId === currentUser.id);
+  const hasUnreadMessages = (messages ?? []).some(m => !m.isRead && m.receiverId === currentUser.id);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -97,7 +97,7 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
         return <img src={message.imageUrl} alt="User upload" className="mt-2 rounded-lg max-w-xs" />;
     }
     if (message.invoiceId) {
-        const invoice = invoices.find(inv => inv.id === message.invoiceId);
+        const invoice = (invoices ?? []).find(inv => inv.id === message.invoiceId);
         if (!invoice) return <div className="italic text-gray-400">{t('invoice not found')}</div>;
         return <InvoiceCard 
                     invoice={invoice} 
@@ -220,7 +220,7 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
       {isPaymentModalOpen && selectedInvoice && (
         <PaymentModal
             invoice={selectedInvoice}
-            job={jobRequests.find(j => j.id === selectedInvoice.jobId)}
+            job={(jobRequests ?? []).find(j => j.id === selectedInvoice.jobId)}
             onClose={() => { setPaymentModalOpen(false); setSelectedInvoice(null); }}
             onConfirm={handleConfirmPayment}
             onUpdateLocation={async (location, coordinates) => {

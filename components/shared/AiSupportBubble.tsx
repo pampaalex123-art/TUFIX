@@ -139,7 +139,7 @@ const AiSupportBubble: React.FC<AiSupportBubbleProps> = ({ t, onRequestHumanSupp
 
             {/* Messages */}
             <div className="flex-grow p-3 overflow-y-auto space-y-3">
-              {messages.map((msg, index) => (
+              {(messages ?? []).map((msg, index) => (
                 <div key={index} className={`flex items-end gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {msg.role === 'model' && (
                     <div className="w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0">

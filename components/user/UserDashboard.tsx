@@ -169,7 +169,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
             return worker.availability[dayOfWeek] !== null;
         };
 
-        return workers.filter(worker => {
+        return (workers ?? []).filter(worker => {
             if (worker.verificationStatus !== 'approved') return false; // Only show approved workers
             
             const inSelectedSuperCategory = selectedSuperCategory ? selectedSuperCategory.subCategories.includes(worker.service) : true;

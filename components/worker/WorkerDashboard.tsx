@@ -25,7 +25,7 @@ const formatDate = (dateString: string): string => {
 }
 
 const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ worker, jobRequests, invoices, onContactClient, onEditProfile, onSelectJob, onRaiseDispute, onViewDispute, t }) => {
-  const invoiceMap = new Map<string, Invoice>(invoices.map(inv => [inv.jobId, inv]));
+  const invoiceMap = new Map<string, Invoice>((invoices ?? []).map(inv => [inv.jobId, inv]));
 
   // --- NEW: Split jobs into active and past ---
   const [showPastJobs, setShowPastJobs] = React.useState(false);

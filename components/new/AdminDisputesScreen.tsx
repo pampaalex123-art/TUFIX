@@ -18,12 +18,12 @@ const AdminDisputesScreen: React.FC<AdminDisputesScreenProps> = ({ disputes, use
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
     const [sort, setSort] = useState<{ key: SortKey, direction: SortDirection }>({ key: 'createdAt', direction: 'descending' });
 
-    const userMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
-    const workerMap = useMemo(() => new Map(workers.map(w => [w.id, w])), [workers]);
+    const userMap = useMemo(() => new Map((users ?? []).map(u => [u.id, u])), [users]);
+    const workerMap = useMemo(() => new Map((workers ?? []).map(w => [w.id, w])), [workers]);
     const jobMap = useMemo(() => new Map(jobs.map(j => [j.id, j])), [jobs]);
 
     const filteredAndSortedDisputes = useMemo(() => {
-        const filtered = disputes.filter(d => statusFilter === 'all' || d.status === statusFilter);
+        const filtered = ( disputes ?? []).filter(d => statusFilter === 'all' || d.status === statusFilter);
         
         filtered.sort((a, b) => {
             const valA = a[sort.key] || '';

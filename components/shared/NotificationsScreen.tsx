@@ -69,7 +69,7 @@ const NotificationsScreen: React.FC<NotificationsScreenProps> = ({ notifications
     <div className="container mx-auto max-w-2xl space-y-6">
       <div className="flex justify-between items-center bg-white border border-slate-200 p-4 rounded-xl shadow-lg">
         <h1 className="text-2xl font-bold text-black">{t('notifications')}</h1>
-        {notifications.some(n => !n.isRead) && (
+        {(notifications ?? []).some(n => !n.isRead) && (
           <button
             onClick={onMarkAllAsRead}
             className="text-sm bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition">

@@ -243,15 +243,15 @@ const AppAnalyticsDashboard: React.FC<AppAnalyticsDashboardProps> = ({ users = [
         const workerBuckets = new Map<string, number>();
         const jobBuckets = new Map<string, number>();
 
-        users.forEach(u => {
+        (users ?? []).forEach(u => {
             const b = buckets.getBucket(u.signupDate);
             userBuckets.set(b, (userBuckets.get(b) || 0) + 1);
         });
-        workers.forEach(w => {
+        (workers ?? []).forEach(w => {
             const b = buckets.getBucket(w.signupDate);
             workerBuckets.set(b, (workerBuckets.get(b) || 0) + 1);
         });
-        allJobs.forEach(j => {
+        (allJobs ?? []).forEach(j => {
             const b = buckets.getBucket(j.createdAt);
             jobBuckets.set(b, (jobBuckets.get(b) || 0) + 1);
         });
@@ -277,13 +277,13 @@ const AppAnalyticsDashboard: React.FC<AppAnalyticsDashboardProps> = ({ users = [
             annual: 365 * 24 * 3600 * 1000,
         };
         const win = windowMs[period];
-        const activeUsers = users.filter(u => now.getTime() - new Date(u.lastLoginDate).getTime() < win).length;
-        const activeWorkers = workers.filter(w => now.getTime() - new Date(w.lastLoginDate).getTime() < win).length;
-        const prevUsers = users.filter(u => {
+        const activeUsers = (users ?? []).filter(u => now.getTime() - new Date(u.lastLoginDate).getTime() < win).length;
+        const activeWorkers = (workers ?? []).filter(w => now.getTime() - new Date(w.lastLoginDate).getTime() < win).length;
+        const prevUsers = (users ?? []).filter(u => {
             const diff = now.getTime() - new Date(u.lastLoginDate).getTime();
             return diff >= win && diff < win * 2;
         }).length;
-        const prevWorkers = workers.filter(w => {
+        const prevWorkers = (workers ?? []).filter(w => {
             const diff = now.getTime() - new Date(w.lastLoginDate).getTime();
             return diff >= win && diff < win * 2;
         }).length;
@@ -308,7 +308,7 @@ const AppAnalyticsDashboard: React.FC<AppAnalyticsDashboardProps> = ({ users = [
     // ── What users look for (job service categories) ──────────────────────────
     const userDemand = useMemo(() => {
         const counts = new Map<string, number>();
-        allJobs.forEach(j => {
+        (allJobs ?? []).forEach(j => {
             const cat = j.service as string;
             counts.set(cat, (counts.get(cat) || 0) + 1);
         });
@@ -321,7 +321,7 @@ const AppAnalyticsDashboard: React.FC<AppAnalyticsDashboardProps> = ({ users = [
     // ── What workers offer (their declared service) ────────────────────────────
     const workerSupply = useMemo(() => {
         const counts = new Map<string, number>();
-        workers.forEach(w => {
+        (workers ?? []).forEach(w => {
             const cat = w.service as string;
             counts.set(cat, (counts.get(cat) || 0) + 1);
         });
@@ -334,7 +334,7 @@ const AppAnalyticsDashboard: React.FC<AppAnalyticsDashboardProps> = ({ users = [
     // ── Most used specialties (jobs completed by category) ────────────────────
     const specialtyUsage = useMemo(() => {
         const counts = new Map<string, number>();
-        allJobs.filter(j => j.status === 'completed').forEach(j => {
+        (allJobs ?? []).filter(j => j.status === 'completed').forEach(j => {
             const cat = j.service as string;
             counts.set(cat, (counts.get(cat) || 0) + 1);
         });
@@ -347,7 +347,7 @@ const AppAnalyticsDashboard: React.FC<AppAnalyticsDashboardProps> = ({ users = [
     // ── Revenue trend ──────────────────────────────────────────────────────────
     const revenueData = useMemo(() => {
         const bucketRev = new Map<string, number>();
-        transactions.forEach(tx => {
+        (transactions ?? []).forEach(tx => {
             if (!tx.paidAt) return;
             const b = buckets.getBucket(tx.paidAt);
             bucketRev.set(b, (bucketRev.get(b) || 0) + tx.platformFee);
@@ -357,10 +357,10 @@ const AppAnalyticsDashboard: React.FC<AppAnalyticsDashboardProps> = ({ users = [
     }, [transactions, buckets]);
 
     // ── Summary numbers ────────────────────────────────────────────────────────
-    const totalRevenue = transactions.reduce((sum, tx) => sum + tx.platformFee, 0);
-    const completedJobs = allJobs.filter(j => j.status === 'completed').length;
-    const pendingJobs = allJobs.filter(j => j.status === 'pending' || j.status === 'accepted').length;
-    const cancelRate = allJobs.length > 0 ? (allJobs.filter(j => j.status === 'cancelled').length / allJobs.length) * 100 : 0;
+    const totalRevenue = (transactions ?? []).reduce((sum, tx) => sum + tx.platformFee, 0);
+    const completedJobs = (allJobs ?? []).filter(j => j.status === 'completed').length;
+    const pendingJobs = (allJobs ?? []).filter(j => j.status === 'pending' || j.status === 'accepted').length;
+    const cancelRate = (allJobs ?? []).length > 0 ? ((allJobs ?? []).filter(j => j.status === 'cancelled').length / (allJobs ?? []).length) * 100 : 0;
 
     // ── Cumulative user/worker growth (for line charts) ───────────────────────
     const cumulativeUsers = useMemo(() => {
@@ -466,7 +466,7 @@ const AppAnalyticsDashboard: React.FC<AppAnalyticsDashboardProps> = ({ users = [
                 <KpiCard icon="🔵" title={`Usuarios Activos`} value={activeData.activeUsers} sub={`Últimos (${periodLabel})`} color="border-indigo-500" trend={activeData.userTrend} />
                 <KpiCard icon="🟢" title={`Trabajadores Activos`} value={activeData.activeWorkers} sub={`Últimos (${periodLabel})`} color="border-teal-500" trend={activeData.workerTrend} />
                 <KpiCard icon="💰" title="Ingresos Plataforma" value={`$${totalRevenue.toFixed(0)}`} sub="Comisiones acumuladas" color="border-yellow-500" />
-                <KpiCard icon="❌" title="Tasa Cancelación" value={`${cancelRate.toFixed(1)}%`} sub={`${allJobs.filter(j => j.status === 'cancelled').length} cancelados`} color="border-red-400" />
+                <KpiCard icon="❌" title="Tasa Cancelación" value={`${cancelRate.toFixed(1)}%`} sub={`${(allJobs ?? []).filter(j => j.status === 'cancelled').length} cancelados`} color="border-red-400" />
             </div>
 
             {/* Growth Over Time */}

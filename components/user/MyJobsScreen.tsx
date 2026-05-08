@@ -30,7 +30,7 @@ const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, work
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [selectedJob, setSelectedJob] = useState<JobRequest | null>(null);
 
-  const invoiceMap = new Map<string, Invoice>(invoices.map(inv => [inv.jobId, inv]));
+  const invoiceMap = new Map<string, Invoice>((invoices ?? []).map(inv => [inv.jobId, inv]));
   
   const handlePay = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
