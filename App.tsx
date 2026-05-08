@@ -214,11 +214,11 @@ const App: React.FC = () => {
   const currentAdminId = (currentUser?.email === 'alejandro.finochietti@yahoo.com.ar' || currentUser?.userType === 'admin' ? currentUser.id : null) || adminUser?.id || ADMIN_ID;
   
   const unreadNotificationsCount = currentUser 
-    ? notifications.filter(n => n.userId === currentUser.id && !n.isRead).length 
+    ? (notifications ?? []).filter(n => n.userId === currentUser.id && !n.isRead).length 
     : 0;
 
   const unreadMessagesCount = currentUser
-    ? messages.filter(m => m.receiverId === currentUser.id && !m.isRead).length
+    ? (messages ?? []).filter(m => m.receiverId === currentUser.id && !m.isRead).length
     : 0;
 
   const prevUnreadCountRef = useRef(unreadNotificationsCount);
@@ -1711,7 +1711,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       case 'WORKER_DASHBOARD':
         return <WorkerDashboard 
           worker={currentUser as Worker} 
-          jobRequests={jobRequests.filter(j => j.workerId === currentUser?.id)}
+          jobRequests={(jobRequests ?? []).filter(j => j.workerId === currentUser?.id)}
           invoices={invoices}
           onSelectJob={(job) => setView({ screen: 'JOB_DETAILS', job })}
           onEditProfile={() => setView({ screen: 'WORKER_PROFILE_EDIT' })}
@@ -1760,7 +1760,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         if(!otherParticipant) return <div>Participant not found.</div>;
         
         // Filter messages for this conversation, including legacy admin ID
-        const conversationMessages = messages.filter(m => {
+        const conversationMessages = (messages ?? []).filter(m => {
             const isMe = m.senderId === currentUser!.id || (userType === 'admin' && (m.senderId === currentAdminId || m.senderId === 'admin-1'));
             const isOther = m.receiverId === otherParticipant.id || (otherParticipant.id === currentAdminId && (m.receiverId === currentAdminId || m.receiverId === 'admin-1')) || (otherParticipant.id === 'admin-1' && (m.receiverId === currentAdminId || m.receiverId === 'admin-1'));
             
@@ -1789,13 +1789,13 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         />
       }
       case 'CONVERSATIONS':
-         const userConversations = Array.from(new Set(messages.filter(m => m.senderId === currentUser!.id || m.receiverId === currentUser!.id).map(m => `conv_${[m.senderId, m.receiverId].sort().join('_')}`)));
-         const allUsersAndWorkersForConvo = [...users, ...workers, {id: currentAdminId, name: 'TUFIX Support', avatarUrl: 'https://picsum.photos/seed/admin/200', userType: 'admin'}, {id: 'admin-1', name: 'TUFIX Support', avatarUrl: 'https://picsum.photos/seed/admin/200', userType: 'admin'}];
+         const userConversations = Array.from(new Set((messages ?? []).filter(m => m.senderId === currentUser!.id || m.receiverId === currentUser!.id).map(m => `conv_${[m.senderId, m.receiverId].sort().join('_')}`)));
+         const allUsersAndWorkersForConvo = [...(users ?? []), ...(workers ?? []), {id: currentAdminId, name: 'TUFIX Support', avatarUrl: 'https://picsum.photos/seed/admin/200', userType: 'admin'}, {id: 'admin-1', name: 'TUFIX Support', avatarUrl: 'https://picsum.photos/seed/admin/200', userType: 'admin'}];
          const conversations: Conversation[] = userConversations.map(convId => {
             const participantIds = convId.replace('conv_', '').split('_');
             const participantA = allUsersAndWorkersForConvo.find(p => p.id === participantIds[0])! as User | Worker;
             const participantB = allUsersAndWorkersForConvo.find(p => p.id === participantIds[1])! as User | Worker;
-            const lastMessage = messages.filter(m => (m.senderId === participantA.id && m.receiverId === participantB.id) || (m.senderId === participantB.id && m.receiverId === participantA.id)).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+            const lastMessage = (messages ?? []).filter(m => (m.senderId === participantA.id && m.receiverId === participantB.id) || (m.senderId === participantB.id && m.receiverId === participantA.id)).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
             return { id: convId, participantA, participantB, lastMessage };
          }).filter(c => c.participantA && c.participantB && c.lastMessage);
 
@@ -1807,13 +1807,13 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
             t={t}
         />
       case 'ADMIN_DASHBOARD':
-        const usersWithUpdatedData = users.map(u => {
-            const jobData = jobRequests.filter(j => j.user.id === u.id);
+        const usersWithUpdatedData = (users ?? []).map(u => {
+            const jobData = (jobRequests ?? []).filter(j => j.user.id === u.id);
             const reviewsFromWorkers = jobData.map(j => j.workerReview).filter((r): r is Review => !!r);
             return { ...u, reviews: reviewsFromWorkers };
         });
-        const pendingWorkers = workers.filter(w => w.verificationStatus === 'pending');
-        const pendingUsers = users.filter(u => (u as any).verificationStatus === 'pending');
+        const pendingWorkers = (workers ?? []).filter(w => w.verificationStatus === 'pending');
+        const pendingUsers = (users ?? []).filter(u => (u as any).verificationStatus === 'pending');
         return <AdminDashboard 
             users={usersWithUpdatedData} 
             workers={workers} 
@@ -1840,7 +1840,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       case 'ADMIN_CLIENT_PROFILE':
         return <ClientProfileAdminView
             user={view.user}
-            jobs={jobRequests.filter(j => j.user.id === view.user.id)}
+            jobs={(jobRequests ?? []).filter(j => j.user.id === view.user.id)}
             workers={workers}
             messages={messages}
             invoices={invoices}
@@ -1856,7 +1856,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       case 'ADMIN_WORKER_PROFILE':
         return <WorkerProfileAdminView
             worker={view.worker}
-            jobs={jobRequests.filter(j => j.workerId === view.worker.id)}
+            jobs={(jobRequests ?? []).filter(j => j.workerId === view.worker.id)}
             users={users}
             messages={messages}
             invoices={invoices}
@@ -1882,7 +1882,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         return <MessagingScreen
             currentUser={participant1}
             otherParticipant={participant2}
-            messages={messages.filter(m => (m.senderId === participant1.id && m.receiverId === participant2.id) || (m.senderId === participant2.id && m.receiverId === participant1.id))}
+            messages={(messages ?? []).filter(m => (m.senderId === participant1.id && m.receiverId === participant2.id) || (m.senderId === participant2.id && m.receiverId === participant1.id))}
             invoices={invoices}
             jobRequests={jobRequests}
             onSendMessage={() => {}}
@@ -1897,14 +1897,14 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       case 'EARNINGS':
         return <EarningsScreen
           worker={currentUser as Worker}
-          jobRequests={jobRequests.filter(j => j.workerId === currentUser?.id)}
+          jobRequests={(jobRequests ?? []).filter(j => j.workerId === currentUser?.id)}
           onBack={() => setView({ screen: 'WORKER_DASHBOARD' })}
           t={t}
           language={language}
         />
       case 'MY_JOBS':
         return <MyJobsScreen
-          jobRequests={jobRequests.filter(j => j.user.id === currentUser?.id)}
+          jobRequests={(jobRequests ?? []).filter(j => j.user.id === currentUser?.id)}
           invoices={invoices}
           workers={workers}
           userCountry={currentUser?.country}
@@ -1981,7 +1981,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       case 'NOTIFICATIONS':
         return (
           <NotificationsScreen 
-            notifications={notifications.filter(n => n.userId === currentUser?.id)}
+            notifications={(notifications ?? []).filter(n => n.userId === currentUser?.id)}
             onNotificationClick={handleNotificationClick}
             onMarkAllAsRead={handleMarkAllAsRead}
             t={t}
@@ -2059,7 +2059,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         user={currentUser}
         userType={userType}
         onLogout={handleLogout}
-        notifications={notifications.filter(n => n.userId === currentUser?.id)}
+        notifications={(notifications ?? []).filter(n => n.userId === currentUser?.id)}
         onNotificationClick={handleNotificationClick}
         onMarkAllAsRead={handleMarkAllAsRead}
         onNavigate={(screen) => {
