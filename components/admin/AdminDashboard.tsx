@@ -810,10 +810,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                 )}
                 {activeTab === 'ai_analytics' && (
                     <AppAnalyticsDashboard
-                        users={users}
-                        workers={workers}
-                        allJobs={allJobs}
-                        transactions={transactions}
+                        users={users ?? []}
+                        workers={workers ?? []}
+                        allJobs={allJobs ?? []}
+                        transactions={transactions ?? []}
                     />
                 )}
                 {activeTab === 'settings' && (

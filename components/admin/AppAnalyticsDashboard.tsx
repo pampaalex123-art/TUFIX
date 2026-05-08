@@ -204,7 +204,7 @@ interface AppAnalyticsDashboardProps {
 
 const COLORS = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#6366F1', '#14B8A6', '#F97316', '#84CC16'];
 
-const AppAnalyticsDashboard: React.FC<AppAnalyticsDashboardProps> = ({ users, workers, allJobs, transactions }) => {
+const AppAnalyticsDashboard: React.FC<AppAnalyticsDashboardProps> = ({ users = [], workers = [], allJobs = [], transactions = [] }) => {
     const [period, setPeriod] = useState<Period>('monthly');
 
     // ── Helpers ──────────────────────────────────────────────────────────────
