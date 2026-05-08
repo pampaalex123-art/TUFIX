@@ -37,6 +37,7 @@ import { doc, updateDoc, setDoc } from 'firebase/firestore';
 import { useTranslations, Language } from './components/shared/LoginScreen';
 import { Worker, User, JobRequest, ServiceCategory, UserType, AppNotification, Message, Conversation, Invoice, Review, InvoiceLineItem, Transaction, Dispute, DisputeMessage, Coordinates } from './types';
 import AiSupportBubble from './components/shared/AiSupportBubble';
+import { Content } from '@google/genai';
 import WorkerVerificationScreen from './components/worker/WorkerVerificationScreen';
 import VerificationPendingScreen from './components/auth/VerificationPendingScreen';
 import AdminWorkerVerificationScreen from './components/admin/AdminWorkerVerificationScreen';
@@ -44,12 +45,6 @@ import ConfirmationPage from './components/shared/ConfirmationPage';
 import OnboardingTour from './components/shared/OnboardingTour';
 import MenuOnboardingTour from './components/shared/MenuOnboardingTour';
 import { addWorkerToSpreadsheet, updateSpreadsheetVerificationStatus } from './services/spreadsheetService';
-import { ToastProvider, useToast } from './components/common/Toast';
-import UserIdVerificationModal from './components/user/UserIdVerificationModal';
-import ApprovalPopup from './components/user/ApprovalPopup';
-import CompanyDashboard from './components/company/CompanyDashboard';
-import CompanyRegister from './components/company/CompanyRegister';
-
 
 const DUMMY_USERS: User[] = [];
 
@@ -91,19 +86,13 @@ type View =
   | { screen: 'VERIFICATION_PENDING' }
   | { screen: 'NOTIFICATIONS' }
   | { screen: 'ADMIN_WORKER_VERIFICATION'; worker: Worker }
-  | { screen: 'CONFIRMATION' }
-  | { screen: 'COMPANY_REGISTER' }
-  | { screen: 'COMPANY_DASHBOARD' };
+  | { screen: 'CONFIRMATION' };
 
 const App: React.FC = () => {
-  const { showToast } = useToast();
   const { language, setLanguage, t } = useTranslations();
   const [currentUser, setCurrentUser] = useLocalStorage<User | Worker | null>('currentUser_v5', null);
   const [userType, setUserType] = useLocalStorage<UserType | null>('userType_v5', null);
   const [view, setView] = useState<View>({ screen: 'AUTH' });
-  const [pendingAdminLoginData, setPendingAdminLoginData] = useState<{ uid: string; email: string; password: string } | null>(null);
-  const [showUserIdVerification, setShowUserIdVerification] = useState(false);
-  const [showApprovalPopup, setShowApprovalPopup] = useState(false);
 
   useEffect(() => {
     // Handle Mercado Pago confirmation redirect
@@ -162,7 +151,9 @@ const App: React.FC = () => {
     const syncAdminClaim = async () => {
       if (!currentUser || !auth.currentUser) return;
       
-      const isSystemAdmin = currentUser.userType === 'admin';
+      const isSystemAdmin = currentUser.email === 'admin@tufix.com' || 
+                            currentUser.email === 'pampa.alex123@gmail.com' ||
+                            currentUser.email === 'admin@admin';
       
       if (isSystemAdmin) {
         try {
@@ -210,15 +201,15 @@ const App: React.FC = () => {
 
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
 
-  const adminUser = (users ?? []).find(u => u.userType === 'admin' || u.email === 'alejandro.finochietti@yahoo.com.ar');
-  const currentAdminId = (currentUser?.email === 'alejandro.finochietti@yahoo.com.ar' || currentUser?.userType === 'admin' ? currentUser.id : null) || adminUser?.id || ADMIN_ID;
-  
+  const adminUser = users.find(u => u.userType === 'admin' || u.email === 'admin@tufix.com' || u.email === 'pampa.alex123@gmail.com');
+  const currentAdminId = (currentUser?.email === 'pampa.alex123@gmail.com' || currentUser?.email === 'admin@tufix.com' || currentUser?.userType === 'admin' ? currentUser.id : null) || adminUser?.id || ADMIN_ID;
+
   const unreadNotificationsCount = currentUser 
-    ? (notifications ?? []).filter(n => n.userId === currentUser.id && !n.isRead).length 
+    ? (notifications || []).filter(n => n.userId === currentUser.id && !n.isRead).length 
     : 0;
 
   const unreadMessagesCount = currentUser
-    ? (messages ?? []).filter(m => m.receiverId === currentUser.id && !m.isRead).length
+    ? (messages || []).filter(m => m.receiverId === currentUser.id && !m.isRead).length
     : 0;
 
   const prevUnreadCountRef = useRef(unreadNotificationsCount);
@@ -337,26 +328,72 @@ const App: React.FC = () => {
     }
   };
 
-const handleLogin = async (type: UserType, formData: any): Promise<string | null> => {
-    // Block old admin panel login entirely
-    if (type === 'admin') {
-      return 'Ingresá con tu email y contraseña normales.';
-    }
+  const handleLogin = async (type: UserType, formData: any): Promise<string | null> => {
+    if (type === 'admin' || (type === 'user' && formData.email === 'admin@admin' && formData.password === 'admin')) {
+      if (formData.email !== 'admin@admin') {
+          return 'Invalid admin credentials.';
+      }
+      if (formData.email === 'admin@admin' && formData.password === 'admin') {
+        let adminUid = ADMIN_ID;
+        try {
+          const cred = await signInWithEmailAndPassword(auth, 'admin@tufix.com', 'admin123');
+          adminUid = cred.user.uid;
+        } catch (e: any) {
+          try {
+            const cred = await createUserWithEmailAndPassword(auth, 'admin@tufix.com', 'admin123');
+            adminUid = cred.user.uid;
+          } catch (err) {
+            console.error("Failed to create admin user", err);
+          }
+        }
+        const adminUser: User = {
+          id: adminUid,
+          name: 'Admin User',
+          email: 'admin@admin',
+          password: 'admin',
+          location: 'System HQ',
+          avatarUrl: 'https://picsum.photos/seed/admin/200',
+          signupDate: new Date().toISOString(),
+          lastLoginDate: new Date().toISOString(),
+          rating: 0,
+          reviews: [],
+          idNumber: '000-00-0000',
+          phoneNumber: { code: '+1', number: '555-555-5555' },
+          userType: 'admin',
+        };
+        
+        // Ensure admin user exists in users collection so rules pass
+        try {
+          const adminRef = doc(db, 'users', adminUid);
+          await setDoc(adminRef, adminUser, { merge: true });
+        } catch (err) {
+          console.error('Failed to save admin user to Firestore:', err);
+        }
 
-    const ALEJANDRO_EMAIL = 'alejandro.finochietti@yahoo.com.ar';
-    const isAlejandro = (formData.email || '').toLowerCase() === ALEJANDRO_EMAIL.toLowerCase();
+        if (!users.find(u => u.id === adminUid)) {
+          setUsers(prev => [...prev, adminUser]);
+        }
+        setCurrentUser(adminUser);
+        setUserType('admin');
+        return null;
+      } else {
+        return 'Incorrect admin password.';
+      }
+    }
 
     try {
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      const uid = userCredential.user?.uid || `user-${Date.now()}`;
+      const data = userCredential;
+      const error = null;
 
       if (type === 'user') {
         let user = users.find(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase());
-        const isNewRegistration = !user;
         if (!user) {
+          // Recreate user if missing from local storage but exists in Supabase
+          const isAdminEmail = (formData.email || '').toLowerCase() === 'pampa.alex123@gmail.com' || (formData.email || '').toLowerCase() === 'admin@tufix.com';
           user = {
-            id: uid,
-            name: (formData.email || '').split('@')[0],
+            id: data.user?.uid || `user-${Date.now()}`,
+            name: (formData.email || '').split('@')[0], // Fallback name
             email: formData.email,
             password: formData.password,
             location: 'New City, NC',
@@ -367,34 +404,24 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
             reviews: [],
             idNumber: '000-00-0000',
             phoneNumber: { code: '+1', number: '555-555-5555' },
-            verificationStatus: isAlejandro ? 'approved' : 'pending',
-            userType: isAlejandro ? 'admin' : 'user',
+            verificationStatus: 'approved',
+            userType: isAdminEmail ? 'admin' : 'user',
           };
           setUsers(prev => {
             if (prev.find(u => u.id === user!.id)) return prev;
             return [...prev, user!];
           });
         }
-
-        // If this is Alejandro's email, show the Admin/User choice dialog
-        if (isAlejandro) {
-          setPendingAdminLoginData({ uid: user.id, email: user.email, name: user.name });
-          return null;
-        }
-
         setCurrentUser(user);
         setUserType(user.userType as UserType);
-        if (isNewRegistration) {
-          setTimeout(() => setShowUserIdVerification(true), 1500);
-        }
         return null;
-
       } else if (type === 'worker') {
         let worker = workers.find(w => (w.email || '').toLowerCase() === (formData.email || '').toLowerCase());
         if (!worker) {
+          // Recreate worker if missing from local storage but exists in Supabase
           worker = {
-            id: uid,
-            name: (formData.email || '').split('@')[0],
+            id: data.user?.uid || `worker-${Date.now()}`,
+            name: (formData.email || '').split('@')[0], // Fallback name
             email: formData.email,
             password: formData.password,
             service: ServiceCategory.HANDYMAN,
@@ -419,7 +446,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
             lastLoginDate: new Date().toISOString(),
             idNumber: '000-00-0000',
             phoneNumber: { code: '+1', number: '555-555-5555' },
-            verificationStatus: 'approved',
+            verificationStatus: 'approved', // Auto-approve restored workers to avoid getting stuck
             userType: 'worker',
           };
           setWorkers(prev => {
@@ -429,10 +456,10 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         }
 
         if (worker.verificationStatus === 'pending') {
-          return "Your account is awaiting verification. You will be notified once it's approved.";
+            return "Your account is awaiting verification. You will be notified once it's approved.";
         }
         if (worker.verificationStatus === 'declined') {
-          return `Your account application was declined. Reason: ${worker.declineReason || 'No reason provided.'}`;
+            return `Your account application was declined. Reason: ${worker.declineReason || 'No reason provided.'}`;
         }
 
         setCurrentUser(worker);
@@ -452,13 +479,12 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       const error = null;
 
       if (type === 'user') {
-        if ((users ?? []).some(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase())) {
+        if (users.some(u => (u.email || '').toLowerCase() === (formData.email || '').toLowerCase())) {
           return 'An account with this email already exists. Please log in.';
         }
-        const isAdminEmail = (formData.email || '').toLowerCase() === 'alejandro.finochietti@yahoo.com.ar';
-        if (!data.user?.uid) throw new Error('Registration failed: no UID returned');
+        const isAdminEmail = (formData.email || '').toLowerCase() === 'pampa.alex123@gmail.com' || (formData.email || '').toLowerCase() === 'admin@tufix.com';
         const newUser: User = {
-          id: data.user.uid,
+          id: data.user?.uid || `user-${Date.now()}`,
           name: formData.name,
           email: formData.email,
           password: formData.password,
@@ -467,7 +493,6 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
           signupDate: new Date().toISOString(),
           lastLoginDate: new Date().toISOString(),
           rating: 0,
-          country: formData.country || 'bolivia',
           reviews: [],
           idNumber: formData.idNumber,
           phoneNumber: { code: formData.countryCode, number: formData.phoneNumber },
@@ -488,12 +513,11 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         }]);
         return null;
       } else if (type === 'worker') {
-        if ((workers ?? []).some(w => (w.email || '').toLowerCase() === (formData.email || '').toLowerCase())) {
+        if (workers.some(w => (w.email || '').toLowerCase() === (formData.email || '').toLowerCase())) {
           return 'An account with this email already exists. Please log in.';
         }
-        if (!data.user?.uid) throw new Error('Registration failed: no UID returned');
         const newWorker: Worker = {
-          id: data.user.uid,
+          id: data.user?.uid || `worker-${Date.now()}`,
           name: formData.name,
           email: formData.email,
           password: formData.password,
@@ -505,7 +529,6 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
           bio: t('newly registered service provider'),
           avatarUrl: `https://picsum.photos/seed/${formData.email}/200`,
           rating: 0,
-          country: formData.country || 'bolivia',
           reviews: [],
           availability: {
             Monday: { start: '09:00', end: '17:00' },
@@ -564,7 +587,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         setRecoveryUser(foundUser);
         setRecoveryCode(code);
         // Simulate sending code via alert
-        setTimeout(() => showToast(t('your tufix recovery code is', {code: code}), 'info'), 100);
+        setTimeout(() => alert(t('your tufix recovery code is', {code: code})), 100);
         return true;
     } else {
         setRecoveryError(t('user not found'));
@@ -607,50 +630,11 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
     // Clean up recovery state
     setRecoveryUser(null);
     setRecoveryCode(null);
-    showToast(t('password reset success'), 'success');
+    alert(t('password reset success'));
     // The useEffect will handle navigation to the dashboard
     return true;
   };
 
-  const handleUserIdVerificationSubmit = (data: { idFront: string; idBack: string; selfie: string }) => {
-    if (!currentUser) return;
-    setUsers(prev => prev.map(u => {
-      if (u.id === currentUser.id) {
-        return { ...u, idPhotoFront: data.idFront, idPhotoBack: data.idBack, selfiePhotoUrl: data.selfie, verificationStatus: 'pending' as const };
-      }
-      return u;
-    }));
-    setNotifications(prev => [...prev, {
-      id: `notif-user-verify-${Date.now()}`,
-      userId: 'admin-1',
-      type: 'new_registration' as const,
-      message: `New user ${currentUser.name} requires identity verification.`,
-      isRead: false,
-      timestamp: new Date().toISOString(),
-      relatedEntityId: currentUser.id,
-    }]);
-    setShowUserIdVerification(false);
-  };
-
-  const handleApproveUser = (userId: string) => {
-    setUsers(prev => prev.map(u =>
-      u.id === userId ? { ...u, verificationStatus: 'approved' as const } : u
-    ));
-    setNotifications(prev => [...prev, {
-      id: `notif-user-approved-${Date.now()}`,
-      userId: userId,
-      type: 'status_update' as const,
-      message: '¡Tu cuenta TUFIX fue aprobada! Ya podés comenzar a buscar ayuda.',
-      isRead: false,
-      timestamp: new Date().toISOString(),
-      relatedEntityId: userId,
-    }]);
-    showToast('Usuario aprobado exitosamente', 'success');
-    if (currentUser?.id === userId) {
-      setShowApprovalPopup(true);
-    }
-    setView({ screen: 'ADMIN_DASHBOARD' });
-  };
   const handleVerificationSubmit = (workerId: string, idPhotoUrl: string, selfiePhotoUrl: string) => {
     let workerName = '';
     setWorkers(prev => prev.map(w => {
@@ -705,7 +689,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
     }]);
     
     if (approvedWorkerForSpreadsheet) {
-        showToast(t('account has been approved', {name: approvedWorkerForSpreadsheet.name}), 'success');
+        alert(t('account has been approved', {name: approvedWorkerForSpreadsheet.name}));
         updateSpreadsheetVerificationStatus(approvedWorkerForSpreadsheet).catch(error => {
             console.error("Failed to update spreadsheet for approved worker:", error);
         });
@@ -748,7 +732,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
     }]);
     
     if (declinedWorkerForSpreadsheet) {
-        showToast(t('account has been declined', {name: declinedWorkerForSpreadsheet.name}), 'info');
+        alert(t('account has been declined', {name: declinedWorkerForSpreadsheet.name}));
         updateSpreadsheetVerificationStatus(declinedWorkerForSpreadsheet).catch(error => {
             console.error("Failed to update spreadsheet for declined worker:", error);
         });
@@ -762,7 +746,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
     if (userType === 'user') {
       setView({ screen: 'BOOKING', worker });
     } else {
-      showToast(t('please log in as a user to book a service'), 'warning');
+      alert(t('please log in as a user to book a service'));
     }
   };
 
@@ -792,7 +776,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       relatedEntityId: newJob.id
     }]);
     setView({ screen: 'MY_JOBS' });
-    showToast(t('booking request submitted successfully'), 'success');
+    alert(t('booking request submitted successfully'));
   };
 
   const handleLeaveUserReview = (job: JobRequest) => {
@@ -961,14 +945,14 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
     if (job.disputeId) {
         const dispute = disputes.find(d => d.id === job.disputeId);
         if (dispute && dispute.status !== 'resolved') {
-            showToast(t('cannot release payment while dispute is active'), 'warning');
+            alert(t('cannot release payment while dispute is active'));
             return;
         }
     }
 
     const invoice = invoices.find(inv => inv.id === job.invoiceId);
     if (!invoice || (invoice.status !== 'held' && invoice.status !== 'pending')) {
-        showToast(t('error invoice is not in a payable state'), 'error');
+        alert(t('error invoice is not in a payable state'));
         return;
     }
 
@@ -992,10 +976,10 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
           j.id === jobId ? { ...j, client_confirmed: true, clientConfirmedAt: now } : j
       ));
 
-      showToast(t('job confirmed and payment release triggered'), 'success');
+      alert(t('job confirmed and payment release triggered'));
     } catch (error: any) {
       console.error('Error confirming job:', error);
-      showToast(t('error confirming job', { error: error.message }), 'error');
+      alert(t('error confirming job', { error: error.message }));
     }
   };
 
@@ -1003,14 +987,14 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
     setWorkers(prev => prev.map(w => w.id === updatedWorker.id ? updatedWorker : w));
     setCurrentUser(updatedWorker);
     setView({ screen: 'WORKER_DASHBOARD' });
-    showToast(t('profile updated successfully'), 'success');
+    alert(t('profile updated successfully'));
   };
   
   const handleSaveUserProfile = (updatedUser: User) => {
     setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
     setCurrentUser(updatedUser);
     setView({ screen: 'USER_DASHBOARD' });
-    showToast(t('profile updated successfully'), 'success');
+    alert(t('profile updated successfully'));
   };
 
   const handleMarkAllAsRead = () => {
@@ -1190,7 +1174,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
     } else {
         setView({ screen: 'WORKER_DASHBOARD' });
     }
-    showToast(t('invoice sent you can now start the job'), 'success');
+    alert(t('invoice sent you can now start the job'));
   };
   
   const handlePayInvoice = (invoiceId: string) => {
@@ -1235,7 +1219,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
           relatedEntityId: paidInvoice!.jobId,
       }]);
     }
-    showToast(t('payment successful funds held securely'), 'success');
+    alert(t('payment successful funds held securely'));
   };
 
   const handleUpdateJobLocation = async (jobId: string, location: string, coordinates: Coordinates) => {
@@ -1277,7 +1261,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         relatedEntityId: newDispute.id
     }]);
     
-    showToast(t('provide dispute reason alert'), 'warning');
+    alert(t('provide dispute reason alert'));
     
     if (userType === 'user') setView({ screen: 'MY_JOBS' });
     else if (userType === 'worker') setView({ screen: 'WORKER_DASHBOARD' });
@@ -1325,7 +1309,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       const job = jobRequests.find(j => j.id === dispute?.jobId);
       const invoice = invoices.find(i => i.id === job?.invoiceId);
       if (!dispute || !job || !invoice) {
-          showToast(t('error could not find all related records for this dispute'), 'error');
+          alert(t('error could not find all related records for this dispute'));
           return;
       }
       
@@ -1378,7 +1362,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         }]);
       });
       
-      showToast(t('dispute has been resolved and funds have been processed'), 'success');
+      alert(t('dispute has been resolved and funds have been processed'));
       setView({ screen: 'ADMIN_DASHBOARD' });
   };
 
@@ -1395,7 +1379,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
   const handleSaveTerms = (newContent: string) => {
     setTermsContent(newContent);
     setView({ screen: 'ADMIN_DASHBOARD' });
-    showToast(t('terms and services updated successfully'), 'success');
+    alert(t('terms and services updated successfully'));
   };
 
   const handleRequestHumanSupport = (chatHistory: Content[]) => {
@@ -1431,7 +1415,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
     }]);
 
     // Alert user and redirect to conversation
-    showToast(t('you have been connected to a live support agent'), 'info');
+    alert(t('you have been connected to a live support agent'));
     setView({ screen: 'MESSAGING', conversationId });
   };
 
@@ -1439,26 +1423,15 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
 
   const handleDeleteUser = async (userToDelete: User) => {
     if (currentUser?.userType !== 'admin') {
-      showToast(t('Permission Denied: Only admins can delete users.'), 'error');
+      alert(t('Permission Denied: Only admins can delete users.'));
       return;
     }
 
     console.log('handleDeleteUser initiated for:', userToDelete.id, userToDelete.email);
-
-    // Always remove from local UI first — if they're already gone from Firebase,
-    // we still want them gone from the admin panel
-    const removeFromUI = () => {
-      setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
-      setJobRequests(prev => prev.filter(j => j.user.id !== userToDelete.id));
-    };
-
     try {
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) {
-        // No auth token — just remove from UI silently
-        removeFromUI();
-        showToast('Usuario eliminado del panel.', 'success');
-        return;
+        throw new Error(t('Not authenticated'));
       }
 
       const response = await fetch('/api/admin/delete-user', {
@@ -1470,57 +1443,35 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         body: JSON.stringify({ uid: userToDelete.id, collectionName: 'users' }),
       });
 
-      let data: any = {};
-      const text = await response.text();
-      if (text) {
-        try { data = JSON.parse(text); } catch { data = { error: text }; }
-      }
-
-      // Remove from UI regardless of outcome
-      removeFromUI();
+      const data = await response.json();
 
       if (!response.ok) {
-        // If it's a not-found error, the user is already gone — treat as success
-        const isNotFound = response.status === 404 ||
-          (data.error || '').toLowerCase().includes('not_found') ||
-          (data.error || '').toLowerCase().includes('not found') ||
-          (data.error || '').includes('5 NOT_FOUND');
-        if (isNotFound) {
-          showToast('Usuario eliminado correctamente.', 'success');
-        } else {
-          showToast(`Error del servidor: ${data.error || response.statusText}`, 'error');
-        }
-        return;
+        throw new Error(data.error || t('Failed to delete user'));
       }
 
-      showToast(t('User Deleted Successfully'), 'success');
+      // UI Feedback & Automatic Refresh
+      setUsers(prev => (prev || []).filter(u => u.id !== userToDelete.id));
+      // Also remove associated jobs from local state to keep UI in sync
+      setJobRequests(prev => (prev || []).filter(j => j.user.id !== userToDelete.id));
+      
+      alert(t('User Deleted Successfully'));
     } catch (error: any) {
       console.error('Delete User Error:', error);
-      // Still remove from UI even if the API call threw
-      removeFromUI();
-      showToast('Usuario eliminado del panel.', 'success');
+      alert(`${t('Error deleting user')}: ${error.message}`);
     }
   };
 
   const handleDeleteWorker = async (workerToDelete: Worker) => {
     if (currentUser?.userType !== 'admin') {
-      showToast(t('Permission Denied: Only admins can delete workers.'), 'error');
+      alert(t('Permission Denied: Only admins can delete workers.'));
       return;
     }
 
     console.log('handleDeleteWorker initiated for:', workerToDelete.id, workerToDelete.email);
-
-    const removeFromUI = () => {
-      setWorkers(prev => prev.filter(w => w.id !== workerToDelete.id));
-      setJobRequests(prev => prev.filter(j => j.workerId !== workerToDelete.id));
-    };
-
     try {
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) {
-        removeFromUI();
-        showToast('Trabajador eliminado del panel.', 'success');
-        return;
+        throw new Error(t('Not authenticated'));
       }
 
       const response = await fetch('/api/admin/delete-user', {
@@ -1532,33 +1483,21 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         body: JSON.stringify({ uid: workerToDelete.id, collectionName: 'workers' }),
       });
 
-      let data: any = {};
-      const text = await response.text();
-      if (text) {
-        try { data = JSON.parse(text); } catch { data = { error: text }; }
-      }
-
-      // Remove from UI regardless of outcome
-      removeFromUI();
+      const data = await response.json();
 
       if (!response.ok) {
-        const isNotFound = response.status === 404 ||
-          (data.error || '').toLowerCase().includes('not_found') ||
-          (data.error || '').toLowerCase().includes('not found') ||
-          (data.error || '').includes('5 NOT_FOUND');
-        if (isNotFound) {
-          showToast('Trabajador eliminado correctamente.', 'success');
-        } else {
-          showToast(`Error del servidor: ${data.error || response.statusText}`, 'error');
-        }
-        return;
+        throw new Error(data.error || t('Failed to delete worker'));
       }
 
-      showToast(t('User Deleted Successfully'), 'success');
+      // UI Feedback & Automatic Refresh
+      setWorkers(prev => (prev || []).filter(w => w.id !== workerToDelete.id));
+      // Also remove associated jobs from local state
+      setJobRequests(prev => (prev || []).filter(j => j.workerId !== workerToDelete.id));
+      
+      alert(t('User Deleted Successfully'));
     } catch (error: any) {
       console.error('Delete Worker Error:', error);
-      removeFromUI();
-      showToast('Trabajador eliminado del panel.', 'success');
+      alert(`${t('Error deleting worker')}: ${error.message}`);
     }
   };
 
@@ -1580,68 +1519,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
   const renderContent = () => {
     switch (view.screen) {
       case 'AUTH':
-        if (pendingAdminLoginData) {
-          return (
-            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl p-8 max-w-sm w-full shadow-2xl text-center">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <h2 className="text-2xl font-bold text-black mb-2">Bienvenido, Alejandro</h2>
-                <p className="text-slate-500 mb-6">¿Cómo deseas ingresar?</p>
-                <div className="space-y-3">
-                  <button
-                    onClick={async () => {
-                      const user = users.find(u => u.id === pendingAdminLoginData.uid) || {
-                        id: pendingAdminLoginData.uid,
-                        name: pendingAdminLoginData.name,
-                        email: pendingAdminLoginData.email,
-                        password: '',
-                        location: 'Admin HQ',
-                        avatarUrl: `https://picsum.photos/seed/${pendingAdminLoginData.email}/200`,
-                        signupDate: new Date().toISOString(),
-                        lastLoginDate: new Date().toISOString(),
-                        rating: 0,
-                        reviews: [],
-                        idNumber: '000-00-0000',
-                        phoneNumber: { code: '+54', number: '000000000' },
-                        userType: 'admin' as const,
-                      };
-                      const adminUser = { ...user, userType: 'admin' as const };
-                      try {
-                        const adminRef = doc(db, 'users', adminUser.id);
-                        await setDoc(adminRef, adminUser, { merge: true });
-                      } catch (err) { console.error(err); }
-                      setCurrentUser(adminUser);
-                      setUserType('admin');
-                      setPendingAdminLoginData(null);
-                    }}
-                    className="w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-purple-700 transition"
-                  >
-                    🛡️ Entrar como Administrador
-                  </button>
-                  <button
-                    onClick={() => {
-                      const user = users.find(u => u.id === pendingAdminLoginData.uid);
-                      if (user) {
-                        setCurrentUser({ ...user, userType: 'user' });
-                        setUserType('user');
-                      }
-                      setPendingAdminLoginData(null);
-                    }}
-                    className="w-full bg-slate-100 text-black font-bold py-3 px-4 rounded-xl hover:bg-slate-200 transition"
-                  >
-                    👤 Entrar como Usuario Regular
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        }
-        return <AuthScreen onLogin={handleLogin} onSignUp={handleSignUp} onForgotPassword={handleForgotPassword} t={t} termsContent={termsContent} />;;
-
+        return <AuthScreen onLogin={handleLogin} onSignUp={handleSignUp} onForgotPassword={handleForgotPassword} t={t} termsContent={termsContent} />;
       case 'PASSWORD_RECOVERY':
         return <PasswordRecoveryScreen
             error={recoveryError}
@@ -1667,7 +1545,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         />;
       case 'USER_DASHBOARD':
         return <UserDashboard 
-          workers={allWorkers.filter(w => w.verificationStatus === 'approved')}
+          workers={(allWorkers || []).filter(w => w.verificationStatus === 'approved')}
           selectedCategory={selectedCategory}
           onSelectCategory={setSelectedCategory}
           onSelectWorker={(worker) => setView({ screen: 'WORKER_PROFILE', worker })}
@@ -1711,7 +1589,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       case 'WORKER_DASHBOARD':
         return <WorkerDashboard 
           worker={currentUser as Worker} 
-          jobRequests={(jobRequests ?? []).filter(j => j.workerId === currentUser?.id)}
+          jobRequests={(jobRequests || []).filter(j => j.workerId === currentUser?.id)}
           invoices={invoices}
           onSelectJob={(job) => setView({ screen: 'JOB_DETAILS', job })}
           onEditProfile={() => setView({ screen: 'WORKER_PROFILE_EDIT' })}
@@ -1760,7 +1638,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         if(!otherParticipant) return <div>Participant not found.</div>;
         
         // Filter messages for this conversation, including legacy admin ID
-        const conversationMessages = (messages ?? []).filter(m => {
+        const conversationMessages = (messages || []).filter(m => {
             const isMe = m.senderId === currentUser!.id || (userType === 'admin' && (m.senderId === currentAdminId || m.senderId === 'admin-1'));
             const isOther = m.receiverId === otherParticipant.id || (otherParticipant.id === currentAdminId && (m.receiverId === currentAdminId || m.receiverId === 'admin-1')) || (otherParticipant.id === 'admin-1' && (m.receiverId === currentAdminId || m.receiverId === 'admin-1'));
             
@@ -1789,13 +1667,13 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         />
       }
       case 'CONVERSATIONS':
-         const userConversations = Array.from(new Set((messages ?? []).filter(m => m.senderId === currentUser!.id || m.receiverId === currentUser!.id).map(m => `conv_${[m.senderId, m.receiverId].sort().join('_')}`)));
-         const allUsersAndWorkersForConvo = [...(users ?? []), ...(workers ?? []), {id: currentAdminId, name: 'TUFIX Support', avatarUrl: 'https://picsum.photos/seed/admin/200', userType: 'admin'}, {id: 'admin-1', name: 'TUFIX Support', avatarUrl: 'https://picsum.photos/seed/admin/200', userType: 'admin'}];
+         const userConversations = Array.from(new Set((messages || []).filter(m => m.senderId === currentUser!.id || m.receiverId === currentUser!.id).map(m => `conv_${[m.senderId, m.receiverId].sort().join('_')}`)));
+         const allUsersAndWorkersForConvo = [...users, ...workers, {id: currentAdminId, name: 'TUFIX Support', avatarUrl: 'https://picsum.photos/seed/admin/200', userType: 'admin'}, {id: 'admin-1', name: 'TUFIX Support', avatarUrl: 'https://picsum.photos/seed/admin/200', userType: 'admin'}];
          const conversations: Conversation[] = userConversations.map(convId => {
             const participantIds = convId.replace('conv_', '').split('_');
             const participantA = allUsersAndWorkersForConvo.find(p => p.id === participantIds[0])! as User | Worker;
             const participantB = allUsersAndWorkersForConvo.find(p => p.id === participantIds[1])! as User | Worker;
-            const lastMessage = (messages ?? []).filter(m => (m.senderId === participantA.id && m.receiverId === participantB.id) || (m.senderId === participantB.id && m.receiverId === participantA.id)).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+            const lastMessage = (messages || []).filter(m => (m.senderId === participantA.id && m.receiverId === participantB.id) || (m.senderId === participantB.id && m.receiverId === participantA.id)).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
             return { id: convId, participantA, participantB, lastMessage };
          }).filter(c => c.participantA && c.participantB && c.lastMessage);
 
@@ -1807,13 +1685,12 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
             t={t}
         />
       case 'ADMIN_DASHBOARD':
-        const usersWithUpdatedData = (users ?? []).map(u => {
-            const jobData = (jobRequests ?? []).filter(j => j.user.id === u.id);
+        const usersWithUpdatedData = users.map(u => {
+            const jobData = (jobRequests || []).filter(j => j.user.id === u.id);
             const reviewsFromWorkers = jobData.map(j => j.workerReview).filter((r): r is Review => !!r);
             return { ...u, reviews: reviewsFromWorkers };
         });
-        const pendingWorkers = (workers ?? []).filter(w => w.verificationStatus === 'pending');
-        const pendingUsers = (users ?? []).filter(u => (u as any).verificationStatus === 'pending');
+        const pendingWorkers = (workers || []).filter(w => w.verificationStatus === 'pending');
         return <AdminDashboard 
             users={usersWithUpdatedData} 
             workers={workers} 
@@ -1824,7 +1701,6 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
             messages={messages}
             invoices={invoices}
             pendingVerifications={pendingWorkers}
-            pendingUsers={pendingUsers}
             onSelectUser={(user) => setView({ screen: 'ADMIN_CLIENT_PROFILE', user })}
             onDeleteUser={handleDeleteUser}
             onSelectWorker={(worker) => setView({ screen: 'ADMIN_WORKER_PROFILE', worker })}
@@ -1840,23 +1716,18 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       case 'ADMIN_CLIENT_PROFILE':
         return <ClientProfileAdminView
             user={view.user}
-            jobs={(jobRequests ?? []).filter(j => j.user.id === view.user.id)}
+            jobs={(jobRequests || []).filter(j => j.user.id === view.user.id)}
             workers={workers}
             messages={messages}
             invoices={invoices}
             onViewConversation={handleAdminViewConversation}
             onBack={() => setView({ screen: 'ADMIN_DASHBOARD' })}
-            onApproveUser={handleApproveUser}
-            onDeclineUser={(userId) => {
-              setUsers(prev => prev.map(u => u.id === userId ? { ...u, verificationStatus: 'declined' as const } : u));
-              setView({ screen: 'ADMIN_DASHBOARD' });
-            }}
             t={t}
         />
       case 'ADMIN_WORKER_PROFILE':
         return <WorkerProfileAdminView
             worker={view.worker}
-            jobs={(jobRequests ?? []).filter(j => j.workerId === view.worker.id)}
+            jobs={(jobRequests || []).filter(j => j.workerId === view.worker.id)}
             users={users}
             messages={messages}
             invoices={invoices}
@@ -1882,7 +1753,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         return <MessagingScreen
             currentUser={participant1}
             otherParticipant={participant2}
-            messages={(messages ?? []).filter(m => (m.senderId === participant1.id && m.receiverId === participant2.id) || (m.senderId === participant2.id && m.receiverId === participant1.id))}
+            messages={(messages || []).filter(m => (m.senderId === participant1.id && m.receiverId === participant2.id) || (m.senderId === participant2.id && m.receiverId === participant1.id))}
             invoices={invoices}
             jobRequests={jobRequests}
             onSendMessage={() => {}}
@@ -1897,17 +1768,16 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       case 'EARNINGS':
         return <EarningsScreen
           worker={currentUser as Worker}
-          jobRequests={(jobRequests ?? []).filter(j => j.workerId === currentUser?.id)}
+          jobRequests={(jobRequests || []).filter(j => j.workerId === currentUser?.id)}
           onBack={() => setView({ screen: 'WORKER_DASHBOARD' })}
           t={t}
           language={language}
         />
       case 'MY_JOBS':
         return <MyJobsScreen
-          jobRequests={(jobRequests ?? []).filter(j => j.user.id === currentUser?.id)}
+          jobRequests={(jobRequests || []).filter(j => j.user.id === currentUser?.id)}
           invoices={invoices}
           workers={workers}
-          userCountry={currentUser?.country}
           onLeaveReview={handleLeaveUserReview}
           onCancelJob={handleCancelJob}
           onBack={() => setView({ screen: 'USER_DASHBOARD' })}
@@ -1981,53 +1851,13 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
       case 'NOTIFICATIONS':
         return (
           <NotificationsScreen 
-            notifications={(notifications ?? []).filter(n => n.userId === currentUser?.id)}
+            notifications={(notifications || []).filter(n => n.userId === currentUser?.id)}
             onNotificationClick={handleNotificationClick}
             onMarkAllAsRead={handleMarkAllAsRead}
             t={t}
           />
         );
-      case 'COMPANY_REGISTER':
-        return <CompanyRegister
-          onBack={() => setView({ screen: 'AUTH' })}
-          onSubmit={(data) => {
-            const newCompany = {
-              id: `company-${Date.now()}`,
-              name: data.companyName,
-              companyName: data.companyName,
-              email: data.email,
-              password: data.password,
-              industry: data.industry,
-              country: data.country,
-              phone: data.phone,
-              taxId: data.taxId || '',
-              description: data.description || '',
-              employeeCount: data.employeeCount || '',
-              avatarUrl: `https://picsum.photos/seed/${data.email}/200`,
-              location: data.country === 'argentina' ? 'Argentina' : data.country === 'bolivia' ? 'Bolivia' : 'Otro',
-              signupDate: new Date().toISOString(),
-              lastLoginDate: new Date().toISOString(),
-              verificationStatus: 'pending' as const,
-              serviceTypes: [],
-              userType: 'company' as const,
-            };
-            setCurrentUser(newCompany as any);
-            setUserType('company');
-            setView({ screen: 'COMPANY_DASHBOARD' });
-          }}
-          t={t}
-        />;
-
-      case 'COMPANY_DASHBOARD':
-        return <CompanyDashboard
-          company={currentUser}
-          t={t}
-          onNavigate={(screen) => setView({ screen: screen as any })}
-          onUpdateCompany={(data) => {
-            setCurrentUser(prev => ({ ...prev, ...data } as any));
-          }}
-        />;
-        case 'CONFIRMATION':
+      case 'CONFIRMATION':
         return (
           <ConfirmationPage 
             onBack={() => {
@@ -2059,7 +1889,7 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
         user={currentUser}
         userType={userType}
         onLogout={handleLogout}
-        notifications={(notifications ?? []).filter(n => n.userId === currentUser?.id)}
+        notifications={(notifications || []).filter(n => n.userId === currentUser?.id)}
         onNotificationClick={handleNotificationClick}
         onMarkAllAsRead={handleMarkAllAsRead}
         onNavigate={(screen) => {
@@ -2110,27 +1940,8 @@ const handleLogin = async (type: UserType, formData: any): Promise<string | null
           simple={true}
         />
       )}
-      {showUserIdVerification && currentUser && (
-        <UserIdVerificationModal
-          onSubmit={handleUserIdVerificationSubmit}
-          onClose={() => setShowUserIdVerification(false)}
-          t={t}
-        />
-      )}
-      {showApprovalPopup && (
-        <ApprovalPopup
-          onStart={() => setShowApprovalPopup(false)}
-          t={t}
-        />
-      )}
     </div>
   );
 };
 
-const AppWithToast: React.FC = () => (
-  <ToastProvider>
-    <App />
-  </ToastProvider>
-);
-
-export default AppWithToast;
+export default App;

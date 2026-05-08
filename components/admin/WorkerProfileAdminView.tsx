@@ -30,12 +30,12 @@ const getStatusBadge = (status: JobRequest['status'], t: (key: string) => string
 
 const WorkerProfileAdminView: React.FC<WorkerProfileAdminViewProps> = ({ worker, jobs, users, messages, invoices, onBack, onViewConversation, t }) => {
 
-  const userMap = new Map<string, User>((users ?? []).map(u => [u.id, u]));
+  const userMap = new Map<string, User>(users.map(u => [u.id, u]));
   const sortedJobs = [...jobs].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  const workerInvoices = (invoices ?? []).filter(i => i.workerId === worker.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const workerInvoices = (invoices || []).filter(i => i.workerId === worker.id).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const conversations = React.useMemo(() => {
-    const workerMessages = (messages ?? []).filter(m => m.senderId === worker.id || m.receiverId === worker.id);
+    const workerMessages = (messages || []).filter(m => m.senderId === worker.id || m.receiverId === worker.id);
     // FIX: Explicitly typing `new Set<string>` helps TypeScript correctly infer the type of `partnerId` later in the chain.
     const partnerIds = new Set<string>(workerMessages.map(m => m.senderId === worker.id ? m.receiverId : m.senderId));
     return Array.from(partnerIds).map(partnerId => {

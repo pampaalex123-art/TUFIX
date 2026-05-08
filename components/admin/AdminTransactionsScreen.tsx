@@ -37,21 +37,21 @@ const AdminTransactionsScreen: React.FC<AdminTransactionsScreenProps> = ({ trans
     const [filters, setFilters] = useState<Filters>(initialFilters);
     const [sort, setSort] = useState<{ key: SortKey; direction: SortDirection }>({ key: 'paidAt', direction: 'descending' });
 
-    const userMap = useMemo(() => new Map((users ?? []).map(u => [u.id, u])), [users]);
-    const workerMap = useMemo(() => new Map((workers ?? []).map(w => [w.id, w])), [workers]);
+    const userMap = useMemo(() => new Map(users.map(u => [u.id, u])), [users]);
+    const workerMap = useMemo(() => new Map(workers.map(w => [w.id, w])), [workers]);
 
     const financialStats = useMemo(() => {
-        const totalVolume = ( transactions ?? []).reduce((sum, t) => sum + t.total, 0);
-        const platformRevenue = ( transactions ?? []).reduce((sum, t) => sum + t.platformFee, 0);
-        const releasedTransactions = ( transactions ?? []).filter(t => t.status === 'released');
+        const totalVolume = transactions.reduce((sum, t) => sum + t.total, 0);
+        const platformRevenue = transactions.reduce((sum, t) => sum + t.platformFee, 0);
+        const releasedTransactions = (transactions || []).filter(t => t.status === 'released');
         const paidOutToWorkers = releasedTransactions.reduce((sum, t) => sum + t.subtotal, 0);
-        const heldTransactions = ( transactions ?? []).filter(t => t.status === 'held');
+        const heldTransactions = (transactions || []).filter(t => t.status === 'held');
         const inEscrow = heldTransactions.reduce((sum, t) => sum + t.total, 0);
         return { totalVolume, platformRevenue, paidOutToWorkers, inEscrow };
     }, [transactions]);
     
     const filteredAndSortedTransactions = useMemo(() => {
-        let filtered = [...transactions].filter(t => {
+        let filtered = [...(transactions || [])].filter(t => {
             const client = userMap.get(t.clientId);
             const worker = workerMap.get(t.workerId);
             const searchLower = filters.search.toLowerCase();

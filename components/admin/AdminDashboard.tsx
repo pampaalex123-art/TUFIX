@@ -1,12 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { useToast } from '../common/Toast';
 import { User, Worker, JobRequest, ServiceCategory, Transaction, Dispute, AppNotification, Message, Invoice } from '../../types';
 import { SERVICE_CATEGORIES } from '../../constants';
 import AdminTransactionsScreen from './AdminTransactionsScreen';
 import AdminDisputesScreen from '../new/AdminDisputesScreen';
 import { formatDistanceToNow } from '../../utils/time';
-import AdminPayoutPanel from './AdminPayoutPanel';
-import AppAnalyticsDashboard from './AppAnalyticsDashboard';
 
 // --- HELPER FUNCTIONS for CSV Download ---
 const escapeCSVCell = (cell: any): string => {
@@ -59,7 +56,7 @@ const downloadCSV = (csvString: string, filename: string) => {
 type SortDirection = 'ascending' | 'descending';
 type ClientSortKey = 'name' | 'location' | 'jobsRequested' | 'signupDate';
 type WorkerSortKey = 'name' | 'service' | 'location' | 'rating' | 'jobsCompleted' | 'totalEarnings' | 'signupDate';
-type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings' | 'pagos' | 'ai_analytics';
+type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings';
 
 interface ClientFilters {
     nameOrEmail: string;
@@ -98,7 +95,6 @@ interface AdminDashboardProps {
     messages: Message[];
     invoices: Invoice[];
     pendingVerifications: Worker[];
-    pendingUsers?: User[];
     onSelectUser: (user: User) => void;
     onDeleteUser: (user: User) => void;
     onSelectWorker: (worker: Worker) => void;
@@ -148,9 +144,8 @@ const PieChart: React.FC<{ data: { label: string; value: number; color: string }
 };
 
 // --- MAIN COMPONENT ---
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [], allJobs = [], transactions = [], disputes = [], notifications = [], messages = [], invoices = [], pendingVerifications = [], pendingUsers = [], onSelectUser, onDeleteUser, onSelectWorker, onDeleteWorker, onSelectDispute, onSelectSupportConversation, onSelectVerification, onEditTerms, onClearAllData, t, adminId }) => {
-    const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<AdminTab>('clients');
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs, transactions, disputes, notifications, messages, invoices, pendingVerifications, onSelectUser, onDeleteUser, onSelectWorker, onDeleteWorker, onSelectDispute, onSelectSupportConversation, onSelectVerification, onEditTerms, onClearAllData, t, adminId }) => {
+    const [activeTab, setActiveTab] = useState<AdminTab>('clients');
     const [clientFilters, setClientFilters] = useState<ClientFilters>(initialClientFilters);
     const [workerFilters, setWorkerFilters] = useState<WorkerFilters>(initialWorkerFilters);
     const [clientSort, setClientSort] = useState<{ key: ClientSortKey; direction: SortDirection }>({ key: 'name', direction: 'ascending' });
@@ -159,18 +154,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
-    const [boliviaBankAccount, setBoliviaBankAccount] = useState(() => localStorage.getItem('tufix_bolivia_account') || '');
-    const [boliviaBankName, setBoliviaBankName] = useState(() => localStorage.getItem('tufix_bolivia_bank') || '');
-    const [boliviaBankHolder, setBoliviaBankHolder] = useState(() => localStorage.getItem('tufix_bolivia_holder') || '');
-    const [boliviaBankSaved, setBoliviaBankSaved] = useState(false);
-
-  const handleSaveBoliviaBank = () => {
-    localStorage.setItem('tufix_bolivia_account', boliviaBankAccount);
-    localStorage.setItem('tufix_bolivia_bank', boliviaBankName);
-    localStorage.setItem('tufix_bolivia_holder', boliviaBankHolder);
-    setBoliviaBankSaved(true);
-    setTimeout(() => setBoliviaBankSaved(false), 3000);
-  };
 
     React.useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -180,7 +163,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
             }
             if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
                 console.log('Mercado Pago Holding Account linked successfully');
-                showToast('Mercado Pago Holding Account linked successfully', 'success');
+                alert('Mercado Pago Holding Account linked successfully');
             }
         };
         window.addEventListener('message', handleMessage);
@@ -190,9 +173,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
     const handleLinkHoldingAccount = async () => {
         const isMobile = window.innerWidth < 768;
         let authWindow: Window | null = null;
-
+        
         if (!isMobile) {
-            // Pre-open window to bypass popup blockers on desktop
             authWindow = window.open('', 'oauth_popup', 'width=600,height=700');
         }
 
@@ -204,23 +186,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
             const { url } = await response.json();
             
             if (isMobile) {
-                // Direct redirect on mobile
                 window.location.href = url;
             } else if (authWindow) {
-                // Set URL for pre-opened window on desktop
                 authWindow.location.href = url;
+            } else {
+                alert('Please allow popups for this site to connect the holding account.');
             }
         } catch (error) {
             console.error('OAuth error:', error);
             if (authWindow) authWindow.close();
-            showToast('Failed to initiate Mercado Pago linking.', 'error');
+            alert('Failed to initiate Mercado Pago linking.');
         }
     };
 
     const participantMap = useMemo(() => {
         const map = new Map<string, User | Worker>();
-        (users ?? []).forEach(u => map.set(u.id, u));
-        (workers ?? []).forEach(w => map.set(w.id, w));
+        users.forEach(u => map.set(u.id, u));
+        workers.forEach(w => map.set(w.id, w));
         return map;
     }, [users, workers]);
 
@@ -228,22 +210,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
     const workerAnalytics = useMemo(() => {
         const categoryCounts = new Map<ServiceCategory, number>();
         SERVICE_CATEGORIES.forEach(cat => categoryCounts.set(cat.name, 0));
-        (workers ?? []).forEach(worker => categoryCounts.set(worker.service, (categoryCounts.get(worker.service) || 0) + 1));
-        const totalWorkers = (workers ?? []).length;
+        workers.forEach(worker => categoryCounts.set(worker.service, (categoryCounts.get(worker.service) || 0) + 1));
+        const totalWorkers = workers.length;
         const colors = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#6366F1', '#14B8A6'];
         return Array.from(categoryCounts.entries()).map(([category, count], index) => ({
             category, count, percentage: totalWorkers > 0 ? ((count / totalWorkers) * 100).toFixed(1) : '0.0', color: colors[index % colors.length]
         })).sort((a, b) => b.count - a.count);
     }, [workers]);
 
-    const usersWithStats = useMemo(() => (users ?? []).map(user => ({ ...user, jobsRequested: (allJobs ?? []).filter(job => job.user.id === user.id).length })), [users, allJobs]);
-    const workersWithStats = useMemo(() => (workers ?? []).map(worker => {
-        const completed = (allJobs ?? []).filter(j => j.workerId === worker.id && j.status === 'completed');
+    const usersWithStats = useMemo(() => (users || []).map(user => ({ ...user, jobsRequested: (allJobs || []).filter(job => job.user.id === user.id).length })), [users, allJobs]);
+    const workersWithStats = useMemo(() => (workers || []).map(worker => {
+        const completed = (allJobs || []).filter(j => j.workerId === worker.id && j.status === 'completed');
         return { ...worker, jobsCompleted: completed.length, totalEarnings: completed.reduce((sum, j) => sum + (j.finalPrice || 0), 0) };
     }), [workers, allJobs]);
 
     const filteredAndSortedClients = useMemo(() => {
-        let filtered = usersWithStats.filter(user => {
+        let filtered = (usersWithStats || []).filter(user => {
             const minJobs = parseInt(clientFilters.minJobs) || 0;
             const maxJobs = parseInt(clientFilters.maxJobs) || Infinity;
             return (
@@ -284,7 +266,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
     }, [usersWithStats, clientFilters, clientSort]);
 
     const filteredAndSortedWorkers = useMemo(() => {
-        let filtered = workersWithStats.filter(worker => {
+        let filtered = (workersWithStats || []).filter(worker => {
             const minRating = parseFloat(workerFilters.minRating) || 0;
             const maxRating = parseFloat(workerFilters.maxRating) || 5;
             const minJobs = parseInt(workerFilters.minJobs) || 0;
@@ -344,7 +326,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
 
         // Get all unique conversation IDs involving the admin (including the legacy admin-1 ID)
         const adminConvoIds = new Set<string>(
-            (messages ?? [])
+            (messages || [])
                 .filter(m => m.senderId === adminId || m.receiverId === adminId || m.senderId === 'admin-1' || m.receiverId === 'admin-1')
                 .map(m => {
                     const otherId = [m.senderId, m.receiverId].find(id => id !== adminId && id !== 'admin-1');
@@ -359,7 +341,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
             
             const participant = participantMap.get(otherParticipantId);
              if (participant) {
-                const conversationMessages = (messages ?? []).filter(m => 
+                const conversationMessages = (messages || []).filter(m => 
                     (m.senderId === participant.id && (m.receiverId === adminId || m.receiverId === 'admin-1')) || 
                     ((m.senderId === adminId || m.senderId === 'admin-1') && m.receiverId === participant.id)
                 );
@@ -466,9 +448,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
         </button>
     );
 
-    const openDisputesCount = (disputes ?? []).filter(d => d.status === 'open' || d.status === 'under_review').length;
-    const openSupportChatsCount = supportConversations.filter(c => c.unreadCount > 0).length;
-    const verificationsCount = pendingVerifications.length + pendingUsers.length;
+    const openDisputesCount = (disputes || []).filter(d => d.status === 'open' || d.status === 'under_review').length;
+    const openSupportChatsCount = (supportConversations || []).filter(c => c.unreadCount > 0).length;
+    const verificationsCount = (pendingVerifications || []).length;
 
     return (
         <div className="container mx-auto space-y-8 px-4 sm:px-0">
@@ -485,9 +467,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
                 </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <StatCard title={t('total clients')} value={(users ?? []).length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M17 20v-2a3 3 0 00-3-3H10a3 3 0 00-3 3v2m7-10a3 3 0 11-6 0 3 3 0 016 0zm-7 4a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} />
-                <StatCard title={t('total workers')} value={(workers ?? []).length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 12c0 2.42-.943 4.638-2.464 6.313M15.75 10.5a3 3 0 01-3 3M15.75 10.5a3 3 0 00-3-3M15.75 10.5V18m-4.5-3.375a3 3 0 01-3 3m3-3a3 3 0 00-3-3m3 3V18m-9-3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v6.75a1.5 1.5 0 001.5 1.5z" /></svg>} />
-                <StatCard title={t('jobs completed')} value={(allJobs ?? []).filter(j=>j.status === 'completed').length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
+                <StatCard title={t('total clients')} value={users.length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M17 20v-2a3 3 0 00-3-3H10a3 3 0 00-3 3v2m7-10a3 3 0 11-6 0 3 3 0 016 0zm-7 4a3 3 0 11-6 0 3 3 0 016 0z" /></svg>} />
+                <StatCard title={t('total workers')} value={workers.length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M7.864 4.243A7.5 7.5 0 0119.5 12c0 2.42-.943 4.638-2.464 6.313M15.75 10.5a3 3 0 01-3 3M15.75 10.5a3 3 0 00-3-3M15.75 10.5V18m-4.5-3.375a3 3 0 01-3 3m3-3a3 3 0 00-3-3m3 3V18m-9-3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v6.75a1.5 1.5 0 001.5 1.5z" /></svg>} />
+                <StatCard title={t('jobs completed')} value={allJobs.filter(j=>j.status === 'completed').length} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>} />
                 <StatCard title={t('open disputes')} value={openDisputesCount} icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>} />
             </div>
             
@@ -499,10 +481,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
                             <TabButton tabId="providers">{t('providers')}</TabButton>
                             <TabButton tabId="verifications" badgeCount={verificationsCount}>{t('verifications')}</TabButton>
                             <TabButton tabId="transactions">{t('transactions')}</TabButton>
-                            <TabButton tabId="pagos">💰 Pagos</TabButton>
                             <TabButton tabId="disputes" badgeCount={openDisputesCount}>{t('disputes')}</TabButton>
                             <TabButton tabId="support" badgeCount={openSupportChatsCount}>{t('support')}</TabButton>
-                            <TabButton tabId="ai_analytics">📊 Analytics App</TabButton>
                             <TabButton tabId="settings">{t('settings')}</TabButton>
                         </nav>
                     </div>
@@ -703,58 +683,32 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
                     </div>
                 )}
                 
-               {activeTab === 'verifications' && (
-                    <div className="p-4 space-y-6">
-                        <div>
-                          <h2 className="text-xl font-bold text-black mb-3">🔧 Proveedores Pendientes ({pendingVerifications.length})</h2>
-                          {pendingVerifications.length > 0 ? (
-                              <div className="space-y-2">
-                                  {pendingVerifications.map(worker => (
-                                      <button
-                                          key={worker.id}
-                                          onClick={() => onSelectVerification(worker)}
-                                          className="w-full text-left p-3 flex items-center space-x-4 rounded-lg hover:bg-slate-100"
-                                      >
-                                          <img className="w-12 h-12 rounded-full" src={worker.avatarUrl} alt={worker.name} />
-                                          <div className="flex-1">
-                                              <p className="font-bold text-black">{worker.name}</p>
-                                              <p className="text-sm text-black">{worker.email}</p>
-                                          </div>
-                                          <div className="text-sm text-black">
-                                              <p>{t('submitted')} {formatDistanceToNow(worker.signupDate, t)}</p>
-                                          </div>
-                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                                      </button>
-                                  ))}
-                              </div>
-                          ) : (
-                               <p className="text-center py-4 text-slate-400 text-sm">{t('no pending verifications')}</p>
-                          )}
-                        </div>
-                        <div className="border-t border-slate-200 pt-6">
-                          <h2 className="text-xl font-bold text-black mb-3">👤 Usuarios Pendientes ({pendingUsers.length})</h2>
-                          {pendingUsers.length > 0 ? (
-                              <div className="space-y-2">
-                                  {pendingUsers.map(user => (
-                                      <button
-                                          key={user.id}
-                                          onClick={() => onSelectUser(user)}
-                                          className="w-full text-left p-3 flex items-center space-x-4 rounded-lg hover:bg-slate-100"
-                                      >
-                                          <img className="w-12 h-12 rounded-full" src={user.avatarUrl} alt={user.name} />
-                                          <div className="flex-1">
-                                              <p className="font-bold text-black">{user.name}</p>
-                                              <p className="text-sm text-black">{user.email}</p>
-                                          </div>
-                                          <span className="text-xs bg-yellow-100 text-yellow-800 font-bold px-2 py-1 rounded-full">⏳ Pendiente</span>
-                                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                                      </button>
-                                  ))}
-                              </div>
-                          ) : (
-                              <p className="text-center py-4 text-slate-400 text-sm">No hay usuarios pendientes de verificación.</p>
-                          )}
-                        </div>
+                {activeTab === 'verifications' && (
+                    <div className="p-4">
+                        <h2 className="text-xl font-bold text-black mb-4">{t('pending verifications')} ({verificationsCount})</h2>
+                        {verificationsCount > 0 ? (
+                            <div className="space-y-2">
+                                {pendingVerifications.map(worker => (
+                                    <button 
+                                        key={worker.id} 
+                                        onClick={() => onSelectVerification(worker)} 
+                                        className="w-full text-left p-3 flex items-center space-x-4 rounded-lg hover:bg-slate-100"
+                                    >
+                                        <img className="w-12 h-12 rounded-full" src={worker.avatarUrl} alt={worker.name} />
+                                        <div className="flex-1">
+                                            <p className="font-bold text-black">{worker.name}</p>
+                                            <p className="text-sm text-black">{worker.email}</p>
+                                        </div>
+                                        <div className="text-sm text-black">
+                                            <p>{t('submitted')} {formatDistanceToNow(worker.signupDate, t)}</p>
+                                        </div>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                                    </button>
+                                ))}
+                            </div>
+                        ) : (
+                             <p className="text-center py-8 text-black">{t('no pending verifications')}</p>
+                        )}
                     </div>
                 )}
 
@@ -764,13 +718,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
                     </div>
                 )}
                 
-                {activeTab === 'pagos' && (
+                {activeTab === 'disputes' && (
                     <div className="p-4">
-                        <AdminPayoutPanel
-                            jobs={allJobs}
+                        <AdminDisputesScreen 
+                            disputes={disputes} 
+                            users={users} 
                             workers={workers}
-                            users={users}
-                            invoices={invoices}
+                            jobs={allJobs}
+                            onSelectDispute={onSelectDispute} 
                             t={t}
                         />
                     </div>
@@ -808,14 +763,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
                         )}
                     </div>
                 )}
-                {activeTab === 'ai_analytics' && (
-                    <AppAnalyticsDashboard
-                        users={users ?? []}
-                        workers={workers ?? []}
-                        allJobs={allJobs ?? []}
-                        transactions={transactions ?? []}
-                    />
-                )}
                 {activeTab === 'settings' && (
                     <div className="p-8 space-y-8">
                         <div>
@@ -826,62 +773,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users = [], workers = [
                                         <h3 className="text-lg font-bold text-black">{t('mercado pago holding account')}</h3>
                                         <p className="text-sm text-slate-600 max-w-md">{t('mercado pago holding account desc')}</p>
                                     </div>
-                                    {/* Bolivia Bank Account */}
-                          <div className="border border-slate-200 rounded-xl p-5 mt-4">
-                            <h3 className="font-semibold text-black mb-1">🏦 Cuenta Bancaria Bolivia (BOB)</h3>
-                            <p className="text-sm text-slate-500 mb-4">Los pagos en Bolivia mediante QR o transferencia se acreditarán en esta cuenta. El 10% de comisión quedará retenido aquí.</p>
-                            <div className="space-y-3">
-                              <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Número de Cuenta</label>
-                                <input
-                                  type="text"
-                                  value={boliviaBankAccount}
-                                  onChange={e => setBoliviaBankAccount(e.target.value)}
-                                  placeholder="Ej: 1234567890"
-                                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-black focus:ring-2 focus:ring-purple-500"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Banco</label>
-                                <select
-                                  value={boliviaBankName}
-                                  onChange={e => setBoliviaBankName(e.target.value)}
-                                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-black focus:ring-2 focus:ring-purple-500"
-                                >
-                                  <option value="">Seleccionar banco...</option>
-                                  <option>Banco Union</option>
-                                  <option>BNB - Banco Nacional de Bolivia</option>
-                                  <option>Banco Mercantil Santa Cruz</option>
-                                  <option>BISA</option>
-                                  <option>Banco Económico</option>
-                                  <option>Banco Solidario (BancoSol)</option>
-                                  <option>Banco de Crédito de Bolivia</option>
-                                  <option>Banco Los Andes Procredit</option>
-                                  <option>Banco FIE</option>
-                                  <option>Banco Fortaleza</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Titular de la cuenta</label>
-                                <input
-                                  type="text"
-                                  value={boliviaBankHolder}
-                                  onChange={e => setBoliviaBankHolder(e.target.value)}
-                                  placeholder="Nombre completo del titular"
-                                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-black focus:ring-2 focus:ring-purple-500"
-                                />
-                              </div>
-                              <button
-                                onClick={handleSaveBoliviaBank}
-                                className="w-full bg-purple-600 text-white font-bold py-3 rounded-xl hover:bg-purple-700 transition"
-                              >
-                                Guardar Cuenta Bolivia
-                              </button>
-                              {boliviaBankSaved && (
-                                <p className="text-sm text-green-600 font-medium text-center">✅ Cuenta guardada correctamente</p>
-                              )}
-                            </div>
-                          </div>
                                     <button 
                                         onClick={handleLinkHoldingAccount}
                                         className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition flex items-center justify-center space-x-2 shadow-md"
