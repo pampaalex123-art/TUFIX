@@ -344,7 +344,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
 
         // Get all unique conversation IDs involving the admin (including the legacy admin-1 ID)
         const adminConvoIds = new Set<string>(
-            messages
+            (messages || [])
                 .filter(m => m.senderId === adminId || m.receiverId === adminId || m.senderId === 'admin-1' || m.receiverId === 'admin-1')
                 .map(m => {
                     const otherId = [m.senderId, m.receiverId].find(id => id !== adminId && id !== 'admin-1');
