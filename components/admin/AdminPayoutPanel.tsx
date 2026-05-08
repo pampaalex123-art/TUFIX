@@ -11,20 +11,20 @@ interface AdminPayoutPanelProps {
   t: (key: string) => string;
 }
 
-const AdminPayoutPanel: React.FC<AdminPayoutPanelProps> = ({ jobs = [], workers = [], users = [], invoices = [], t }) => {
+const AdminPayoutPanel: React.FC<AdminPayoutPanelProps> = ({ jobs, workers, users, invoices, t }) => {
   const [loading, setLoading] = useState<string | null>(null);
   const [results, setResults] = useState<Record<string, string>>({});
 
   // Jobs that are completed by both parties but payout not yet approved
-  const pendingPayouts = (jobs ?? []).filter(j =>
+  const pendingPayouts = jobs.filter(j =>
     j.client_confirmed && j.worker_confirmed &&
     (!(j as any).adminPayoutStatus || (j as any).adminPayoutStatus === 'pending')
   );
 
-  const approvedPayouts = (jobs ?? []).filter(j => (j as any).adminPayoutStatus === 'approved');
-  const rejectedPayouts = (jobs ?? []).filter(j => (j as any).adminPayoutStatus === 'rejected');
+  const approvedPayouts = jobs.filter(j => (j as any).adminPayoutStatus === 'approved');
+  const rejectedPayouts = jobs.filter(j => (j as any).adminPayoutStatus === 'rejected');
 
-  const getWorker = (id: string) => (workers ?? []).find(w => w.id === id);
+  const getWorker = (id: string) => workers.find(w => w.id === id);
   const getUser = (job: JobRequest) => job.user;
   const getInvoice = (job: JobRequest) => invoices.find(i => i.jobId === job.id);
 

@@ -14,13 +14,13 @@ type SortDirection = 'ascending' | 'descending';
 type SortKey = 'createdAt' | 'status';
 type StatusFilter = 'all' | 'open' | 'under_review' | 'resolved';
 
-const AdminDisputesScreen: React.FC<AdminDisputesScreenProps> = ({ disputes = [], users = [], workers = [], jobs = [], onSelectDispute, t }) => {
+const AdminDisputesScreen: React.FC<AdminDisputesScreenProps> = ({ disputes, users, workers, jobs, onSelectDispute, t }) => {
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('open');
     const [sort, setSort] = useState<{ key: SortKey, direction: SortDirection }>({ key: 'createdAt', direction: 'descending' });
 
     const userMap = useMemo(() => new Map((users ?? []).map(u => [u.id, u])), [users]);
     const workerMap = useMemo(() => new Map((workers ?? []).map(w => [w.id, w])), [workers]);
-    const jobMap = useMemo(() => new Map((jobs ?? []).map(j => [j.id, j])), [jobs]);
+    const jobMap = useMemo(() => new Map(jobs.map(j => [j.id, j])), [jobs]);
 
     const filteredAndSortedDisputes = useMemo(() => {
         const filtered = ( disputes ?? []).filter(d => statusFilter === 'all' || d.status === statusFilter);

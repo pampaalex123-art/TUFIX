@@ -124,7 +124,7 @@ const LocalidadSelector: React.FC<{ value: string; onChange: (v: string) => void
   );
 };
 const UserDashboard: React.FC<UserDashboardProps> = ({
-    workers = [],
+    workers,
     selectedCategory,
     onSelectCategory,
     onSelectWorker,
@@ -136,7 +136,7 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
 
     const serviceCategoryDetails = useMemo(() => new Map(SERVICE_CATEGORIES.map(sc => [sc.name, sc])), []);
     const selectedSuperCategory = useMemo(() => SUPER_CATEGORIES.find(c => c.name === selectedSuperCategoryName), [selectedSuperCategoryName]);
-    const uniqueRegions = useMemo(() => Array.from(new Set((workers ?? []).flatMap(w => w.regions || []))).sort(), [workers]);
+    const uniqueRegions = useMemo(() => Array.from(new Set(workers.flatMap(w => w.regions || []))).sort(), [workers]);
     const specialtyOptions = useMemo(() => selectedCategory ? JOB_TYPE_OPTIONS[selectedCategory] || [] : [], [selectedCategory]);
 
     const handleFilterChange = (field: keyof Filters, value: any) => setFilters(prev => ({ ...prev, [field]: value }));
