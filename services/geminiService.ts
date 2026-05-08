@@ -166,7 +166,7 @@ export const getAiSupportResponse = async (
 ): Promise<{ text: string; functionCall?: string; functionArgs?: any }> => {
   const recentHistory = history.slice(-15).map(msg => ({
     role: msg.role,
-    parts: msg.parts.map(part => {
+    parts: (msg.parts ?? []).map(part => {
       if (part.text) return { text: part.text };
       if (part.functionCall) return { functionCall: part.functionCall };
       if (part.functionResponse) return { functionResponse: part.functionResponse };

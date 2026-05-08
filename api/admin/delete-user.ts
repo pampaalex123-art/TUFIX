@@ -79,13 +79,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const jobsQuery = await db.collection('jobRequests')
       .where(collectionName === 'workers' ? 'workerId' : 'user.id', '==', uid)
       .get();
-    jobsQuery.docs.forEach(doc => batch.delete(doc.ref));
+    jobsQuery.docs.forEach((doc: any) => batch.delete(doc.ref));
 
     // Delete related notifications
     const notifsQuery = await db.collection('notifications')
       .where('userId', '==', uid)
       .get();
-    notifsQuery.docs.forEach(doc => batch.delete(doc.ref));
+    notifsQuery.docs.forEach((doc: any) => batch.delete(doc.ref));
 
     await batch.commit();
     console.log(`Cleaned up related data for user: ${uid}`);
