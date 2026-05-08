@@ -11,7 +11,7 @@ import JobRequestDetails from './components/worker/JobRequestDetails';
 import WorkerDashboard from './components/worker/WorkerDashboard';
 import WorkerProfileEdit from './components/worker/WorkerProfileEdit';
 import UserProfileEdit from './components/user/UserProfileEdit';
-import AuthScreen from './components/auth/AuthScreen';
+import AuthScreen from './components/auth/AuthForm';
 import MessagingScreen from './components/shared/MessagingScreen';
 import ConversationsScreen from './components/shared/ConversationsScreen';
 import AdminDashboard from './components/admin/AdminDashboard';
