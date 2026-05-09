@@ -55,6 +55,7 @@ const DUMMY_NOTIFICATIONS: AppNotification[] = [];
 const DUMMY_MESSAGES: Message[] = [];
 
 const ADMIN_ID = 'admin-1';
+const DUAL_ROLE_EMAIL = 'alejandro.finochietti@yahoo.com.ar';
 
 type View =
   | { screen: 'AUTH' }
@@ -86,7 +87,8 @@ type View =
   | { screen: 'VERIFICATION_PENDING' }
   | { screen: 'NOTIFICATIONS' }
   | { screen: 'ADMIN_WORKER_VERIFICATION'; worker: Worker }
-  | { screen: 'CONFIRMATION' };
+  | { screen: 'CONFIRMATION' }
+  | { screen: 'ROLE_SELECTOR'; user: User };
 
 const App: React.FC = () => {
   const { language, setLanguage, t } = useTranslations();
@@ -276,6 +278,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     if (currentUser && userType) {
+      if (view.screen === 'ROLE_SELECTOR') return; // don't redirect while choosing role
       if (userType === 'user') setView({ screen: 'USER_DASHBOARD' });
       else if (userType === 'worker') setView({ screen: 'WORKER_DASHBOARD' });
       else if (userType === 'admin') setView({ screen: 'ADMIN_DASHBOARD' });
@@ -414,6 +417,11 @@ const App: React.FC = () => {
         }
         setCurrentUser(user);
         setUserType(user.userType as UserType);
+        // If this is the dual-role account, show role selector instead of going straight in
+        if ((user.email || '').toLowerCase() === DUAL_ROLE_EMAIL.toLowerCase()) {
+          setView({ screen: 'ROLE_SELECTOR', user });
+          return null;
+        }
         return null;
       } else if (type === 'worker') {
         let worker = workers.find(w => (w.email || '').toLowerCase() === (formData.email || '').toLowerCase());
@@ -1520,6 +1528,59 @@ const App: React.FC = () => {
     switch (view.screen) {
       case 'AUTH':
         return <AuthScreen onLogin={handleLogin} onSignUp={handleSignUp} onForgotPassword={handleForgotPassword} t={t} termsContent={termsContent} />;
+      case 'ROLE_SELECTOR':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full text-center">
+              <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <h2 className="text-2xl font-extrabold text-gray-900 mb-1">Bienvenido</h2>
+              <p className="text-sm text-gray-500 mb-8">
+                <span className="font-semibold text-gray-700">{view.user.name || view.user.email}</span>
+                <br />¿Con qué rol deseas ingresar?
+              </p>
+              <div className="space-y-3">
+                <button
+                  onClick={() => { setUserType('admin'); setView({ screen: 'ADMIN_DASHBOARD' }); }}
+                  className="w-full flex items-center gap-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 px-6 rounded-2xl transition-all shadow-md hover:shadow-lg active:scale-95"
+                >
+                  <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </div>
+                  <div className="text-left">
+                    <p className="font-extrabold text-base">Panel de Administrador</p>
+                    <p className="text-purple-200 text-xs font-medium">Gestión completa de la plataforma</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => { setUserType('user'); setView({ screen: 'USER_DASHBOARD' }); }}
+                  className="w-full flex items-center gap-4 bg-white hover:bg-gray-50 text-gray-800 font-bold py-4 px-6 rounded-2xl transition-all shadow-sm border-2 border-gray-200 hover:border-purple-300 active:scale-95"
+                >
+                  <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <div className="text-left">
+                    <p className="font-extrabold text-base">Cuenta de Usuario</p>
+                    <p className="text-gray-400 text-xs font-medium">Acceder como cliente regular</p>
+                  </div>
+                </button>
+              </div>
+              <button
+                onClick={() => { setCurrentUser(null); setUserType(null); setView({ screen: 'AUTH' }); }}
+                className="mt-6 text-sm text-gray-400 hover:text-gray-600 transition font-medium"
+              >
+                ← Cerrar sesión
+              </button>
+            </div>
+          </div>
+        );
       case 'PASSWORD_RECOVERY':
         return <PasswordRecoveryScreen
             error={recoveryError}
