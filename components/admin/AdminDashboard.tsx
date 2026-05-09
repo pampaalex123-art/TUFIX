@@ -4,6 +4,7 @@ import { SERVICE_CATEGORIES } from '../../constants';
 import AdminTransactionsScreen from './AdminTransactionsScreen';
 import AdminDisputesScreen from '../new/AdminDisputesScreen';
 import { formatDistanceToNow } from '../../utils/time';
+import AppAnalyticsDashboard from './AppAnalyticsDashboard';
 
 // --- HELPER FUNCTIONS for CSV Download ---
 const escapeCSVCell = (cell: any): string => {
@@ -56,7 +57,7 @@ const downloadCSV = (csvString: string, filename: string) => {
 type SortDirection = 'ascending' | 'descending';
 type ClientSortKey = 'name' | 'location' | 'jobsRequested' | 'signupDate';
 type WorkerSortKey = 'name' | 'service' | 'location' | 'rating' | 'jobsCompleted' | 'totalEarnings' | 'signupDate';
-type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings';
+type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings' | 'pagos' | 'ai_analytics';
 
 interface ClientFilters {
     nameOrEmail: string;
@@ -484,6 +485,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                             <TabButton tabId="disputes" badgeCount={openDisputesCount}>{t('disputes')}</TabButton>
                             <TabButton tabId="support" badgeCount={openSupportChatsCount}>{t('support')}</TabButton>
                             <TabButton tabId="settings">{t('settings')}</TabButton>
+                            <TabButton tabId="ai_analytics">📊 Analytics App</TabButton>
                         </nav>
                     </div>
                 </div>
@@ -683,6 +685,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                     </div>
                 )}
                 
+                {activeTab === 'ai_analytics' && (
+                    <AppAnalyticsDashboard
+                        users={users ?? []}
+                        workers={workers ?? []}
+                        allJobs={allJobs ?? []}
+                        transactions={transactions ?? []}
+                    />
+                )}
                 {activeTab === 'verifications' && (
                     <div className="p-4">
                         <h2 className="text-xl font-bold text-black mb-4">{t('pending verifications')} ({verificationsCount})</h2>

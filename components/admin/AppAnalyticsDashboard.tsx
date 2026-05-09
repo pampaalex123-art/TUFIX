@@ -1,100 +1,85 @@
-import React, { useMemo, useState } from 'react';
-import { User, Worker, JobRequest, Transaction, ServiceCategory } from '../../types';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import { User, Worker, JobRequest, Transaction } from '../../types';
 
-// ─── XLSX Export Helper ────────────────────────────────────────────────────────
-// We build a proper .xlsx using the SheetJS-style raw XML approach so there are
-// zero external dependencies beyond what the project already has.
-const exportToXLSX = (sheets: { name: string; rows: any[][] }[], filename: string) => {
-    // Fallback: export as CSV per sheet, bundled in a simple multi-sheet simulation
-    // using actual XLSX-compatible XML. Uses no extra libraries.
-    const xmlRows = (rows: any[][]) =>
-        rows.map((row, ri) =>
-            `<row r="${ri + 1}">${row.map((cell, ci) => {
-                const col = String.fromCharCode(65 + (ci % 26));
-                const addr = `${col}${ri + 1}`;
-                const isNum = typeof cell === 'number';
-                return isNum
-                    ? `<c r="${addr}" t="n"><v>${cell}</v></c>`
-                    : `<c r="${addr}" t="inlineStr"><is><t>${String(cell ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</t></is></c>`;
-            }).join('')}</row>`
-        ).join('');
+type Period = 'daily' | 'weekly' | 'monthly' | 'annual';
+type FilterView = 'overview' | 'jobs' | 'reviews' | 'specialties' | 'users';
 
-    const sheetXMLs = sheets.map(s => `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${xmlRows(s.rows)}</sheetData></worksheet>`);
+interface Props {
+    users: User[];
+    workers: Worker[];
+    allJobs: JobRequest[];
+    transactions: Transaction[];
+}
 
-    const workbookXML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"
-          xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <sheets>${sheets.map((s, i) => `<sheet name="${s.name}" sheetId="${i + 1}" r:id="rId${i + 2}"/>`).join('')}</sheets>
-</workbook>`;
-
-    const relsXML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-  ${sheets.map((_, i) => `<Relationship Id="rId${i + 2}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('\n  ')}
-</Relationships>`;
-
-    const stylesXML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="1"><font><sz val="11"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs></styleSheet>`;
-
-    const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-  ${sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('\n  ')}
-  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-</Types>`;
-
-    const topRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-</Relationships>`;
-
-    // Build ZIP using JSZip-free approach: use the browser's CompressionStream API
-    // Fallback to multi-CSV download if CompressionStream unavailable
-    const files: { [path: string]: string } = {
-        '[Content_Types].xml': contentTypes,
-        '_rels/.rels': topRels,
-        'xl/workbook.xml': workbookXML,
-        'xl/_rels/workbook.xml.rels': relsXML,
-        'xl/styles.xml': stylesXML,
-    };
-    sheetXMLs.forEach((xml, i) => { files[`xl/worksheets/sheet${i + 1}.xml`] = xml; });
-
-    // Encode as CSV fallback (reliable, always works)
-    sheets.forEach(sheet => {
-        const csv = sheet.rows.map(row => row.map(cell => {
+const downloadCSV = (rows: any[][], filename: string) => {
+    const csv = rows.map(row =>
+        row.map(cell => {
             const s = String(cell ?? '');
             return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-        }).join(',')).join('\n');
-        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `${filename}_${sheet.name}.csv`;
-        a.click();
-        URL.revokeObjectURL(a.href);
-    });
+        }).join(',')
+    ).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
 };
 
-// ─── Tiny SVG Bar Chart ───────────────────────────────────────────────────────
-const BarChart: React.FC<{ data: { label: string; value: number; color?: string }[]; height?: number }> = ({ data, height = 160 }) => {
+const fmt = (n: number) => n.toLocaleString();
+const fmtPct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
+const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }); } catch { return iso; } };
+
+const getBucketKey = (iso: string, period: Period): string => {
+    const d = new Date(iso);
+    if (period === 'daily') return iso.slice(0, 10);
+    if (period === 'weekly') { const day = (d.getDay() + 6) % 7; const mon = new Date(d); mon.setDate(d.getDate() - day); return mon.toISOString().slice(0, 10); }
+    if (period === 'monthly') return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    return String(d.getFullYear());
+};
+
+const getBucketLabel = (key: string, period: Period): string => {
+    if (period === 'daily') return fmtDate(key);
+    if (period === 'weekly') return `Sem ${fmtDate(key)}`;
+    if (period === 'monthly') { const [y, m] = key.split('-'); const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return `${months[parseInt(m)-1]} ${y}`; }
+    return key;
+};
+
+const COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#ec4899','#14b8a6','#f97316','#8b5cf6','#84cc16','#06b6d4','#a855f7','#e11d48','#0ea5e9','#d97706'];
+
+const KpiCard: React.FC<{ icon: string; label: string; value: string | number; sub?: string; trend?: number; color: string; }> = ({ icon, label, value, sub, trend, color }) => (
+    <div className="relative overflow-hidden rounded-2xl p-5 bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all">
+        <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl" style={{ background: color }} />
+        <div className="flex items-start justify-between mb-3">
+            <span className="text-2xl">{icon}</span>
+            {trend !== undefined && (
+                <span className={`text-xs font-bold px-2 py-1 rounded-full ${trend > 0 ? 'bg-emerald-100 text-emerald-700' : trend < 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-500'}`}>
+                    {trend > 0 ? '▲' : trend < 0 ? '▼' : '→'} {Math.abs(trend).toFixed(1)}%
+                </span>
+            )}
+        </div>
+        <p className="text-2xl font-black text-gray-900 leading-none mb-1">{value}</p>
+        <p className="text-sm font-semibold text-gray-500">{label}</p>
+        {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    </div>
+);
+
+const BarChart: React.FC<{ data: { label: string; value: number; color?: string }[]; height?: number }> = ({ data, height = 140 }) => {
+    if (!data.length) return <div className="text-center text-gray-400 py-8 text-sm">Sin datos</div>;
     const max = Math.max(...data.map(d => d.value), 1);
+    const barW = Math.max(20, Math.min(48, Math.floor(560 / data.length) - 8));
+    const totalW = Math.max(data.length * (barW + 8), 300);
     return (
-        <svg viewBox={`0 0 ${data.length * 44} ${height + 30}`} className="w-full" style={{ height: height + 30 }}>
+        <svg viewBox={`0 0 ${totalW} ${height + 32}`} className="w-full" preserveAspectRatio="xMidYMid meet">
             {data.map((d, i) => {
-                const barH = (d.value / max) * height;
-                const x = i * 44 + 4;
-                const y = height - barH;
+                const barH = Math.max((d.value / max) * height, d.value > 0 ? 4 : 0);
+                const x = i * (barW + 8) + 4; const y = height - barH;
+                const color = d.color || COLORS[i % COLORS.length];
                 return (
                     <g key={i}>
-                        <rect x={x} y={y} width={36} height={barH} fill={d.color || '#8B5CF6'} rx={4} />
-                        <text x={x + 18} y={height + 14} textAnchor="middle" fontSize={9} fill="#6B7280">
-                            {d.label.length > 6 ? d.label.slice(0, 5) + '…' : d.label}
-                        </text>
-                        {d.value > 0 && (
-                            <text x={x + 18} y={y - 4} textAnchor="middle" fontSize={9} fill="#374151" fontWeight="bold">{d.value}</text>
-                        )}
+                        <rect x={x} y={y} width={barW} height={barH} fill={color} rx={4} />
+                        {d.value > 0 && <text x={x + barW / 2} y={y - 4} textAnchor="middle" fontSize={9} fill="#374151" fontWeight="700">{d.value}</text>}
+                        <text x={x + barW / 2} y={height + 16} textAnchor="middle" fontSize={8} fill="#9ca3af">{d.label.length > 7 ? d.label.slice(0, 6) + '…' : d.label}</text>
                     </g>
                 );
             })}
@@ -102,556 +87,444 @@ const BarChart: React.FC<{ data: { label: string; value: number; color?: string 
     );
 };
 
-// ─── Tiny SVG Line Chart ──────────────────────────────────────────────────────
-const LineChart: React.FC<{ data: { label: string; value: number }[]; color?: string; height?: number }> = ({ data, color = '#8B5CF6', height = 120 }) => {
-    if (data.length < 2) return <div className="text-center text-gray-400 py-8 text-sm">Datos insuficientes</div>;
+const LineChart: React.FC<{ data: { label: string; value: number }[]; color?: string; height?: number }> = ({ data, color = '#6366f1', height = 120 }) => {
+    if (data.length < 2) return <div className="text-center text-gray-400 py-6 text-sm">Datos insuficientes</div>;
     const max = Math.max(...data.map(d => d.value), 1);
-    const w = 600;
-    const padX = 30;
-    const padY = 10;
-    const chartW = w - padX * 2;
-    const chartH = height - padY * 2;
-    const pts = data.map((d, i) => ({
-        x: padX + (i / (data.length - 1)) * chartW,
-        y: padY + chartH - (d.value / max) * chartH,
-        ...d,
-    }));
-    const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-    const areaD = `${pathD} L ${pts[pts.length - 1].x} ${padY + chartH} L ${pts[0].x} ${padY + chartH} Z`;
+    const W = 600; const padX = 20; const padY = 12; const cW = W - padX * 2; const cH = height - padY * 2;
+    const pts = data.map((d, i) => ({ x: padX + (i / (data.length - 1)) * cW, y: padY + cH - (d.value / max) * cH, ...d }));
+    const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+    const area = `${path} L${pts[pts.length-1].x},${padY+cH} L${pts[0].x},${padY+cH} Z`;
+    const id = `fill-${color.replace('#','')}`;
     return (
-        <svg viewBox={`0 0 ${w} ${height + 24}`} className="w-full" style={{ height: height + 24 }}>
-            <defs>
-                <linearGradient id={`grad-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={color} stopOpacity="0.3" />
-                    <stop offset="100%" stopColor={color} stopOpacity="0" />
-                </linearGradient>
-            </defs>
-            <path d={areaD} fill={`url(#grad-${color.replace('#', '')})`} />
-            <path d={pathD} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        <svg viewBox={`0 0 ${W} ${height + 28}`} className="w-full" preserveAspectRatio="xMidYMid meet">
+            <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.25" /><stop offset="100%" stopColor={color} stopOpacity="0.02" /></linearGradient></defs>
+            <path d={area} fill={`url(#${id})`} />
+            <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
             {pts.map((p, i) => (
                 <g key={i}>
-                    <circle cx={p.x} cy={p.y} r={3.5} fill={color} />
-                    <text x={p.x} y={height + 18} textAnchor="middle" fontSize={9} fill="#6B7280">{p.label}</text>
+                    <circle cx={p.x} cy={p.y} r={3.5} fill="white" stroke={color} strokeWidth="2" />
+                    <text x={p.x} y={height + 22} textAnchor="middle" fontSize={8} fill="#9ca3af">{p.label}</text>
                 </g>
             ))}
         </svg>
     );
 };
 
-// ─── Mini Pie Chart ────────────────────────────────────────────────────────────
-const MiniPie: React.FC<{ data: { label: string; value: number; color: string }[] }> = ({ data }) => {
+const DonutChart: React.FC<{ data: { label: string; value: number; color: string }[] }> = ({ data }) => {
     const total = data.reduce((a, d) => a + d.value, 0);
-    if (total === 0) return <div className="text-center text-gray-400 py-4 text-sm">Sin datos</div>;
+    if (!total) return <div className="text-center text-gray-400 py-4 text-sm">Sin datos</div>;
     let cum = 0;
-    const slices = (data || []).filter(d => d.value > 0).map(d => {
-        const pct = (d.value / total) * 100;
-        const start = (cum / 100) * 360;
-        const end = ((cum + pct) / 100) * 360;
-        cum += pct;
-        const rad = (a: number) => (a * Math.PI) / 180;
-        const x1 = 50 + 48 * Math.cos(rad(start - 90));
-        const y1 = 50 + 48 * Math.sin(rad(start - 90));
-        const x2 = 50 + 48 * Math.cos(rad(end - 90));
-        const y2 = 50 + 48 * Math.sin(rad(end - 90));
-        const large = pct > 50 ? 1 : 0;
-        return { ...d, d: `M50 50 L${x1} ${y1} A48 48 0 ${large} 1 ${x2} ${y2} Z`, pct };
+    const slices = data.filter(d => d.value > 0).map(d => {
+        const pct = d.value / total; const sa = cum * 2 * Math.PI - Math.PI / 2; cum += pct; const ea = cum * 2 * Math.PI - Math.PI / 2;
+        const R = 46; const r = 28;
+        const x1 = 50+R*Math.cos(sa), y1 = 50+R*Math.sin(sa), x2 = 50+R*Math.cos(ea), y2 = 50+R*Math.sin(ea);
+        const x3 = 50+r*Math.cos(ea), y3 = 50+r*Math.sin(ea), x4 = 50+r*Math.cos(sa), y4 = 50+r*Math.sin(sa);
+        return { ...d, pct, d: `M${x1},${y1} A${R},${R} 0 ${pct>0.5?1:0} 1 ${x2},${y2} L${x3},${y3} A${r},${r} 0 ${pct>0.5?1:0} 0 ${x4},${y4} Z` };
     });
     return (
-        <svg viewBox="0 0 100 100" className="w-full max-w-xs mx-auto">
-            {slices.map((s, i) => <path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth="0.8" />)}
+        <svg viewBox="0 0 100 100" className="w-full max-w-[140px] mx-auto">
+            {slices.map((s, i) => <path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth="1.5" />)}
+            <text x="50" y="47" textAnchor="middle" fontSize="11" fontWeight="800" fill="#111">{fmt(total)}</text>
+            <text x="50" y="57" textAnchor="middle" fontSize="7" fill="#6b7280">total</text>
         </svg>
     );
 };
 
-// ─── Stat Card ────────────────────────────────────────────────────────────────
-const KpiCard: React.FC<{ title: string; value: string | number; sub?: string; icon: string; color: string; trend?: number }> = ({ title, value, sub, icon, color, trend }) => (
-    <div className={`bg-white rounded-2xl shadow-md p-5 border-l-4 ${color} flex flex-col gap-1`}>
-        <div className="flex items-center justify-between">
-            <span className="text-2xl">{icon}</span>
-            {trend !== undefined && (
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${trend >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {trend >= 0 ? '▲' : '▼'} {Math.abs(trend).toFixed(1)}%
-                </span>
-            )}
+const RankedBar: React.FC<{ label: string; value: number; max: number; color: string; rank: number; pct?: number }> = ({ label, value, max, color, rank, pct }) => (
+    <div className="flex items-center gap-3">
+        <span className="w-5 text-xs font-black text-gray-400 text-right flex-shrink-0">{rank}</span>
+        <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between mb-1">
+                <span className="text-sm font-semibold text-gray-700 truncate">{label}</span>
+                <span className="text-sm font-black text-gray-800 ml-2 flex-shrink-0">{fmt(value)}</span>
+            </div>
+            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500" style={{ width: `${(value / max) * 100}%`, background: color }} />
+            </div>
+            {pct !== undefined && <p className="text-xs text-gray-400 mt-0.5">{pct.toFixed(1)}%</p>}
         </div>
-        <p className="text-2xl font-extrabold text-gray-800 leading-tight">{value}</p>
-        <p className="text-sm font-medium text-gray-500">{title}</p>
-        {sub && <p className="text-xs text-gray-400">{sub}</p>}
     </div>
 );
 
-// ─── Section Header ───────────────────────────────────────────────────────────
-const Section: React.FC<{ title: string; subtitle?: string; children: React.ReactNode }> = ({ title, subtitle, children }) => (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-4">
-        <div>
-            <h3 className="text-lg font-bold text-gray-800">{title}</h3>
-            {subtitle && <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>}
+const Section: React.FC<{ title: string; subtitle?: string; children: React.ReactNode; className?: string }> = ({ title, subtitle, children, className = '' }) => (
+    <div className={`bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden ${className}`}>
+        <div className="px-6 pt-5 pb-4 border-b border-gray-50">
+            <h3 className="text-base font-black text-gray-900">{title}</h3>
+            {subtitle && <p className="text-xs text-gray-400 mt-0.5">{subtitle}</p>}
         </div>
-        {children}
+        <div className="p-6">{children}</div>
     </div>
 );
 
-// ─── Period Selector ──────────────────────────────────────────────────────────
-type Period = 'weekly' | 'monthly' | 'annual';
+const LiveDot: React.FC = () => (
+    <span className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
+        <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+        </span>
+        En vivo
+    </span>
+);
 
-// ─── MAIN COMPONENT ────────────────────────────────────────────────────────────
-interface AppAnalyticsDashboardProps {
-    users: User[];
-    workers: Worker[];
-    allJobs: JobRequest[];
-    transactions: Transaction[];
-}
-
-const COLORS = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#6366F1', '#14B8A6', '#F97316', '#84CC16'];
-
-const AppAnalyticsDashboard: React.FC<AppAnalyticsDashboardProps> = ({ users = [], workers = [], allJobs = [], transactions = [] }) => {
+const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJobs = [], transactions = [] }) => {
     const [period, setPeriod] = useState<Period>('monthly');
+    const [view, setView] = useState<FilterView>('overview');
+    const [lastUpdated, setLastUpdated] = useState(new Date());
+    const [specialtyFilter, setSpecialtyFilter] = useState<'demand' | 'supply' | 'completed'>('demand');
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-    const now = new Date();
+    useEffect(() => { const i = setInterval(() => setLastUpdated(new Date()), 30000); return () => clearInterval(i); }, []);
+    const now = useMemo(() => new Date(), [lastUpdated]);
 
-    const buckets = useMemo(() => {
-        const getBucket = (dateStr: string): string => {
-            const d = new Date(dateStr);
-            if (period === 'weekly') {
-                // ISO week: Mon–Sun
-                const dayOfWeek = (d.getDay() + 6) % 7; // 0=Mon
-                const monday = new Date(d);
-                monday.setDate(d.getDate() - dayOfWeek);
-                return monday.toISOString().slice(0, 10);
-            }
-            if (period === 'monthly') return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            return String(d.getFullYear());
-        };
-        const label = (bucket: string): string => {
-            if (period === 'weekly') {
-                const d = new Date(bucket);
-                return `${d.getDate()}/${d.getMonth() + 1}`;
-            }
-            if (period === 'monthly') {
-                const [, m] = bucket.split('-');
-                return ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][parseInt(m) - 1];
-            }
-            return bucket;
-        };
-        return { getBucket, label };
+    const makeBuckets = useCallback((dates: (string | undefined)[]) => {
+        const map = new Map<string, number>();
+        dates.forEach(d => { if (!d) return; const key = getBucketKey(d, period); map.set(key, (map.get(key) || 0) + 1); });
+        return map;
     }, [period]);
 
-    // ── Growth over time ──────────────────────────────────────────────────────
     const growthData = useMemo(() => {
-        const userBuckets = new Map<string, number>();
-        const workerBuckets = new Map<string, number>();
-        const jobBuckets = new Map<string, number>();
+        const uB = makeBuckets(users.map(u => u.signupDate));
+        const wB = makeBuckets(workers.map(w => w.signupDate));
+        const jB = makeBuckets(allJobs.map(j => j.createdAt));
+        const all = new Set([...uB.keys(), ...wB.keys(), ...jB.keys()]);
+        return Array.from(all).sort().map(k => ({ key: k, label: getBucketLabel(k, period), users: uB.get(k)||0, workers: wB.get(k)||0, jobs: jB.get(k)||0 }));
+    }, [users, workers, allJobs, makeBuckets]);
 
-        (users ?? []).forEach(u => {
-            const b = buckets.getBucket(u.signupDate);
-            userBuckets.set(b, (userBuckets.get(b) || 0) + 1);
-        });
-        (workers ?? []).forEach(w => {
-            const b = buckets.getBucket(w.signupDate);
-            workerBuckets.set(b, (workerBuckets.get(b) || 0) + 1);
-        });
-        (allJobs ?? []).forEach(j => {
-            const b = buckets.getBucket(j.createdAt);
-            jobBuckets.set(b, (jobBuckets.get(b) || 0) + 1);
-        });
+    const loginData = useMemo(() => {
+        const lB = makeBuckets([...users.map(u => u.lastLoginDate), ...workers.map(w => w.lastLoginDate)]);
+        return Array.from(lB.entries()).sort().slice(-14).map(([k, v]) => ({ label: getBucketLabel(k, period), value: v }));
+    }, [users, workers, makeBuckets]);
 
-        // Get all unique buckets and sort
-        const allBucketsSet = new Set([...userBuckets.keys(), ...workerBuckets.keys(), ...jobBuckets.keys()]);
-        const sorted = Array.from(allBucketsSet).sort();
-
-        return sorted.map(b => ({
-            bucket: b,
-            label: buckets.label(b),
-            newUsers: userBuckets.get(b) || 0,
-            newWorkers: workerBuckets.get(b) || 0,
-            newJobs: jobBuckets.get(b) || 0,
-        }));
-    }, [users, workers, allJobs, buckets]);
-
-    // ── Active users (used the app recently within each period window) ─────────
     const activeData = useMemo(() => {
-        const windowMs: { weekly: number; monthly: number; annual: number } = {
-            weekly: 7 * 24 * 3600 * 1000,
-            monthly: 30 * 24 * 3600 * 1000,
-            annual: 365 * 24 * 3600 * 1000,
-        };
-        const win = windowMs[period];
-        const activeUsers = (users ?? []).filter(u => now.getTime() - new Date(u.lastLoginDate).getTime() < win).length;
-        const activeWorkers = (workers ?? []).filter(w => now.getTime() - new Date(w.lastLoginDate).getTime() < win).length;
-        const prevUsers = (users ?? []).filter(u => {
-            const diff = now.getTime() - new Date(u.lastLoginDate).getTime();
-            return diff >= win && diff < win * 2;
-        }).length;
-        const prevWorkers = (workers ?? []).filter(w => {
-            const diff = now.getTime() - new Date(w.lastLoginDate).getTime();
-            return diff >= win && diff < win * 2;
-        }).length;
-        const userTrend = prevUsers > 0 ? ((activeUsers - prevUsers) / prevUsers) * 100 : 0;
-        const workerTrend = prevWorkers > 0 ? ((activeWorkers - prevWorkers) / prevWorkers) * 100 : 0;
-        return { activeUsers, activeWorkers, userTrend, workerTrend };
-    }, [users, workers, period]);
+        const wMs = { daily: 86400000, weekly: 604800000, monthly: 2592000000, annual: 31536000000 }[period];
+        const aU = users.filter(u => now.getTime() - new Date(u.lastLoginDate).getTime() < wMs).length;
+        const aW = workers.filter(w => now.getTime() - new Date(w.lastLoginDate).getTime() < wMs).length;
+        const pU = users.filter(u => { const d = now.getTime()-new Date(u.lastLoginDate).getTime(); return d>=wMs&&d<wMs*2; }).length;
+        const pW = workers.filter(w => { const d = now.getTime()-new Date(w.lastLoginDate).getTime(); return d>=wMs&&d<wMs*2; }).length;
+        return { activeU: aU, activeW: aW, trendU: pU>0?((aU-pU)/pU)*100:aU>0?100:0, trendW: pW>0?((aW-pW)/pW)*100:aW>0?100:0 };
+    }, [users, workers, period, now]);
 
-    // ── Growth % this vs previous period ─────────────────────────────────────
     const growthPct = useMemo(() => {
         if (growthData.length < 2) return { users: 0, workers: 0, jobs: 0 };
-        const last = growthData[growthData.length - 1];
-        const prev = growthData[growthData.length - 2];
-        const pct = (cur: number, p: number) => p > 0 ? ((cur - p) / p) * 100 : cur > 0 ? 100 : 0;
-        return {
-            users: pct(last.newUsers, prev.newUsers),
-            workers: pct(last.newWorkers, prev.newWorkers),
-            jobs: pct(last.newJobs, prev.newJobs),
-        };
+        const l = growthData[growthData.length-1]; const p = growthData[growthData.length-2];
+        const pct = (c: number, pr: number) => pr > 0 ? ((c-pr)/pr)*100 : c>0?100:0;
+        return { users: pct(l.users,p.users), workers: pct(l.workers,p.workers), jobs: pct(l.jobs,p.jobs) };
     }, [growthData]);
 
-    // ── What users look for (job service categories) ──────────────────────────
-    const userDemand = useMemo(() => {
-        const counts = new Map<string, number>();
-        (allJobs ?? []).forEach(j => {
-            const cat = j.service as string;
-            counts.set(cat, (counts.get(cat) || 0) + 1);
-        });
-        return Array.from(counts.entries())
-            .map(([cat, count], i) => ({ label: cat, value: count, color: COLORS[i % COLORS.length] }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 10);
+    const jobStats = useMemo(() => {
+        const total = allJobs.length;
+        const completed = allJobs.filter(j => j.status==='completed').length;
+        const pending = allJobs.filter(j => j.status==='pending'||j.status==='accepted').length;
+        const inProgress = allJobs.filter(j => j.status==='in_progress'||j.status==='worker_completed').length;
+        const cancelled = allJobs.filter(j => j.status==='cancelled').length;
+        const declined = allJobs.filter(j => j.status==='declined').length;
+        return { total, completed, pending, inProgress, cancelled, declined, completionRate: total>0?(completed/total)*100:0, cancelRate: total>0?(cancelled/total)*100:0 };
     }, [allJobs]);
 
-    // ── What workers offer (their declared service) ────────────────────────────
-    const workerSupply = useMemo(() => {
-        const counts = new Map<string, number>();
-        (workers ?? []).forEach(w => {
-            const cat = w.service as string;
-            counts.set(cat, (counts.get(cat) || 0) + 1);
-        });
-        return Array.from(counts.entries())
-            .map(([cat, count], i) => ({ label: cat, value: count, color: COLORS[i % COLORS.length] }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 10);
+    const jobsOverTime = useMemo(() => {
+        const b = makeBuckets(allJobs.map(j => j.createdAt));
+        return Array.from(b.entries()).sort().map(([k,v]) => ({ label: getBucketLabel(k,period), value: v }));
+    }, [allJobs, makeBuckets]);
+
+    const revenueData = useMemo(() => {
+        const b = new Map<string,number>();
+        transactions.forEach(tx => { if(!tx.paidAt) return; const k=getBucketKey(tx.paidAt,period); b.set(k,(b.get(k)||0)+tx.platformFee); });
+        return Array.from(b.entries()).sort().map(([k,v]) => ({ label: getBucketLabel(k,period), value: Math.round(v) }));
+    }, [transactions, period]);
+
+    const totalRevenue = useMemo(() => transactions.reduce((s,t) => s+(t.platformFee||0), 0), [transactions]);
+
+    const demandByService = useMemo(() => {
+        const counts = new Map<string,number>();
+        allJobs.forEach(j => counts.set(j.service,(counts.get(j.service)||0)+1));
+        const total = allJobs.length;
+        return Array.from(counts.entries()).map(([s,v],i) => ({ label:s, value:v, color:COLORS[i%COLORS.length], pct:total>0?(v/total)*100:0 })).sort((a,b) => b.value-a.value);
+    }, [allJobs]);
+
+    const supplyByService = useMemo(() => {
+        const counts = new Map<string,number>();
+        workers.forEach(w => counts.set(w.service,(counts.get(w.service)||0)+1));
+        const total = workers.length;
+        return Array.from(counts.entries()).map(([s,v],i) => ({ label:s, value:v, color:COLORS[i%COLORS.length], pct:total>0?(v/total)*100:0 })).sort((a,b) => b.value-a.value);
     }, [workers]);
 
-    // ── Most used specialties (jobs completed by category) ────────────────────
-    const specialtyUsage = useMemo(() => {
-        const counts = new Map<string, number>();
-        (allJobs ?? []).filter(j => j.status === 'completed').forEach(j => {
-            const cat = j.service as string;
-            counts.set(cat, (counts.get(cat) || 0) + 1);
-        });
-        return Array.from(counts.entries())
-            .map(([cat, count], i) => ({ label: cat, value: count, color: COLORS[i % COLORS.length] }))
-            .sort((a, b) => b.value - a.value)
-            .slice(0, 10);
+    const completedByService = useMemo(() => {
+        const counts = new Map<string,number>();
+        allJobs.filter(j=>j.status==='completed').forEach(j => counts.set(j.service,(counts.get(j.service)||0)+1));
+        const total = allJobs.filter(j=>j.status==='completed').length;
+        return Array.from(counts.entries()).map(([s,v],i) => ({ label:s, value:v, color:COLORS[i%COLORS.length], pct:total>0?(v/total)*100:0 })).sort((a,b) => b.value-a.value);
     }, [allJobs]);
 
-    // ── Revenue trend ──────────────────────────────────────────────────────────
-    const revenueData = useMemo(() => {
-        const bucketRev = new Map<string, number>();
-        (transactions ?? []).forEach(tx => {
-            if (!tx.paidAt) return;
-            const b = buckets.getBucket(tx.paidAt);
-            bucketRev.set(b, (bucketRev.get(b) || 0) + tx.platformFee);
+    const reviewStats = useMemo(() => {
+        const uR = allJobs.filter(j=>j.userReview).map(j=>j.userReview!);
+        const wR = allJobs.filter(j=>j.workerReview).map(j=>j.workerReview!);
+        const avgU = uR.length>0?uR.reduce((s,r)=>s+r.rating,0)/uR.length:0;
+        const avgW = wR.length>0?wR.reduce((s,r)=>s+r.rating,0)/wR.length:0;
+        const dist = [1,2,3,4,5].map(star => ({ label:`${star}★`, value:uR.filter(r=>Math.round(r.rating)===star).length, color:star>=4?'#10b981':star===3?'#f59e0b':'#ef4444' }));
+        const bySvc = new Map<string,number[]>();
+        allJobs.filter(j=>j.userReview).forEach(j => { if(!bySvc.has(j.service)) bySvc.set(j.service,[]); bySvc.get(j.service)!.push(j.userReview!.rating); });
+        const topRated = Array.from(bySvc.entries()).map(([s,ratings],i) => ({ label:s, value:ratings.reduce((a,b)=>a+b,0)/ratings.length, color:COLORS[i%COLORS.length] })).filter(x=>x.value>0).sort((a,b)=>b.value-a.value).slice(0,8);
+        return { userReviews:uR, workerReviews:wR, avgUser:avgU, avgWorker:avgW, dist, topRated };
+    }, [allJobs]);
+
+    const gapAnalysis = useMemo(() => {
+        return demandByService.slice(0,10).map(d => {
+            const supply = supplyByService.find(s=>s.label===d.label);
+            const sc = supply?.value||0;
+            const ratio = sc>0?d.value/sc:d.value>0?Infinity:0;
+            const status = ratio===Infinity?'critical':ratio>3?'high':ratio>1.5?'moderate':'balanced';
+            return { ...d, supplyCount:sc, ratio, status };
         });
-        const sorted = Array.from(bucketRev.entries()).sort(([a], [b]) => a.localeCompare(b));
-        return sorted.map(([b, rev]) => ({ label: buckets.label(b), value: Math.round(rev) }));
-    }, [transactions, buckets]);
+    }, [demandByService, supplyByService]);
 
-    // ── Summary numbers ────────────────────────────────────────────────────────
-    const totalRevenue = (transactions ?? []).reduce((sum, tx) => sum + tx.platformFee, 0);
-    const completedJobs = (allJobs ?? []).filter(j => j.status === 'completed').length;
-    const pendingJobs = (allJobs ?? []).filter(j => j.status === 'pending' || j.status === 'accepted').length;
-    const cancelRate = (allJobs ?? []).length > 0 ? ((allJobs ?? []).filter(j => j.status === 'cancelled').length / (allJobs ?? []).length) * 100 : 0;
-
-    // ── Cumulative user/worker growth (for line charts) ───────────────────────
-    const cumulativeUsers = useMemo(() => {
-        let cum = 0;
-        return growthData.map(d => { cum += d.newUsers; return { label: d.label, value: cum }; });
-    }, [growthData]);
-    const cumulativeWorkers = useMemo(() => {
-        let cum = 0;
-        return growthData.map(d => { cum += d.newWorkers; return { label: d.label, value: cum }; });
-    }, [growthData]);
-
-    // ── Download handler ───────────────────────────────────────────────────────
     const handleDownload = () => {
-        exportToXLSX([
-            {
-                name: 'Resumen',
-                rows: [
-                    ['Métrica', 'Valor'],
-                    ['Total Usuarios', users.length],
-                    ['Total Trabajadores', workers.length],
-                    ['Total Trabajos', allJobs.length],
-                    ['Trabajos Completados', completedJobs],
-                    ['Trabajos Pendientes', pendingJobs],
-                    ['Tasa de Cancelación (%)', cancelRate.toFixed(1)],
-                    ['Ingresos Plataforma', totalRevenue.toFixed(2)],
-                    ['Usuarios Activos (periodo)', activeData.activeUsers],
-                    ['Trabajadores Activos (periodo)', activeData.activeWorkers],
-                ],
-            },
-            {
-                name: 'Crecimiento',
-                rows: [
-                    ['Periodo', 'Nuevos Usuarios', 'Nuevos Trabajadores', 'Nuevos Trabajos'],
-                    ...growthData.map(d => [d.label, d.newUsers, d.newWorkers, d.newJobs]),
-                ],
-            },
-            {
-                name: 'Demanda Clientes',
-                rows: [
-                    ['Especialidad', 'Solicitudes'],
-                    ...userDemand.map(d => [d.label, d.value]),
-                ],
-            },
-            {
-                name: 'Oferta Trabajadores',
-                rows: [
-                    ['Especialidad', 'Trabajadores'],
-                    ...workerSupply.map(d => [d.label, d.value]),
-                ],
-            },
-            {
-                name: 'Especialidades Usadas',
-                rows: [
-                    ['Especialidad', 'Trabajos Completados'],
-                    ...specialtyUsage.map(d => [d.label, d.value]),
-                ],
-            },
-            {
-                name: 'Ingresos',
-                rows: [
-                    ['Periodo', 'Ingresos Plataforma'],
-                    ...revenueData.map(d => [d.label, d.value]),
-                ],
-            },
-        ], `tufix_analytics_${new Date().toISOString().slice(0, 10)}`);
+        const date = new Date().toISOString().slice(0,10);
+        if (view==='overview'||view==='users') {
+            downloadCSV([['Métrica','Valor'],['Total Usuarios',users.length],['Total Trabajadores',workers.length],['Usuarios Activos',activeData.activeU],['Trabajadores Activos',activeData.activeW],['Total Trabajos',jobStats.total],['Completados',jobStats.completed],['Tasa Completación',jobStats.completionRate.toFixed(1)+'%'],['Tasa Cancelación',jobStats.cancelRate.toFixed(1)+'%'],['Ingresos Plataforma',totalRevenue.toFixed(2)],[],['Crecimiento'],['Periodo','Nuevos Usuarios','Nuevos Trabajadores','Nuevos Trabajos'],...growthData.map(d=>[d.label,d.users,d.workers,d.jobs])],`tufix_resumen_${date}.csv`);
+        } else if (view==='jobs') {
+            downloadCSV([['Estado','Cantidad','%'],['Completados',jobStats.completed,jobStats.completionRate.toFixed(1)+'%'],['Pendientes',jobStats.pending,''],['En Progreso',jobStats.inProgress,''],['Cancelados',jobStats.cancelled,jobStats.cancelRate.toFixed(1)+'%'],['Declinados',jobStats.declined,''],[],['Por Periodo'],['Periodo','Trabajos'],...jobsOverTime.map(d=>[d.label,d.value])],`tufix_trabajos_${date}.csv`);
+        } else if (view==='specialties') {
+            downloadCSV([['Especialidad','Demanda','%','Oferta','Estado'],...gapAnalysis.map(d=>[d.label,d.value,d.pct.toFixed(1)+'%',d.supplyCount,d.status])],`tufix_especialidades_${date}.csv`);
+        } else if (view==='reviews') {
+            downloadCSV([['Métrica','Valor'],['Promedio Clientes',reviewStats.avgUser.toFixed(2)],['Promedio Trabajadores',reviewStats.avgWorker.toFixed(2)],['Total Reseñas Clientes',reviewStats.userReviews.length],['Total Reseñas Trabajadores',reviewStats.workerReviews.length],[],['Distribución'],['Estrellas','Cantidad'],...reviewStats.dist.map(d=>[d.label,d.value])],`tufix_resenas_${date}.csv`);
+        }
     };
 
-    const periodLabel = { weekly: 'Semanal', monthly: 'Mensual', annual: 'Anual' }[period];
+    const activeSpecialties = specialtyFilter==='demand'?demandByService:specialtyFilter==='supply'?supplyByService:completedByService;
+    const periodLabel = { daily:'Diario', weekly:'Semanal', monthly:'Mensual', annual:'Anual' }[period];
 
     return (
-        <div className="p-4 md:p-6 space-y-6 bg-slate-50 min-h-screen">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <h2 className="text-2xl font-extrabold text-gray-900">📊 Analítica de la App</h2>
-                    <p className="text-sm text-gray-500 mt-0.5">Métricas de crecimiento, usuarios, trabajadores y especialidades</p>
+        <div className="min-h-screen bg-slate-50">
+            {/* Top Bar */}
+            <div className="bg-white border-b border-gray-100 px-6 py-4 sticky top-0 z-10 shadow-sm">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <div>
+                            <h1 className="text-xl font-black text-gray-900">Analytics de la App</h1>
+                            <p className="text-xs text-gray-400">Actualizado {lastUpdated.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</p>
+                        </div>
+                        <LiveDot />
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex bg-gray-100 rounded-xl p-0.5 gap-0.5">
+                            {(['daily','weekly','monthly','annual'] as Period[]).map(p => (
+                                <button key={p} onClick={()=>setPeriod(p)} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${period===p?'bg-white text-indigo-600 shadow':'text-gray-500 hover:text-gray-700'}`}>
+                                    {{daily:'Día',weekly:'Sem',monthly:'Mes',annual:'Año'}[p]}
+                                </button>
+                            ))}
+                        </div>
+                        <button onClick={handleDownload} className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-sm">
+                            📥 Exportar CSV
+                        </button>
+                    </div>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                    {(['weekly', 'monthly', 'annual'] as Period[]).map(p => (
-                        <button
-                            key={p}
-                            onClick={() => setPeriod(p)}
-                            className={`px-4 py-1.5 rounded-full text-sm font-semibold transition ${period === p ? 'bg-purple-600 text-white shadow' : 'bg-white text-gray-600 border border-gray-200 hover:bg-purple-50'}`}
-                        >
-                            {{ weekly: 'Semanal', monthly: 'Mensual', annual: 'Anual' }[p]}
+                <div className="flex gap-1 mt-3 overflow-x-auto pb-1">
+                    {([{id:'overview',label:'General',icon:'📊'},{id:'users',label:'Usuarios',icon:'👥'},{id:'jobs',label:'Trabajos',icon:'📋'},{id:'specialties',label:'Especialidades',icon:'🔧'},{id:'reviews',label:'Reseñas',icon:'⭐'}] as {id:FilterView;label:string;icon:string}[]).map(n => (
+                        <button key={n.id} onClick={()=>setView(n.id)} className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex-shrink-0 ${view===n.id?'bg-indigo-600 text-white shadow':'text-gray-500 hover:bg-gray-100'}`}>
+                            {n.icon} {n.label}
                         </button>
                     ))}
-                    <button
-                        onClick={handleDownload}
-                        className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white font-semibold px-4 py-2 rounded-xl text-sm shadow transition"
-                    >
-                        📥 Descargar CSV
-                    </button>
                 </div>
             </div>
 
-            {/* KPI Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-                <KpiCard icon="👤" title="Total Usuarios" value={users.length} sub="Clientes registrados" color="border-purple-500" trend={growthPct.users} />
-                <KpiCard icon="🔧" title="Total Trabajadores" value={workers.length} sub="Proveedores registrados" color="border-blue-500" trend={growthPct.workers} />
-                <KpiCard icon="📋" title="Total Trabajos" value={allJobs.length} sub="Desde el inicio" color="border-green-500" trend={growthPct.jobs} />
-                <KpiCard icon="✅" title="Completados" value={completedJobs} sub={`${allJobs.length > 0 ? ((completedJobs / allJobs.length) * 100).toFixed(0) : 0}% del total`} color="border-emerald-500" />
-                <KpiCard icon="🔵" title={`Usuarios Activos`} value={activeData.activeUsers} sub={`Últimos (${periodLabel})`} color="border-indigo-500" trend={activeData.userTrend} />
-                <KpiCard icon="🟢" title={`Trabajadores Activos`} value={activeData.activeWorkers} sub={`Últimos (${periodLabel})`} color="border-teal-500" trend={activeData.workerTrend} />
-                <KpiCard icon="💰" title="Ingresos Plataforma" value={`$${totalRevenue.toFixed(0)}`} sub="Comisiones acumuladas" color="border-yellow-500" />
-                <KpiCard icon="❌" title="Tasa Cancelación" value={`${cancelRate.toFixed(1)}%`} sub={`${(allJobs ?? []).filter(j => j.status === 'cancelled').length} cancelados`} color="border-red-400" />
-            </div>
+            <div className="p-4 md:p-6 space-y-6">
 
-            {/* Growth Over Time */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Section title="📈 Nuevos Usuarios por Período" subtitle={`Vista ${periodLabel.toLowerCase()}`}>
-                    {growthData.length > 0 ? (
-                        <BarChart data={growthData.map(d => ({ label: d.label, value: d.newUsers, color: '#8B5CF6' }))} />
-                    ) : <p className="text-gray-400 text-sm text-center py-6">Sin datos de registro aún</p>}
-                </Section>
-                <Section title="📈 Nuevos Trabajadores por Período" subtitle={`Vista ${periodLabel.toLowerCase()}`}>
-                    {growthData.length > 0 ? (
-                        <BarChart data={growthData.map(d => ({ label: d.label, value: d.newWorkers, color: '#3B82F6' }))} />
-                    ) : <p className="text-gray-400 text-sm text-center py-6">Sin datos de registro aún</p>}
-                </Section>
-                <Section title="📉 Crecimiento Acumulado – Usuarios" subtitle="Usuarios totales en el tiempo">
-                    <LineChart data={cumulativeUsers} color="#8B5CF6" />
-                </Section>
-                <Section title="📉 Crecimiento Acumulado – Trabajadores" subtitle="Trabajadores totales en el tiempo">
-                    <LineChart data={cumulativeWorkers} color="#3B82F6" />
-                </Section>
-            </div>
-
-            {/* Jobs over time */}
-            <Section title="📋 Trabajos Solicitados por Período" subtitle={`Actividad ${periodLabel.toLowerCase()}`}>
-                {growthData.length > 0 ? (
-                    <LineChart data={growthData.map(d => ({ label: d.label, value: d.newJobs }))} color="#10B981" height={140} />
-                ) : <p className="text-gray-400 text-sm text-center py-6">Sin trabajos registrados</p>}
-            </Section>
-
-            {/* Revenue */}
-            {revenueData.length > 0 && (
-                <Section title="💰 Ingresos de Plataforma por Período" subtitle="Comisiones cobradas">
-                    <LineChart data={revenueData} color="#F59E0B" height={140} />
-                </Section>
-            )}
-
-            {/* Demand / Supply split */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* What users look for */}
-                <Section title="🔍 Lo que los Clientes más Buscan" subtitle="Por categoría de servicio solicitado">
-                    {userDemand.length > 0 ? (
-                        <>
-                            <div className="flex gap-4">
-                                <div className="w-40 flex-shrink-0">
-                                    <MiniPie data={userDemand} />
-                                </div>
-                                <div className="flex-1 space-y-2 overflow-auto max-h-52">
-                                    {userDemand.map((d, i) => (
-                                        <div key={i} className="flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: d.color }} />
-                                                <span className="text-sm text-gray-700 truncate">{d.label}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 flex-shrink-0">
-                                                <div className="w-20 bg-gray-100 rounded-full h-2">
-                                                    <div className="h-2 rounded-full" style={{ background: d.color, width: `${(d.value / userDemand[0].value) * 100}%` }} />
-                                                </div>
-                                                <span className="text-xs font-bold text-gray-600 w-6 text-right">{d.value}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </>
-                    ) : <p className="text-gray-400 text-sm text-center py-6">Sin trabajos registrados</p>}
-                </Section>
-
-                {/* What workers offer */}
-                <Section title="🛠️ Lo que los Trabajadores más Ofrecen" subtitle="Por especialidad registrada">
-                    {workerSupply.length > 0 ? (
-                        <>
-                            <div className="flex gap-4">
-                                <div className="w-40 flex-shrink-0">
-                                    <MiniPie data={workerSupply} />
-                                </div>
-                                <div className="flex-1 space-y-2 overflow-auto max-h-52">
-                                    {workerSupply.map((d, i) => (
-                                        <div key={i} className="flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: d.color }} />
-                                                <span className="text-sm text-gray-700 truncate">{d.label}</span>
-                                            </div>
-                                            <div className="flex items-center gap-2 flex-shrink-0">
-                                                <div className="w-20 bg-gray-100 rounded-full h-2">
-                                                    <div className="h-2 rounded-full" style={{ background: d.color, width: `${(d.value / workerSupply[0].value) * 100}%` }} />
-                                                </div>
-                                                <span className="text-xs font-bold text-gray-600 w-6 text-right">{d.value}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </>
-                    ) : <p className="text-gray-400 text-sm text-center py-6">Sin trabajadores registrados</p>}
-                </Section>
-            </div>
-
-            {/* Most used specialties */}
-            <Section title="⭐ Especialidades Más Utilizadas" subtitle="Trabajos completados por categoría">
-                {specialtyUsage.length > 0 ? (
-                    <div className="space-y-3">
-                        {specialtyUsage.map((d, i) => (
-                            <div key={i} className="flex items-center gap-3">
-                                <span className="text-sm font-bold text-gray-500 w-5 text-right">{i + 1}</span>
-                                <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
-                                    <div
-                                        className="h-5 rounded-full flex items-center pl-2 transition-all"
-                                        style={{ background: d.color, width: `${Math.max((d.value / specialtyUsage[0].value) * 100, 4)}%` }}
-                                    >
-                                        <span className="text-xs text-white font-semibold truncate">{d.label}</span>
+                {/* OVERVIEW */}
+                {view==='overview' && (<>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <KpiCard icon="👤" label="Total Usuarios" value={fmt(users.length)} sub="Clientes registrados" trend={growthPct.users} color="#6366f1" />
+                        <KpiCard icon="🔧" label="Total Trabajadores" value={fmt(workers.length)} sub="Proveedores registrados" trend={growthPct.workers} color="#f59e0b" />
+                        <KpiCard icon="📋" label="Total Trabajos" value={fmt(jobStats.total)} sub={`${jobStats.completionRate.toFixed(0)}% completados`} trend={growthPct.jobs} color="#10b981" />
+                        <KpiCard icon="💰" label="Ingresos Plataforma" value={`$${fmt(Math.round(totalRevenue))}`} sub="Comisiones acumuladas" color="#ef4444" />
+                        <KpiCard icon="🟢" label="Usuarios Activos" value={fmt(activeData.activeU)} sub={`Últimos (${periodLabel})`} trend={activeData.trendU} color="#3b82f6" />
+                        <KpiCard icon="🟡" label="Trabaj. Activos" value={fmt(activeData.activeW)} sub={`Últimos (${periodLabel})`} trend={activeData.trendW} color="#ec4899" />
+                        <KpiCard icon="✅" label="Completados" value={fmt(jobStats.completed)} sub={`${jobStats.completionRate.toFixed(1)}% del total`} color="#10b981" />
+                        <KpiCard icon="❌" label="Cancelados" value={fmt(jobStats.cancelled)} sub={`${jobStats.cancelRate.toFixed(1)}% del total`} color="#ef4444" />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Section title="📈 Nuevos Usuarios por Periodo" subtitle={`Vista ${periodLabel.toLowerCase()}`}>
+                            <BarChart data={growthData.slice(-12).map(d=>({label:d.label,value:d.users,color:'#6366f1'}))} />
+                        </Section>
+                        <Section title="📈 Nuevos Trabajadores por Periodo" subtitle={`Vista ${periodLabel.toLowerCase()}`}>
+                            <BarChart data={growthData.slice(-12).map(d=>({label:d.label,value:d.workers,color:'#f59e0b'}))} />
+                        </Section>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Section title="🔐 Logins por Periodo" subtitle="Actividad de accesos al sistema">
+                            <LineChart data={loginData} color="#6366f1" />
+                        </Section>
+                        <Section title="💰 Ingresos por Periodo" subtitle="Comisiones de plataforma">
+                            <LineChart data={revenueData} color="#10b981" />
+                        </Section>
+                    </div>
+                    <Section title="📊 Estado de la App" subtitle="Comparativa vs período anterior">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            {[{label:'Nuevos usuarios',trend:growthPct.users,icon:'👤'},{label:'Nuevos trabajadores',trend:growthPct.workers,icon:'🔧'},{label:'Nuevos trabajos',trend:growthPct.jobs,icon:'📋'}].map((item,i) => {
+                                const up=item.trend>=5; const down=item.trend<=-5;
+                                return (
+                                    <div key={i} className={`rounded-xl p-4 text-center border ${up?'bg-emerald-50 border-emerald-200':down?'bg-red-50 border-red-200':'bg-amber-50 border-amber-200'}`}>
+                                        <div className="text-2xl mb-1">{item.icon}</div>
+                                        <div className={`text-xl font-black ${up?'text-emerald-700':down?'text-red-700':'text-amber-700'}`}>{fmtPct(item.trend)}</div>
+                                        <div className="text-sm text-gray-600 mt-1">{item.label}</div>
+                                        <div className={`text-xs font-bold mt-1 ${up?'text-emerald-600':down?'text-red-600':'text-amber-600'}`}>{up?'▲ Creciendo':down?'▼ Decayendo':'→ Estable'}</div>
                                     </div>
-                                </div>
-                                <span className="text-sm font-bold text-gray-700 w-8 text-right">{d.value}</span>
+                                );
+                            })}
+                        </div>
+                    </Section>
+                </>)}
+
+                {/* USERS */}
+                {view==='users' && (<>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <KpiCard icon="👤" label="Total Usuarios" value={fmt(users.length)} color="#6366f1" trend={growthPct.users} />
+                        <KpiCard icon="🔧" label="Total Trabajadores" value={fmt(workers.length)} color="#f59e0b" trend={growthPct.workers} />
+                        <KpiCard icon="🟢" label="Activos (periodo)" value={fmt(activeData.activeU+activeData.activeW)} sub={`${activeData.activeU} clientes · ${activeData.activeW} trabaj.`} color="#10b981" />
+                        <KpiCard icon="🔐" label="Logins Recientes" value={fmt(loginData.reduce((a,d)=>a+d.value,0))} sub="En los últimos periodos" color="#3b82f6" />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Section title="📅 Nuevos Usuarios por Periodo"><LineChart data={growthData.map(d=>({label:d.label,value:d.users}))} color="#6366f1" /></Section>
+                        <Section title="📅 Nuevos Trabajadores por Periodo"><LineChart data={growthData.map(d=>({label:d.label,value:d.workers}))} color="#f59e0b" /></Section>
+                    </div>
+                    <Section title="🔐 Actividad de Logins"><LineChart data={loginData} color="#6366f1" height={150} /></Section>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Section title="✅ Verificación de Usuarios">
+                            <div className="space-y-3">
+                                {[{label:'Aprobados',value:users.filter(u=>u.verificationStatus==='approved').length,color:'#10b981'},{label:'Pendientes',value:users.filter(u=>u.verificationStatus==='pending').length,color:'#f59e0b'},{label:'Declinados',value:users.filter(u=>u.verificationStatus==='declined').length,color:'#ef4444'}].map((d,i) => (
+                                    <RankedBar key={i} rank={i+1} label={d.label} value={d.value} max={Math.max(users.length,1)} color={d.color} pct={users.length>0?(d.value/users.length)*100:0} />
+                                ))}
                             </div>
+                        </Section>
+                        <Section title="✅ Verificación de Trabajadores">
+                            <div className="space-y-3">
+                                {[{label:'Aprobados',value:workers.filter(w=>w.verificationStatus==='approved').length,color:'#10b981'},{label:'Pendientes',value:workers.filter(w=>w.verificationStatus==='pending').length,color:'#f59e0b'},{label:'Declinados',value:workers.filter(w=>w.verificationStatus==='declined').length,color:'#ef4444'}].map((d,i) => (
+                                    <RankedBar key={i} rank={i+1} label={d.label} value={d.value} max={Math.max(workers.length,1)} color={d.color} pct={workers.length>0?(d.value/workers.length)*100:0} />
+                                ))}
+                            </div>
+                        </Section>
+                    </div>
+                </>)}
+
+                {/* JOBS */}
+                {view==='jobs' && (<>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <KpiCard icon="📋" label="Total Trabajos" value={fmt(jobStats.total)} color="#6366f1" trend={growthPct.jobs} />
+                        <KpiCard icon="✅" label="Completados" value={fmt(jobStats.completed)} sub={`${jobStats.completionRate.toFixed(1)}%`} color="#10b981" />
+                        <KpiCard icon="⏳" label="Pend./Activos" value={fmt(jobStats.pending+jobStats.inProgress)} sub={`${jobStats.pending} pend · ${jobStats.inProgress} activos`} color="#f59e0b" />
+                        <KpiCard icon="❌" label="Cancelados" value={fmt(jobStats.cancelled)} sub={`${jobStats.cancelRate.toFixed(1)}%`} color="#ef4444" />
+                    </div>
+                    <Section title="📋 Trabajos por Período" subtitle={`Vista ${periodLabel.toLowerCase()}`}><LineChart data={jobsOverTime} color="#6366f1" height={150} /></Section>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Section title="🍩 Distribución por Estado">
+                            <div className="flex gap-6 items-center">
+                                <div className="w-36 flex-shrink-0">
+                                    <DonutChart data={[{label:'Completados',value:jobStats.completed,color:'#10b981'},{label:'Pendientes',value:jobStats.pending,color:'#f59e0b'},{label:'En Progreso',value:jobStats.inProgress,color:'#3b82f6'},{label:'Cancelados',value:jobStats.cancelled,color:'#ef4444'},{label:'Declinados',value:jobStats.declined,color:'#9ca3af'}]} />
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                    {[{label:'Completados',value:jobStats.completed,color:'#10b981'},{label:'Pendientes',value:jobStats.pending,color:'#f59e0b'},{label:'En Progreso',value:jobStats.inProgress,color:'#3b82f6'},{label:'Cancelados',value:jobStats.cancelled,color:'#ef4444'},{label:'Declinados',value:jobStats.declined,color:'#9ca3af'}].map((d,i) => (
+                                        <RankedBar key={i} rank={i+1} label={d.label} value={d.value} max={Math.max(jobStats.total,1)} color={d.color} pct={jobStats.total>0?(d.value/jobStats.total)*100:0} />
+                                    ))}
+                                </div>
+                            </div>
+                        </Section>
+                        <Section title="💰 Ingresos por Período">
+                            <LineChart data={revenueData} color="#10b981" />
+                            <div className="mt-3 p-3 bg-emerald-50 rounded-xl text-center">
+                                <p className="text-xl font-black text-emerald-700">${fmt(Math.round(totalRevenue))}</p>
+                                <p className="text-xs text-emerald-600">Total acumulado</p>
+                            </div>
+                        </Section>
+                    </div>
+                </>)}
+
+                {/* SPECIALTIES */}
+                {view==='specialties' && (<>
+                    <div className="flex bg-white border border-gray-200 rounded-xl p-1 w-fit gap-1 shadow-sm flex-wrap">
+                        {([{id:'demand',label:'🔍 Lo que buscan clientes'},{id:'supply',label:'🔧 Lo que ofrecen trabaj.'},{id:'completed',label:'✅ Más completados'}] as const).map(opt => (
+                            <button key={opt.id} onClick={()=>setSpecialtyFilter(opt.id)} className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${specialtyFilter===opt.id?'bg-indigo-600 text-white shadow':'text-gray-500 hover:bg-gray-50'}`}>{opt.label}</button>
                         ))}
                     </div>
-                ) : <p className="text-gray-400 text-sm text-center py-6">Sin trabajos completados aún</p>}
-            </Section>
-
-            {/* Supply vs Demand gap analysis */}
-            <Section title="📊 Análisis Oferta vs Demanda" subtitle="¿Hay suficientes trabajadores para lo que piden los clientes?">
-                {userDemand.length > 0 && workerSupply.length > 0 ? (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                            <thead>
-                                <tr className="border-b border-gray-200">
-                                    <th className="text-left py-2 font-semibold text-gray-600">Especialidad</th>
-                                    <th className="text-right py-2 font-semibold text-gray-600">Solicitudes</th>
-                                    <th className="text-right py-2 font-semibold text-gray-600">Trabajadores</th>
-                                    <th className="text-right py-2 font-semibold text-gray-600">Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {userDemand.map((d, i) => {
-                                    const supply = workerSupply.find(s => s.label === d.label);
-                                    const supplyCount = supply?.value || 0;
-                                    const ratio = supplyCount > 0 ? d.value / supplyCount : Infinity;
-                                    const status = ratio > 5 ? { label: '⚠️ Alta demanda', cls: 'text-red-600 font-semibold' } :
-                                        ratio > 2 ? { label: '🟡 Moderada', cls: 'text-yellow-600' } :
-                                            { label: '✅ Balanceada', cls: 'text-green-600' };
-                                    return (
-                                        <tr key={i} className="border-b border-gray-50 hover:bg-gray-50">
-                                            <td className="py-2 text-gray-800">{d.label}</td>
-                                            <td className="py-2 text-right text-purple-700 font-bold">{d.value}</td>
-                                            <td className="py-2 text-right text-blue-700 font-bold">{supplyCount}</td>
-                                            <td className={`py-2 text-right text-xs ${status.cls}`}>{status.label}</td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-                ) : <p className="text-gray-400 text-sm text-center py-6">Datos insuficientes para el análisis</p>}
-            </Section>
-
-            {/* Decline / Increase notice */}
-            <Section title="📡 Estado de Actividad Reciente" subtitle="¿La app está creciendo, estable o decayendo?">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {[
-                        { label: 'Nuevos usuarios', trend: growthPct.users, icon: '👤' },
-                        { label: 'Nuevos trabajadores', trend: growthPct.workers, icon: '🔧' },
-                        { label: 'Nuevos trabajos', trend: growthPct.jobs, icon: '📋' },
-                    ].map((item, i) => {
-                        const up = item.trend >= 5;
-                        const down = item.trend <= -5;
-                        return (
-                            <div key={i} className={`rounded-xl p-4 text-center border ${up ? 'bg-green-50 border-green-200' : down ? 'bg-red-50 border-red-200' : 'bg-yellow-50 border-yellow-200'}`}>
-                                <div className="text-3xl mb-1">{item.icon}</div>
-                                <div className={`text-xl font-extrabold ${up ? 'text-green-700' : down ? 'text-red-700' : 'text-yellow-700'}`}>
-                                    {item.trend >= 0 ? '+' : ''}{item.trend.toFixed(1)}%
-                                </div>
-                                <div className="text-sm text-gray-600 mt-1">{item.label}</div>
-                                <div className={`text-xs mt-1 font-semibold ${up ? 'text-green-600' : down ? 'text-red-600' : 'text-yellow-600'}`}>
-                                    {up ? '▲ En crecimiento' : down ? '▼ En descenso' : '→ Estable'}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Section title={specialtyFilter==='demand'?'🔍 Lo que los Clientes más Buscan':specialtyFilter==='supply'?'🔧 Lo que los Trabajadores Ofrecen':'✅ Especialidades más Completadas'} subtitle="Top 10 · por volumen">
+                            <div className="flex gap-4 items-start">
+                                <div className="w-32 flex-shrink-0 mt-2"><DonutChart data={activeSpecialties.slice(0,8)} /></div>
+                                <div className="flex-1 space-y-3 overflow-y-auto max-h-64">
+                                    {activeSpecialties.slice(0,10).map((d,i) => (
+                                        <RankedBar key={i} rank={i+1} label={d.label} value={d.value} max={activeSpecialties[0]?.value||1} color={d.color} pct={d.pct} />
+                                    ))}
                                 </div>
                             </div>
-                        );
-                    })}
-                </div>
-            </Section>
+                        </Section>
+                        <Section title="📊 Oferta vs Demanda" subtitle="¿Hay suficientes trabajadores para la demanda?">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead><tr className="border-b border-gray-100"><th className="text-left py-2 text-xs font-bold text-gray-500 uppercase">Especialidad</th><th className="text-right py-2 text-xs font-bold text-gray-500 uppercase">Demanda</th><th className="text-right py-2 text-xs font-bold text-gray-500 uppercase">Oferta</th><th className="text-right py-2 text-xs font-bold text-gray-500 uppercase">Estado</th></tr></thead>
+                                    <tbody className="divide-y divide-gray-50">
+                                        {gapAnalysis.map((d,i) => (
+                                            <tr key={i} className="hover:bg-gray-50">
+                                                <td className="py-2 font-medium text-gray-800 max-w-[120px] truncate">{d.label}</td>
+                                                <td className="py-2 text-right font-bold text-indigo-700">{d.value}</td>
+                                                <td className="py-2 text-right font-bold text-amber-600">{d.supplyCount}</td>
+                                                <td className="py-2 text-right">
+                                                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${d.status==='critical'?'bg-red-100 text-red-700':d.status==='high'?'bg-orange-100 text-orange-700':d.status==='moderate'?'bg-yellow-100 text-yellow-700':'bg-emerald-100 text-emerald-700'}`}>
+                                                        {{critical:'🔴 Crítico',high:'🟠 Alta',moderate:'🟡 Mod.',balanced:'🟢 OK'}[d.status]}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Section>
+                    </div>
+                    <Section title="📊 Visualización Top Especialidades"><BarChart data={activeSpecialties.slice(0,12).map(d=>({label:d.label,value:d.value,color:d.color}))} height={150} /></Section>
+                </>)}
 
-            {/* Footer note */}
-            <p className="text-center text-xs text-gray-400 pb-4">
-                Datos actualizados en tiempo real · Comparación vs período anterior · Haz clic en "Descargar CSV" para exportar todas las hojas
-            </p>
+                {/* REVIEWS */}
+                {view==='reviews' && (<>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <KpiCard icon="⭐" label="Promedio Clientes" value={reviewStats.avgUser.toFixed(2)} sub={`${reviewStats.userReviews.length} reseñas`} color="#f59e0b" />
+                        <KpiCard icon="⭐" label="Promedio Trabajadores" value={reviewStats.avgWorker.toFixed(2)} sub={`${reviewStats.workerReviews.length} reseñas`} color="#6366f1" />
+                        <KpiCard icon="📝" label="Total Reseñas" value={fmt(reviewStats.userReviews.length+reviewStats.workerReviews.length)} sub="De ambas partes" color="#10b981" />
+                        <KpiCard icon="📋" label="Con Reseña" value={`${jobStats.total>0?((reviewStats.userReviews.length/jobStats.total)*100).toFixed(0):0}%`} sub="Del total de trabajos" color="#3b82f6" />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Section title="⭐ Distribución de Calificaciones" subtitle="Reseñas de clientes a trabajadores">
+                            <BarChart data={reviewStats.dist} height={130} />
+                        </Section>
+                        <Section title="🏆 Mejores Especialidades por Rating">
+                            <div className="space-y-3">
+                                {reviewStats.topRated.map((d,i) => (
+                                    <RankedBar key={i} rank={i+1} label={d.label} value={parseFloat(d.value.toFixed(2))} max={5} color={d.color} pct={(d.value/5)*100} />
+                                ))}
+                                {!reviewStats.topRated.length && <p className="text-gray-400 text-sm text-center py-6">Sin reseñas aún</p>}
+                            </div>
+                        </Section>
+                    </div>
+                    <Section title="💬 Reseñas Recientes" subtitle="Últimas opiniones de clientes">
+                        <div className="space-y-3 max-h-80 overflow-y-auto">
+                            {allJobs.filter(j=>j.userReview).sort((a,b)=>new Date(b.createdAt).getTime()-new Date(a.createdAt).getTime()).slice(0,10).map((job,i) => (
+                                <div key={i} className="flex gap-3 p-3 bg-gray-50 rounded-xl">
+                                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-sm font-bold text-indigo-600 flex-shrink-0">{job.userReview!.author?.charAt(0)||'?'}</div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className="text-sm font-semibold text-gray-800 truncate">{job.userReview!.author}</span>
+                                            <span className="text-xs text-amber-500 font-bold flex-shrink-0">{'★'.repeat(Math.round(job.userReview!.rating))}{'☆'.repeat(5-Math.round(job.userReview!.rating))}</span>
+                                        </div>
+                                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{job.userReview!.comment||'Sin comentario'}</p>
+                                        <p className="text-xs text-gray-400 mt-1">{job.service} · {fmtDate(job.createdAt)}</p>
+                                    </div>
+                                </div>
+                            ))}
+                            {!allJobs.filter(j=>j.userReview).length && <p className="text-gray-400 text-sm text-center py-6">Sin reseñas aún</p>}
+                        </div>
+                    </Section>
+                </>)}
+
+                <div className="flex items-center justify-center gap-2 pb-4">
+                    <p className="text-center text-xs text-gray-400">TUFIX Analytics · Datos en tiempo real desde Firebase ·</p>
+                    <LiveDot />
+                </div>
+            </div>
         </div>
     );
 };
