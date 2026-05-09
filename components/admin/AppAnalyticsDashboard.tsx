@@ -1,35 +1,44 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { User, Worker, JobRequest, Transaction } from '../../types';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'annual';
 type FilterView = 'overview' | 'jobs' | 'reviews' | 'specialties' | 'users';
 
 interface Props {
-    users: User[];
-    workers: Worker[];
-    allJobs: JobRequest[];
-    transactions: Transaction[];
+    users?: User[];
+    workers?: Worker[];
+    allJobs?: JobRequest[];
+    transactions?: Transaction[];
 }
 
-const downloadCSV = (rows: any[][], filename: string) => {
-    const csv = rows.map(row =>
-        row.map(cell => {
-            const s = String(cell ?? '');
-            return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-        }).join(',')
-    ).join('\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(a.href);
-};
+// ── Detail modal types ─────────────────────────────────────────────────────
+interface DrillItem {
+    id: string;
+    name: string;
+    email: string;
+    type: 'user' | 'worker';
+    signupDate?: string;
+    lastLoginDate?: string;
+    rating?: number;
+    service?: string;
+    verificationStatus?: string;
+}
 
+interface DrillModal {
+    title: string;
+    subtitle: string;
+    items: DrillItem[];
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+const downloadCSV = (rows: any[][], filename: string) => {
+    const csv = rows.map(row => row.map(cell => { const s = String(cell ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }).join(',')).join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+};
 const fmt = (n: number) => n.toLocaleString();
 const fmtPct = (n: number) => `${n >= 0 ? '+' : ''}${n.toFixed(1)}%`;
 const fmtDate = (iso: string) => { try { return new Date(iso).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }); } catch { return iso; } };
-
 const getBucketKey = (iso: string, period: Period): string => {
     const d = new Date(iso);
     if (period === 'daily') return iso.slice(0, 10);
@@ -37,17 +46,204 @@ const getBucketKey = (iso: string, period: Period): string => {
     if (period === 'monthly') return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
     return String(d.getFullYear());
 };
-
 const getBucketLabel = (key: string, period: Period): string => {
     if (period === 'daily') return fmtDate(key);
     if (period === 'weekly') return `Sem ${fmtDate(key)}`;
     if (period === 'monthly') { const [y, m] = key.split('-'); const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']; return `${months[parseInt(m)-1]} ${y}`; }
     return key;
 };
-
 const COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#ec4899','#14b8a6','#f97316','#8b5cf6','#84cc16','#06b6d4','#a855f7','#e11d48','#0ea5e9','#d97706'];
 
-const KpiCard: React.FC<{ icon: string; label: string; value: string | number; sub?: string; trend?: number; color: string; }> = ({ icon, label, value, sub, trend, color }) => (
+// ── Tooltip ────────────────────────────────────────────────────────────────
+const Tooltip: React.FC<{ x: number; y: number; visible: boolean; children: React.ReactNode }> = ({ x, y, visible, children }) => (
+    <div style={{
+        position: 'fixed', left: x + 12, top: y - 8, zIndex: 9999, pointerEvents: 'none',
+        opacity: visible ? 1 : 0, transition: 'opacity 0.15s',
+        background: 'rgba(17,24,39,0.95)', color: 'white', borderRadius: 10, padding: '8px 12px',
+        fontSize: 12, fontWeight: 600, boxShadow: '0 4px 24px rgba(0,0,0,0.3)', whiteSpace: 'nowrap',
+    }}>
+        {children}
+    </div>
+);
+
+// ── Interactive Line Chart ─────────────────────────────────────────────────
+interface LinePoint { label: string; value: number; key?: string; }
+interface LineChartProps {
+    data: LinePoint[];
+    color?: string;
+    height?: number;
+    onClickPoint?: (point: LinePoint) => void;
+    label?: string;
+}
+const InteractiveLineChart: React.FC<LineChartProps> = ({ data, color = '#6366f1', height = 120, onClickPoint, label }) => {
+    const [hover, setHover] = useState<{ idx: number; x: number; y: number } | null>(null);
+    const svgRef = useRef<SVGSVGElement>(null);
+    if (data.length < 2) return <div className="text-center text-gray-400 py-6 text-sm">Datos insuficientes</div>;
+    const max = Math.max(...data.map(d => d.value), 1);
+    const W = 600; const padX = 24; const padY = 16; const cW = W - padX * 2; const cH = height - padY * 2;
+    const pts = data.map((d, i) => ({ ...d, x: padX + (i / (data.length - 1)) * cW, y: padY + cH - (d.value / max) * cH }));
+    const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
+    const area = `${path} L${pts[pts.length-1].x},${padY+cH} L${pts[0].x},${padY+cH} Z`;
+    const gradId = `grad-${color.replace('#','')}`;
+    const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+        const rect = svgRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const svgX = ((e.clientX - rect.left) / rect.width) * W;
+        let closest = 0; let minDist = Infinity;
+        pts.forEach((p, i) => { const d = Math.abs(p.x - svgX); if (d < minDist) { minDist = d; closest = i; } });
+        setHover({ idx: closest, x: e.clientX, y: e.clientY });
+    };
+    return (
+        <>
+            <svg ref={svgRef} viewBox={`0 0 ${W} ${height + 32}`} className="w-full cursor-pointer" preserveAspectRatio="xMidYMid meet"
+                onMouseMove={handleMouseMove} onMouseLeave={() => setHover(null)}
+                onClick={() => { if (hover && onClickPoint) onClickPoint(data[hover.idx]); }}>
+                <defs>
+                    <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+                        <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+                    </linearGradient>
+                </defs>
+                {/* Grid lines */}
+                {[0,0.25,0.5,0.75,1].map((t,i) => (
+                    <line key={i} x1={padX} x2={W-padX} y1={padY + t*cH} y2={padY + t*cH} stroke="#f3f4f6" strokeWidth="1" />
+                ))}
+                {/* Y labels */}
+                {[0,0.5,1].map((t,i) => (
+                    <text key={i} x={padX-4} y={padY + t*cH + 3} textAnchor="end" fontSize={8} fill="#d1d5db">{fmt(Math.round(max*(1-t)))}</text>
+                ))}
+                <path d={area} fill={`url(#${gradId})`} />
+                <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                {pts.map((p, i) => (
+                    <g key={i}>
+                        <circle cx={p.x} cy={p.y} r={hover?.idx === i ? 6 : 3.5}
+                            fill={hover?.idx === i ? color : 'white'}
+                            stroke={color} strokeWidth="2"
+                            style={{ transition: 'r 0.1s, fill 0.1s' }} />
+                        <text x={p.x} y={height + 26} textAnchor="middle" fontSize={8} fill="#9ca3af">{p.label}</text>
+                    </g>
+                ))}
+                {/* Hover vertical line */}
+                {hover && <line x1={pts[hover.idx].x} x2={pts[hover.idx].x} y1={padY} y2={padY+cH} stroke={color} strokeWidth="1" strokeDasharray="4,3" opacity="0.5" />}
+            </svg>
+            {hover && (
+                <Tooltip x={hover.x} y={hover.y} visible={true}>
+                    <div style={{ opacity: 0.7, marginBottom: 2 }}>{data[hover.idx].label}</div>
+                    <div style={{ fontSize: 15 }}>{label || ''} {fmt(data[hover.idx].value)}</div>
+                    {onClickPoint && <div style={{ opacity: 0.6, marginTop: 3, fontSize: 10 }}>Click para ver detalles →</div>}
+                </Tooltip>
+            )}
+        </>
+    );
+};
+
+// ── Interactive Bar Chart ──────────────────────────────────────────────────
+interface BarPoint { label: string; value: number; color?: string; key?: string; }
+interface BarChartProps {
+    data: BarPoint[];
+    height?: number;
+    onClickBar?: (point: BarPoint) => void;
+    label?: string;
+}
+const InteractiveBarChart: React.FC<BarChartProps> = ({ data, height = 140, onClickBar, label }) => {
+    const [hover, setHover] = useState<{ idx: number; x: number; y: number } | null>(null);
+    if (!data.length) return <div className="text-center text-gray-400 py-8 text-sm">Sin datos</div>;
+    const max = Math.max(...data.map(d => d.value), 1);
+    const barW = Math.max(20, Math.min(48, Math.floor(560 / data.length) - 8));
+    const totalW = Math.max(data.length * (barW + 8), 300);
+    return (
+        <>
+            <svg viewBox={`0 0 ${totalW} ${height + 32}`} className="w-full cursor-pointer" preserveAspectRatio="xMidYMid meet"
+                onMouseLeave={() => setHover(null)}
+                onClick={() => { if (hover && onClickBar) onClickBar(data[hover.idx]); }}>
+                {data.map((d, i) => {
+                    const barH = Math.max((d.value / max) * height, d.value > 0 ? 4 : 0);
+                    const x = i * (barW + 8) + 4; const y = height - barH;
+                    const color = d.color || COLORS[i % COLORS.length];
+                    const isHover = hover?.idx === i;
+                    return (
+                        <g key={i} onMouseEnter={(e) => setHover({ idx: i, x: e.clientX, y: e.clientY })}
+                            onMouseMove={(e) => setHover({ idx: i, x: e.clientX, y: e.clientY })}>
+                            <rect x={x} y={y} width={barW} height={barH} fill={color} rx={4}
+                                opacity={hover && !isHover ? 0.5 : 1}
+                                style={{ transition: 'opacity 0.15s' }} />
+                            {isHover && <rect x={x-2} y={y-2} width={barW+4} height={barH+2} fill="none" stroke={color} strokeWidth="2" rx={5} />}
+                            {d.value > 0 && <text x={x + barW / 2} y={y - 5} textAnchor="middle" fontSize={9} fill="#374151" fontWeight="700">{d.value}</text>}
+                            <text x={x + barW / 2} y={height + 16} textAnchor="middle" fontSize={8} fill="#9ca3af">{d.label.length > 7 ? d.label.slice(0, 6) + '…' : d.label}</text>
+                        </g>
+                    );
+                })}
+            </svg>
+            {hover && (
+                <Tooltip x={hover.x} y={hover.y} visible={true}>
+                    <div style={{ opacity: 0.7, marginBottom: 2 }}>{data[hover.idx].label}</div>
+                    <div style={{ fontSize: 15 }}>{label || ''} {fmt(data[hover.idx].value)}</div>
+                    {onClickBar && <div style={{ opacity: 0.6, marginTop: 3, fontSize: 10 }}>Click para ver detalles →</div>}
+                </Tooltip>
+            )}
+        </>
+    );
+};
+
+// ── Drill-down Modal ───────────────────────────────────────────────────────
+const DrillDownModal: React.FC<{ modal: DrillModal; onClose: () => void }> = ({ modal, onClose }) => (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }}
+        onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+        <div style={{ background: 'white', borderRadius: 20, width: '90%', maxWidth: 560, maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 24px 80px rgba(0,0,0,0.3)' }}>
+            {/* Header */}
+            <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                    <h2 style={{ fontWeight: 800, fontSize: 18, color: '#111827', margin: 0 }}>{modal.title}</h2>
+                    <p style={{ fontSize: 12, color: '#9ca3af', margin: '4px 0 0' }}>{modal.subtitle} · {modal.items.length} persona{modal.items.length !== 1 ? 's' : ''}</p>
+                </div>
+                <button onClick={onClose} style={{ background: '#f3f4f6', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+            </div>
+            {/* List */}
+            <div style={{ overflowY: 'auto', padding: '12px 24px 20px', flex: 1 }}>
+                {modal.items.length === 0 && (
+                    <div style={{ textAlign: 'center', color: '#9ca3af', padding: '32px 0', fontSize: 14 }}>No hay datos para este período</div>
+                )}
+                {modal.items.map((item, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: i < modal.items.length - 1 ? '1px solid #f9fafb' : 'none' }}>
+                        <div style={{ width: 38, height: 38, borderRadius: '50%', background: item.type === 'worker' ? '#fef3c7' : '#ede9fe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                            {item.type === 'worker' ? '🔧' : '👤'}
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: 14, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</div>
+                            <div style={{ fontSize: 12, color: '#6b7280' }}>{item.email}</div>
+                            {item.service && <div style={{ fontSize: 11, color: '#8b5cf6', marginTop: 2 }}>🔧 {item.service}</div>}
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                            {item.rating !== undefined && item.rating > 0 && <div style={{ fontSize: 12, color: '#f59e0b', fontWeight: 700 }}>★ {item.rating.toFixed(1)}</div>}
+                            {item.signupDate && <div style={{ fontSize: 10, color: '#9ca3af', marginTop: 2 }}>Registro: {fmtDate(item.signupDate)}</div>}
+                            {item.lastLoginDate && <div style={{ fontSize: 10, color: '#9ca3af' }}>Último login: {fmtDate(item.lastLoginDate)}</div>}
+                            {item.verificationStatus && (
+                                <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 6px', borderRadius: 4, background: item.verificationStatus === 'approved' ? '#d1fae5' : item.verificationStatus === 'pending' ? '#fef3c7' : '#fee2e2', color: item.verificationStatus === 'approved' ? '#065f46' : item.verificationStatus === 'pending' ? '#92400e' : '#991b1b', marginTop: 2, display: 'inline-block' }}>
+                                    {item.verificationStatus}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                ))}
+            </div>
+            {/* Footer */}
+            {modal.items.length > 0 && (
+                <div style={{ padding: '12px 24px', borderTop: '1px solid #f3f4f6' }}>
+                    <button onClick={() => {
+                        downloadCSV([['Nombre','Email','Tipo','Servicio','Rating','Registro','Último Login','Verificación'],
+                            ...modal.items.map(i => [i.name, i.email, i.type, i.service||'', i.rating?.toFixed(1)||'', i.signupDate||'', i.lastLoginDate||'', i.verificationStatus||''])],
+                            `tufix_detalle_${new Date().toISOString().slice(0,10)}.csv`);
+                    }} style={{ background: '#6366f1', color: 'white', border: 'none', borderRadius: 10, padding: '8px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', width: '100%' }}>
+                        📥 Exportar esta lista como CSV
+                    </button>
+                </div>
+            )}
+        </div>
+    </div>
+);
+
+// ── Existing components (unchanged) ───────────────────────────────────────
+const KpiCard: React.FC<{ icon: string; label: string; value: string | number; sub?: string; trend?: number; color: string }> = ({ icon, label, value, sub, trend, color }) => (
     <div className="relative overflow-hidden rounded-2xl p-5 bg-white border border-gray-100 shadow-sm hover:shadow-md transition-all">
         <div className="absolute top-0 left-0 w-1 h-full rounded-l-2xl" style={{ background: color }} />
         <div className="flex items-start justify-between mb-3">
@@ -64,52 +260,6 @@ const KpiCard: React.FC<{ icon: string; label: string; value: string | number; s
     </div>
 );
 
-const BarChart: React.FC<{ data: { label: string; value: number; color?: string }[]; height?: number }> = ({ data, height = 140 }) => {
-    if (!data.length) return <div className="text-center text-gray-400 py-8 text-sm">Sin datos</div>;
-    const max = Math.max(...data.map(d => d.value), 1);
-    const barW = Math.max(20, Math.min(48, Math.floor(560 / data.length) - 8));
-    const totalW = Math.max(data.length * (barW + 8), 300);
-    return (
-        <svg viewBox={`0 0 ${totalW} ${height + 32}`} className="w-full" preserveAspectRatio="xMidYMid meet">
-            {data.map((d, i) => {
-                const barH = Math.max((d.value / max) * height, d.value > 0 ? 4 : 0);
-                const x = i * (barW + 8) + 4; const y = height - barH;
-                const color = d.color || COLORS[i % COLORS.length];
-                return (
-                    <g key={i}>
-                        <rect x={x} y={y} width={barW} height={barH} fill={color} rx={4} />
-                        {d.value > 0 && <text x={x + barW / 2} y={y - 4} textAnchor="middle" fontSize={9} fill="#374151" fontWeight="700">{d.value}</text>}
-                        <text x={x + barW / 2} y={height + 16} textAnchor="middle" fontSize={8} fill="#9ca3af">{d.label.length > 7 ? d.label.slice(0, 6) + '…' : d.label}</text>
-                    </g>
-                );
-            })}
-        </svg>
-    );
-};
-
-const LineChart: React.FC<{ data: { label: string; value: number }[]; color?: string; height?: number }> = ({ data, color = '#6366f1', height = 120 }) => {
-    if (data.length < 2) return <div className="text-center text-gray-400 py-6 text-sm">Datos insuficientes</div>;
-    const max = Math.max(...data.map(d => d.value), 1);
-    const W = 600; const padX = 20; const padY = 12; const cW = W - padX * 2; const cH = height - padY * 2;
-    const pts = data.map((d, i) => ({ x: padX + (i / (data.length - 1)) * cW, y: padY + cH - (d.value / max) * cH, ...d }));
-    const path = pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ');
-    const area = `${path} L${pts[pts.length-1].x},${padY+cH} L${pts[0].x},${padY+cH} Z`;
-    const id = `fill-${color.replace('#','')}`;
-    return (
-        <svg viewBox={`0 0 ${W} ${height + 28}`} className="w-full" preserveAspectRatio="xMidYMid meet">
-            <defs><linearGradient id={id} x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={color} stopOpacity="0.25" /><stop offset="100%" stopColor={color} stopOpacity="0.02" /></linearGradient></defs>
-            <path d={area} fill={`url(#${id})`} />
-            <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            {pts.map((p, i) => (
-                <g key={i}>
-                    <circle cx={p.x} cy={p.y} r={3.5} fill="white" stroke={color} strokeWidth="2" />
-                    <text x={p.x} y={height + 22} textAnchor="middle" fontSize={8} fill="#9ca3af">{p.label}</text>
-                </g>
-            ))}
-        </svg>
-    );
-};
-
 const DonutChart: React.FC<{ data: { label: string; value: number; color: string }[] }> = ({ data }) => {
     const total = data.reduce((a, d) => a + d.value, 0);
     if (!total) return <div className="text-center text-gray-400 py-4 text-sm">Sin datos</div>;
@@ -123,7 +273,7 @@ const DonutChart: React.FC<{ data: { label: string; value: number; color: string
     });
     return (
         <svg viewBox="0 0 100 100" className="w-full max-w-[140px] mx-auto">
-            {slices.map((s, i) => <path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth="1.5" />)}
+            {slices.map((s, i) => <path key={i} d={s.d} fill={s.color} stroke="white" strokeWidth="1.5"><title>{s.label}: {s.value} ({(s.pct*100).toFixed(1)}%)</title></path>)}
             <text x="50" y="47" textAnchor="middle" fontSize="11" fontWeight="800" fill="#111">{fmt(total)}</text>
             <text x="50" y="57" textAnchor="middle" fontSize="7" fill="#6b7280">total</text>
         </svg>
@@ -166,11 +316,18 @@ const LiveDot: React.FC = () => (
     </span>
 );
 
-const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJobs = [], transactions = [] }) => {
+// ── Main Component ─────────────────────────────────────────────────────────
+const AppAnalyticsDashboard: React.FC<Props> = ({ users: _u, workers: _w, allJobs: _j, transactions: _t }) => {
+    const users = _u ?? [];
+    const workers = _w ?? [];
+    const allJobs = _j ?? [];
+    const transactions = _t ?? [];
+
     const [period, setPeriod] = useState<Period>('monthly');
     const [view, setView] = useState<FilterView>('overview');
     const [lastUpdated, setLastUpdated] = useState(new Date());
     const [specialtyFilter, setSpecialtyFilter] = useState<'demand' | 'supply' | 'completed'>('demand');
+    const [drillModal, setDrillModal] = useState<DrillModal | null>(null);
 
     useEffect(() => { const i = setInterval(() => setLastUpdated(new Date()), 30000); return () => clearInterval(i); }, []);
     const now = useMemo(() => new Date(), [lastUpdated]);
@@ -181,6 +338,7 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJ
         return map;
     }, [period]);
 
+    // ── useMemo computations (identical to original) ───────────────────────
     const growthData = useMemo(() => {
         const uB = makeBuckets(users.map(u => u.signupDate));
         const wB = makeBuckets(workers.map(w => w.signupDate));
@@ -191,7 +349,7 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJ
 
     const loginData = useMemo(() => {
         const lB = makeBuckets([...users.map(u => u.lastLoginDate), ...workers.map(w => w.lastLoginDate)]);
-        return Array.from(lB.entries()).sort().slice(-14).map(([k, v]) => ({ label: getBucketLabel(k, period), value: v }));
+        return Array.from(lB.entries()).sort().slice(-14).map(([k, v]) => ({ key: k, label: getBucketLabel(k, period), value: v }));
     }, [users, workers, makeBuckets]);
 
     const activeData = useMemo(() => {
@@ -222,13 +380,13 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJ
 
     const jobsOverTime = useMemo(() => {
         const b = makeBuckets(allJobs.map(j => j.createdAt));
-        return Array.from(b.entries()).sort().map(([k,v]) => ({ label: getBucketLabel(k,period), value: v }));
+        return Array.from(b.entries()).sort().map(([k,v]) => ({ key: k, label: getBucketLabel(k,period), value: v }));
     }, [allJobs, makeBuckets]);
 
     const revenueData = useMemo(() => {
         const b = new Map<string,number>();
         transactions.forEach(tx => { if(!tx.paidAt) return; const k=getBucketKey(tx.paidAt,period); b.set(k,(b.get(k)||0)+tx.platformFee); });
-        return Array.from(b.entries()).sort().map(([k,v]) => ({ label: getBucketLabel(k,period), value: Math.round(v) }));
+        return Array.from(b.entries()).sort().map(([k,v]) => ({ key: k, label: getBucketLabel(k,period), value: Math.round(v) }));
     }, [transactions, period]);
 
     const totalRevenue = useMemo(() => transactions.reduce((s,t) => s+(t.platformFee||0), 0), [transactions]);
@@ -276,6 +434,44 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJ
         });
     }, [demandByService, supplyByService]);
 
+    // ── Drill-down handlers ────────────────────────────────────────────────
+    const openUserSignups = (point: { label: string; key?: string }) => {
+        if (!point.key) return;
+        const key = point.key;
+        const matchedUsers = users.filter(u => u.signupDate && getBucketKey(u.signupDate, period) === key)
+            .map(u => ({ id: u.id, name: u.name, email: u.email, type: 'user' as const, signupDate: u.signupDate, lastLoginDate: u.lastLoginDate, rating: u.rating, verificationStatus: u.verificationStatus }));
+        setDrillModal({ title: `Nuevos Usuarios — ${point.label}`, subtitle: 'Clientes que se registraron en este período', items: matchedUsers });
+    };
+
+    const openWorkerSignups = (point: { label: string; key?: string }) => {
+        if (!point.key) return;
+        const key = point.key;
+        const matchedWorkers = workers.filter(w => w.signupDate && getBucketKey(w.signupDate, period) === key)
+            .map(w => ({ id: w.id, name: w.name, email: w.email, type: 'worker' as const, signupDate: w.signupDate, lastLoginDate: w.lastLoginDate, rating: w.rating, service: w.service, verificationStatus: w.verificationStatus }));
+        setDrillModal({ title: `Nuevos Trabajadores — ${point.label}`, subtitle: 'Trabajadores que se registraron en este período', items: matchedWorkers });
+    };
+
+    const openLogins = (point: { label: string; key?: string }) => {
+        if (!point.key) return;
+        const key = point.key;
+        const matchedUsers = users.filter(u => u.lastLoginDate && getBucketKey(u.lastLoginDate, period) === key)
+            .map(u => ({ id: u.id, name: u.name, email: u.email, type: 'user' as const, signupDate: u.signupDate, lastLoginDate: u.lastLoginDate, rating: u.rating }));
+        const matchedWorkers = workers.filter(w => w.lastLoginDate && getBucketKey(w.lastLoginDate, period) === key)
+            .map(w => ({ id: w.id, name: w.name, email: w.email, type: 'worker' as const, signupDate: w.signupDate, lastLoginDate: w.lastLoginDate, rating: w.rating, service: w.service }));
+        setDrillModal({ title: `Logins — ${point.label}`, subtitle: 'Usuarios y trabajadores que iniciaron sesión', items: [...matchedUsers, ...matchedWorkers] });
+    };
+
+    const openJobsDrilldown = (point: { label: string; key?: string }) => {
+        if (!point.key) return;
+        const key = point.key;
+        const matchedJobs = allJobs.filter(j => j.createdAt && getBucketKey(j.createdAt, period) === key);
+        const workerIds = [...new Set(matchedJobs.map(j => j.workerId).filter(Boolean))];
+        const matchedWorkers = workers.filter(w => workerIds.includes(w.id))
+            .map(w => ({ id: w.id, name: w.name, email: w.email, type: 'worker' as const, service: w.service, rating: w.rating }));
+        setDrillModal({ title: `Trabajos Creados — ${point.label}`, subtitle: `${matchedJobs.length} trabajos · trabajadores involucrados`, items: matchedWorkers });
+    };
+
+    // ── Download handler (identical to original) ───────────────────────────
     const handleDownload = () => {
         const date = new Date().toISOString().slice(0,10);
         if (view==='overview'||view==='users') {
@@ -294,7 +490,9 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJ
 
     return (
         <div className="min-h-screen bg-slate-50">
-            {/* Top Bar */}
+            {drillModal && <DrillDownModal modal={drillModal} onClose={() => setDrillModal(null)} />}
+
+            {/* Top Bar — identical to original */}
             <div className="bg-white border-b border-gray-100 px-6 py-4 sticky top-0 z-10 shadow-sm">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
@@ -341,19 +539,19 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJ
                         <KpiCard icon="❌" label="Cancelados" value={fmt(jobStats.cancelled)} sub={`${jobStats.cancelRate.toFixed(1)}% del total`} color="#ef4444" />
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <Section title="📈 Nuevos Usuarios por Periodo" subtitle={`Vista ${periodLabel.toLowerCase()}`}>
-                            <BarChart data={growthData.slice(-12).map(d=>({label:d.label,value:d.users,color:'#6366f1'}))} />
+                        <Section title="📈 Nuevos Usuarios por Periodo" subtitle={`Vista ${periodLabel.toLowerCase()} · hover para ver · click para detalles`}>
+                            <InteractiveBarChart data={growthData.slice(-12).map(d=>({label:d.label,value:d.users,color:'#6366f1',key:d.key}))} label="usuarios" onClickBar={openUserSignups} />
                         </Section>
-                        <Section title="📈 Nuevos Trabajadores por Periodo" subtitle={`Vista ${periodLabel.toLowerCase()}`}>
-                            <BarChart data={growthData.slice(-12).map(d=>({label:d.label,value:d.workers,color:'#f59e0b'}))} />
+                        <Section title="📈 Nuevos Trabajadores por Periodo" subtitle={`Vista ${periodLabel.toLowerCase()} · hover para ver · click para detalles`}>
+                            <InteractiveBarChart data={growthData.slice(-12).map(d=>({label:d.label,value:d.workers,color:'#f59e0b',key:d.key}))} label="trabajadores" onClickBar={openWorkerSignups} />
                         </Section>
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <Section title="🔐 Logins por Periodo" subtitle="Actividad de accesos al sistema">
-                            <LineChart data={loginData} color="#6366f1" />
+                        <Section title="🔐 Logins por Periodo" subtitle="Hover para ver · click para ver quién entró">
+                            <InteractiveLineChart data={loginData} color="#6366f1" label="logins" onClickPoint={openLogins} />
                         </Section>
-                        <Section title="💰 Ingresos por Periodo" subtitle="Comisiones de plataforma">
-                            <LineChart data={revenueData} color="#10b981" />
+                        <Section title="💰 Ingresos por Periodo" subtitle="Comisiones de plataforma · hover para ver monto">
+                            <InteractiveLineChart data={revenueData} color="#10b981" label="$" />
                         </Section>
                     </div>
                     <Section title="📊 Estado de la App" subtitle="Comparativa vs período anterior">
@@ -382,10 +580,16 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJ
                         <KpiCard icon="🔐" label="Logins Recientes" value={fmt(loginData.reduce((a,d)=>a+d.value,0))} sub="En los últimos periodos" color="#3b82f6" />
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <Section title="📅 Nuevos Usuarios por Periodo"><LineChart data={growthData.map(d=>({label:d.label,value:d.users}))} color="#6366f1" /></Section>
-                        <Section title="📅 Nuevos Trabajadores por Periodo"><LineChart data={growthData.map(d=>({label:d.label,value:d.workers}))} color="#f59e0b" /></Section>
+                        <Section title="📅 Nuevos Usuarios por Periodo" subtitle="Click en una barra para ver quiénes se registraron">
+                            <InteractiveLineChart data={growthData.map(d=>({label:d.label,value:d.users,key:d.key}))} color="#6366f1" label="usuarios" onClickPoint={openUserSignups} />
+                        </Section>
+                        <Section title="📅 Nuevos Trabajadores por Periodo" subtitle="Click en un punto para ver quiénes se registraron">
+                            <InteractiveLineChart data={growthData.map(d=>({label:d.label,value:d.workers,key:d.key}))} color="#f59e0b" label="trabajadores" onClickPoint={openWorkerSignups} />
+                        </Section>
                     </div>
-                    <Section title="🔐 Actividad de Logins"><LineChart data={loginData} color="#6366f1" height={150} /></Section>
+                    <Section title="🔐 Actividad de Logins" subtitle="Click en un punto para ver quién entró ese día">
+                        <InteractiveLineChart data={loginData} color="#6366f1" height={150} label="logins" onClickPoint={openLogins} />
+                    </Section>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <Section title="✅ Verificación de Usuarios">
                             <div className="space-y-3">
@@ -412,7 +616,9 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJ
                         <KpiCard icon="⏳" label="Pend./Activos" value={fmt(jobStats.pending+jobStats.inProgress)} sub={`${jobStats.pending} pend · ${jobStats.inProgress} activos`} color="#f59e0b" />
                         <KpiCard icon="❌" label="Cancelados" value={fmt(jobStats.cancelled)} sub={`${jobStats.cancelRate.toFixed(1)}%`} color="#ef4444" />
                     </div>
-                    <Section title="📋 Trabajos por Período" subtitle={`Vista ${periodLabel.toLowerCase()}`}><LineChart data={jobsOverTime} color="#6366f1" height={150} /></Section>
+                    <Section title="📋 Trabajos por Período" subtitle={`Vista ${periodLabel.toLowerCase()} · click en un punto para ver los trabajadores`}>
+                        <InteractiveLineChart data={jobsOverTime} color="#6366f1" height={150} label="trabajos" onClickPoint={openJobsDrilldown} />
+                    </Section>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <Section title="🍩 Distribución por Estado">
                             <div className="flex gap-6 items-center">
@@ -427,7 +633,7 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJ
                             </div>
                         </Section>
                         <Section title="💰 Ingresos por Período">
-                            <LineChart data={revenueData} color="#10b981" />
+                            <InteractiveLineChart data={revenueData} color="#10b981" label="$" />
                             <div className="mt-3 p-3 bg-emerald-50 rounded-xl text-center">
                                 <p className="text-xl font-black text-emerald-700">${fmt(Math.round(totalRevenue))}</p>
                                 <p className="text-xs text-emerald-600">Total acumulado</p>
@@ -436,7 +642,7 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJ
                     </div>
                 </>)}
 
-                {/* SPECIALTIES */}
+                {/* SPECIALTIES — identical to original */}
                 {view==='specialties' && (<>
                     <div className="flex bg-white border border-gray-200 rounded-xl p-1 w-fit gap-1 shadow-sm flex-wrap">
                         {([{id:'demand',label:'🔍 Lo que buscan clientes'},{id:'supply',label:'🔧 Lo que ofrecen trabaj.'},{id:'completed',label:'✅ Más completados'}] as const).map(opt => (
@@ -476,10 +682,12 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJ
                             </div>
                         </Section>
                     </div>
-                    <Section title="📊 Visualización Top Especialidades"><BarChart data={activeSpecialties.slice(0,12).map(d=>({label:d.label,value:d.value,color:d.color}))} height={150} /></Section>
+                    <Section title="📊 Visualización Top Especialidades">
+                        <InteractiveBarChart data={activeSpecialties.slice(0,12).map(d=>({label:d.label,value:d.value,color:d.color}))} height={150} label="trabajos" />
+                    </Section>
                 </>)}
 
-                {/* REVIEWS */}
+                {/* REVIEWS — identical to original */}
                 {view==='reviews' && (<>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <KpiCard icon="⭐" label="Promedio Clientes" value={reviewStats.avgUser.toFixed(2)} sub={`${reviewStats.userReviews.length} reseñas`} color="#f59e0b" />
@@ -489,7 +697,7 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users = [], workers = [], allJ
                     </div>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                         <Section title="⭐ Distribución de Calificaciones" subtitle="Reseñas de clientes a trabajadores">
-                            <BarChart data={reviewStats.dist} height={130} />
+                            <InteractiveBarChart data={reviewStats.dist} height={130} label="reseñas" />
                         </Section>
                         <Section title="🏆 Mejores Especialidades por Rating">
                             <div className="space-y-3">
