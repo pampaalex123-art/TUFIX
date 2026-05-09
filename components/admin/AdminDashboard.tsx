@@ -4,7 +4,6 @@ import { SERVICE_CATEGORIES } from '../../constants';
 import AdminTransactionsScreen from './AdminTransactionsScreen';
 import AdminDisputesScreen from '../new/AdminDisputesScreen';
 import { formatDistanceToNow } from '../../utils/time';
-import AppAnalyticsDashboard from './AppAnalyticsDashboard';
 
 // --- HELPER FUNCTIONS for CSV Download ---
 const escapeCSVCell = (cell: any): string => {
@@ -57,7 +56,7 @@ const downloadCSV = (csvString: string, filename: string) => {
 type SortDirection = 'ascending' | 'descending';
 type ClientSortKey = 'name' | 'location' | 'jobsRequested' | 'signupDate';
 type WorkerSortKey = 'name' | 'service' | 'location' | 'rating' | 'jobsCompleted' | 'totalEarnings' | 'signupDate';
-type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings' | 'pagos' | 'ai_analytics';
+type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings';
 
 interface ClientFilters {
     nameOrEmail: string;
@@ -102,6 +101,7 @@ interface AdminDashboardProps {
     onDeleteWorker: (worker: Worker) => void;
     onSelectDispute: (dispute: Dispute) => void;
     onSelectSupportConversation: (conversationId: string) => void;
+    onMarkMessagesRead: (participantId: string) => void;
     onSelectVerification: (worker: Worker) => void;
     onEditTerms: () => void;
     onClearAllData: () => void;
@@ -145,7 +145,7 @@ const PieChart: React.FC<{ data: { label: string; value: number; color: string }
 };
 
 // --- MAIN COMPONENT ---
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs, transactions, disputes, notifications, messages, invoices, pendingVerifications, onSelectUser, onDeleteUser, onSelectWorker, onDeleteWorker, onSelectDispute, onSelectSupportConversation, onSelectVerification, onEditTerms, onClearAllData, t, adminId }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs, transactions, disputes, notifications, messages, invoices, pendingVerifications, onSelectUser, onDeleteUser, onSelectWorker, onDeleteWorker, onSelectDispute, onSelectSupportConversation, onMarkMessagesRead, onSelectVerification, onEditTerms, onClearAllData, t, adminId }) => {
     const [activeTab, setActiveTab] = useState<AdminTab>('clients');
     const [clientFilters, setClientFilters] = useState<ClientFilters>(initialClientFilters);
     const [workerFilters, setWorkerFilters] = useState<WorkerFilters>(initialWorkerFilters);
@@ -153,6 +153,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
     const [workerSort, setWorkerSort] = useState<{ key: WorkerSortKey; direction: SortDirection }>({ key: 'name', direction: 'ascending' });
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
+    const [starredConvos, setStarredConvos] = useState<Set<string>>(new Set());
+    const [supportFilter, setSupportFilter] = useState<'all' | 'unread' | 'starred'>('all');
     const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
@@ -485,7 +487,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                             <TabButton tabId="disputes" badgeCount={openDisputesCount}>{t('disputes')}</TabButton>
                             <TabButton tabId="support" badgeCount={openSupportChatsCount}>{t('support')}</TabButton>
                             <TabButton tabId="settings">{t('settings')}</TabButton>
-                            <TabButton tabId="ai_analytics">📊 Analytics App</TabButton>
                         </nav>
                     </div>
                 </div>
@@ -685,14 +686,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                     </div>
                 )}
                 
-                {activeTab === 'ai_analytics' && (
-                    <AppAnalyticsDashboard
-                        users={users ?? []}
-                        workers={workers ?? []}
-                        allJobs={allJobs ?? []}
-                        transactions={transactions ?? []}
-                    />
-                )}
                 {activeTab === 'verifications' && (
                     <div className="p-4">
                         <h2 className="text-xl font-bold text-black mb-4">{t('pending verifications')} ({verificationsCount})</h2>
@@ -742,35 +735,103 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                 )}
                 {activeTab === 'support' && (
                     <div className="p-4">
-                        <h2 className="text-xl font-bold text-black mb-4">{t('support requests')} ({supportConversations.length})</h2>
-                        {supportConversations.length === 0 ? (
-                            <p className="text-center py-8 text-black">{t('no support requests')}</p>
-                        ) : (
-                            <div className="space-y-2">
-                                {supportConversations.map(convo => (
-                                    <button 
-                                        key={convo.id} 
-                                        onClick={() => onSelectSupportConversation(convo.id)} 
-                                        className="w-full text-left p-3 flex items-center space-x-4 rounded-lg hover:bg-slate-100"
+                        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                            <h2 className="text-xl font-bold text-black">{t('support requests')} ({supportConversations.length})</h2>
+                            {/* Filter buttons */}
+                            <div className="flex bg-gray-100 rounded-xl p-0.5 gap-0.5">
+                                {(['all', 'unread', 'starred'] as const).map(f => (
+                                    <button
+                                        key={f}
+                                        onClick={() => setSupportFilter(f)}
+                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${supportFilter === f ? 'bg-white text-purple-600 shadow' : 'text-gray-500 hover:text-gray-700'}`}
                                     >
-                                        <img src={convo.user.avatarUrl} alt={convo.user.name} className="w-12 h-12 rounded-full" />
-                                        <div className="flex-1 overflow-hidden">
-                                            <div className="flex justify-between items-baseline">
-                                                <p className={`font-bold ${convo.unreadCount > 0 ? 'text-purple-600' : 'text-black'}`}>{convo.user.name}</p>
-                                                <span className="text-xs text-black flex-shrink-0">{formatDistanceToNow(convo.lastMessage.timestamp, t)}</span>
-                                            </div>
-                                            <p className={`text-sm truncate ${convo.unreadCount > 0 ? 'font-semibold text-black' : 'text-black'}`}>
-                                                {convo.lastMessage.senderId === adminId && <span>{t('you prefix')}</span>}
-                                                {convo.lastMessage.text}
-                                            </p>
-                                        </div>
-                                        {convo.unreadCount > 0 && (
-                                            <span className="bg-purple-600 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center flex-shrink-0">{convo.unreadCount}</span>
-                                        )}
+                                        {f === 'all' ? '📋 Todos' : f === 'unread' ? '🔵 No leídos' : '⭐ Destacados'}
                                     </button>
                                 ))}
                             </div>
-                        )}
+                        </div>
+                        {supportConversations.length === 0 ? (
+                            <p className="text-center py-8 text-black">{t('no support requests')}</p>
+                        ) : (() => {
+                            const filtered = supportConversations.filter(convo => {
+                                if (supportFilter === 'unread') return convo.unreadCount > 0;
+                                if (supportFilter === 'starred') return starredConvos.has(convo.id);
+                                return true;
+                            });
+                            return filtered.length === 0 ? (
+                                <p className="text-center py-8 text-gray-400 text-sm">
+                                    {supportFilter === 'unread' ? 'No hay mensajes sin leer' : 'No hay mensajes destacados'}
+                                </p>
+                            ) : (
+                                <div className="space-y-2">
+                                    {filtered.map(convo => {
+                                        const isStarred = starredConvos.has(convo.id);
+                                        const otherParticipantId = convo.id.replace('conv_', '').split('_').find(id => id !== adminId) || '';
+                                        return (
+                                            <div
+                                                key={convo.id}
+                                                className={`w-full text-left flex items-center space-x-3 rounded-xl border transition-all ${
+                                                    convo.unreadCount > 0
+                                                        ? 'bg-purple-50 border-purple-200'
+                                                        : 'bg-white border-gray-100 hover:bg-slate-50'
+                                                }`}
+                                            >
+                                                {/* Star button */}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setStarredConvos(prev => {
+                                                            const next = new Set(prev);
+                                                            if (next.has(convo.id)) next.delete(convo.id);
+                                                            else next.add(convo.id);
+                                                            return next;
+                                                        });
+                                                    }}
+                                                    className={`pl-3 py-3 flex-shrink-0 transition-all hover:scale-110 active:scale-95 ${isStarred ? 'text-amber-400' : 'text-gray-300 hover:text-amber-300'}`}
+                                                    title={isStarred ? 'Quitar destacado' : 'Destacar mensaje'}
+                                                >
+                                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill={isStarred ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2}>
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                                    </svg>
+                                                </button>
+
+                                                {/* Main clickable area */}
+                                                <button
+                                                    className="flex-1 flex items-center space-x-3 p-3 pl-1 text-left min-w-0"
+                                                    onClick={() => {
+                                                        // Mark as read before opening
+                                                        if (convo.unreadCount > 0) {
+                                                            onMarkMessagesRead(otherParticipantId);
+                                                        }
+                                                        onSelectSupportConversation(convo.id);
+                                                    }}
+                                                >
+                                                    <img src={convo.user.avatarUrl} alt={convo.user.name} className="w-11 h-11 rounded-full flex-shrink-0 border-2 border-white shadow-sm" />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex justify-between items-baseline gap-2">
+                                                            <p className={`font-bold truncate ${convo.unreadCount > 0 ? 'text-purple-700' : 'text-gray-900'}`}>
+                                                                {convo.user.name}
+                                                            </p>
+                                                            <span className="text-xs text-gray-400 flex-shrink-0">{formatDistanceToNow(convo.lastMessage.timestamp, t)}</span>
+                                                        </div>
+                                                        <p className={`text-sm truncate mt-0.5 ${convo.unreadCount > 0 ? 'font-semibold text-gray-800' : 'text-gray-500'}`}>
+                                                            {convo.lastMessage.senderId === adminId && <span className="text-gray-400">{t('you prefix')}</span>}
+                                                            {convo.lastMessage.text}
+                                                        </p>
+                                                    </div>
+                                                    {/* Unread badge */}
+                                                    {convo.unreadCount > 0 && (
+                                                        <span className="bg-purple-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center flex-shrink-0 shadow">
+                                                            {convo.unreadCount}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            );
+                        })()}
                     </div>
                 )}
                 {activeTab === 'settings' && (

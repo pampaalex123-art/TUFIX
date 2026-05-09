@@ -1768,6 +1768,7 @@ const App: React.FC = () => {
             onDeleteWorker={handleDeleteWorker}
             onSelectDispute={(dispute) => setView({ screen: 'ADMIN_DISPUTE_DETAILS', dispute })}
             onSelectSupportConversation={(conversationId) => setView({ screen: 'MESSAGING', conversationId })}
+            onMarkMessagesRead={(participantId) => handleMarkMessagesAsRead(participantId)}
             onSelectVerification={(worker) => setView({ screen: 'ADMIN_WORKER_VERIFICATION', worker })}
             onEditTerms={() => setView({ screen: 'ADMIN_EDIT_TERMS' })}
             onClearAllData={handleClearAllData}
