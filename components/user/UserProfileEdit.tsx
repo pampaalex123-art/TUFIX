@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { User } from '../../types';
-import { MapPin } from 'lucide-react';
+
 import { useToast } from '../common/Toast';
 
 interface UserProfileEditProps {
@@ -11,7 +11,7 @@ interface UserProfileEditProps {
 }
 
 const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onSave, onBack, t }) => {
-  const { showToast } = useToast();
+  const { showLoading, resolveToast } = useToast();
   const [formData, setFormData] = useState<User>(user);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -33,7 +33,13 @@ const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onSave, onBack,
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    const id = showLoading('Guardando perfil…');
+    try {
+      onSave(formData);
+      resolveToast(id, true, 'Perfil actualizado');
+    } catch {
+      resolveToast(id, false, 'Error al guardar');
+    }
   };
 
   const inputStyles = "mt-1 block w-full p-3 bg-slate-100 border-transparent rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none sm:text-sm text-slate-900";
@@ -71,24 +77,6 @@ const UserProfileEdit: React.FC<UserProfileEditProps> = ({ user, onSave, onBack,
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-slate-600">{t('email_address')}</label>
               <input type="email" name="email" id="email" value={formData.email} onChange={handleChange} className={inputStyles} />
-            </div>
-
-            {/* Location — simple text input, no map */}
-            <div className="md:col-span-2">
-              <label htmlFor="location" className="block text-sm font-medium text-slate-600">{t('home_location')}</label>
-              <div className="relative mt-1">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  type="text"
-                  name="location"
-                  id="location"
-                  value={formData.location}
-                  onChange={handleChange}
-                  placeholder="Ej: Buenos Aires, Argentina"
-                  className="block w-full pl-10 p-3 bg-slate-100 border-transparent rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none sm:text-sm text-slate-900"
-                />
-              </div>
-              <p className="text-xs text-slate-400 mt-1">Tu ubicación aproximada para encontrar trabajadores cercanos</p>
             </div>
 
             {/* Country selector */}
