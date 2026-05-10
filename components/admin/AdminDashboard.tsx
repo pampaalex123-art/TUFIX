@@ -527,7 +527,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                 <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">{t('actions')}</th>
                             </tr></thead>
                             <tbody className="divide-y divide-slate-200">{filteredAndSortedClients.map(user => <tr key={user.id} onClick={() => onSelectUser(user)} className="hover:bg-slate-50 cursor-pointer">
-                                <td className="px-6 py-4 flex items-center space-x-3"><img className="w-10 h-10 rounded-full" src={user.avatarUrl} alt={user.name}/><div><p className="font-medium text-black">{user.name}</p><p className="text-xs text-black">{user.email}</p></div></td>
+                                <td className="px-6 py-4 flex items-center space-x-3"><img className="w-10 h-10 rounded-full" src={user.avatarUrl} alt={user.name}/><div><div className="flex items-center gap-1.5"><p className="font-medium text-black">{user.name}</p>{(user as any).accountType === 'company' && <span className="text-[10px] font-bold px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">🏢 Empresa</span>}</div><p className="text-xs text-black">{user.email}</p></div></td>
                                 <td className="px-6 py-4">{user.location}</td><td className="px-6 py-4">{user.jobsRequested}</td>
                                 <td className="px-6 py-4">{new Date(user.signupDate).toLocaleDateString()}</td>
                                 <td className="px-6 py-4">
@@ -620,7 +620,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                                 <th className="px-6 py-3 text-left text-xs font-medium text-black uppercase tracking-wider">{t('actions')}</th>
                             </tr></thead>
                             <tbody className="divide-y divide-slate-200">{filteredAndSortedWorkers.map(worker => <tr key={worker.id} onClick={() => onSelectWorker(worker)} className="hover:bg-slate-50 cursor-pointer">
-                                <td className="px-6 py-4 flex items-center space-x-3"><img className="w-10 h-10 rounded-full" src={worker.avatarUrl} alt={worker.name}/><div><p className="font-medium text-black">{worker.name}</p><p className="text-xs text-black">{worker.email}</p></div></td>
+                                <td className="px-6 py-4 flex items-center space-x-3"><img className="w-10 h-10 rounded-full" src={worker.avatarUrl} alt={worker.name}/><div><div className="flex items-center gap-1.5"><p className="font-medium text-black">{worker.name}</p>{(worker.providerType === 'company' || worker.providerType === 'both') && <span className="text-[10px] font-bold px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">🏢 {worker.providerType === 'both' ? 'Particular+Empresa' : 'Empresa'}</span>}</div><p className="text-xs text-black">{worker.email}</p></div></td>
                                 <td className="px-6 py-4"><span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-800">{t(worker.service)}</span></td>
                                 <td className="px-6 py-4">{worker.location}</td><td className="px-6 py-4">{worker.rating.toFixed(1)} ★</td>
                                 <td className="px-6 py-4">{worker.jobsCompleted}</td><td className="px-6 py-4">${worker.totalEarnings.toFixed(2)}</td>

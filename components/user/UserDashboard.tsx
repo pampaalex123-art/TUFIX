@@ -9,6 +9,7 @@ interface UserDashboardProps {
     onSelectCategory: (category: ServiceCategory | null) => void;
     onSelectWorker: (worker: Worker) => void;
     t: (key: string, replacements?: Record<string, string | number>) => string;
+    currentUser?: any;
 }
 
 const DAYS_OF_WEEK: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -44,9 +45,24 @@ const WorkerCard: React.FC<{ worker: Worker; onSelectWorker: (worker: Worker) =>
     >
         <div className="p-3 sm:p-4">
             <div className="flex items-start">
-                <img className="h-12 w-12 sm:h-16 sm:w-16 rounded-full object-cover flex-shrink-0" src={worker.avatarUrl} alt={worker.name} />
+                <div className="relative flex-shrink-0">
+                    <img className="h-12 w-12 sm:h-16 sm:w-16 rounded-full object-cover" src={worker.avatarUrl} alt={worker.name} />
+                    {(worker.providerType === 'company' || worker.providerType === 'both') && (
+                        <span className="absolute -bottom-1 -right-1 bg-purple-600 text-white text-[9px] font-bold px-1 py-0.5 rounded-full leading-none">🏢</span>
+                    )}
+                </div>
                 <div className="ml-3 sm:ml-4 flex-grow min-w-0">
-                    <h3 className="text-base sm:text-lg font-bold text-black group-hover:text-purple-600 transition-colors truncate">{worker.name}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-base sm:text-lg font-bold text-black group-hover:text-purple-600 transition-colors truncate">
+                            {worker.providerType === 'company' || worker.providerType === 'both' ? (worker.companyName || worker.name) : worker.name}
+                        </h3>
+                        {(worker.providerType === 'company' || worker.providerType === 'both') && (
+                            <span className="text-[10px] font-bold px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full flex-shrink-0">Empresa</span>
+                        )}
+                    </div>
+                    {worker.providerType === 'both' && (
+                        <p className="text-[10px] text-slate-500 truncate">{worker.name}</p>
+                    )}
                     <p className="text-xs sm:text-sm text-black truncate">{worker.location}</p>
                     <div className="flex items-center mt-1">
                         <StarRating rating={worker.rating} />
@@ -68,11 +84,14 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
     selectedCategory,
     onSelectCategory,
     onSelectWorker,
-    t
+    t,
+    currentUser,
 }) => {
     const [selectedSuperCategoryName, setSelectedSuperCategoryName] = useState<string | null>(null);
     const [filters, setFilters] = useState<Filters>(initialFilters);
     const [showFilters, setShowFilters] = useState(false);
+    const isCompanyUser = (currentUser as any)?.accountType === 'company';
+    const [providerFilter, setProviderFilter] = useState<'all' | 'individual' | 'company'>('all');
 
     const serviceCategoryDetails = useMemo(() => new Map(SERVICE_CATEGORIES.map(sc => [sc.name, sc])), []);
     const selectedSuperCategory = useMemo(() => SUPER_CATEGORIES.find(c => c.name === selectedSuperCategoryName), [selectedSuperCategoryName]);
@@ -111,6 +130,17 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
 
         return (workers || []).filter(worker => {
             if (worker.verificationStatus !== 'approved') return false; // Only show approved workers
+
+            // Provider type filter
+            if (isCompanyUser && providerFilter !== 'all') {
+                const wType = worker.providerType || 'individual';
+                if (providerFilter === 'individual' && wType !== 'individual' && wType !== 'both') return false;
+                if (providerFilter === 'company' && wType !== 'company' && wType !== 'both') return false;
+            } else if (!isCompanyUser) {
+                // Non-company users only see individual or 'both' workers
+                const wType = worker.providerType || 'individual';
+                if (wType === 'company') return false;
+            }
             
             const inSelectedSuperCategory = selectedSuperCategory ? selectedSuperCategory.subCategories.includes(worker.service) : true;
             if (!inSelectedSuperCategory) return false;
@@ -256,6 +286,30 @@ const UserDashboard: React.FC<UserDashboardProps> = ({
             </div>
 
             <div className="relative mb-6">
+                {/* Provider type filter — only shown to company users */}
+                {isCompanyUser && (
+                    <div className="flex items-center gap-2 mb-3">
+                        <div className="flex bg-slate-100 rounded-xl p-0.5 gap-0.5">
+                            {([
+                                { val: 'all',        label: 'Todos',        icon: '🔍' },
+                                { val: 'individual', label: 'Particulares', icon: '👤' },
+                                { val: 'company',    label: 'Empresas',     icon: '🏢' },
+                            ] as const).map(opt => (
+                                <button
+                                    key={opt.val}
+                                    onClick={() => setProviderFilter(opt.val)}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                                        providerFilter === opt.val
+                                            ? 'bg-white text-purple-700 shadow'
+                                            : 'text-slate-500 hover:text-slate-700'
+                                    }`}
+                                >
+                                    {opt.icon} {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
                 <button onClick={() => setShowFilters(!showFilters)} className="flex items-center space-x-2 bg-white rounded-lg shadow-sm px-4 py-2 font-semibold text-black">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                     <span>{t('filters')}</span>

@@ -510,6 +510,11 @@ const AppInner: React.FC = () => {
           phoneNumber: { code: formData.countryCode, number: formData.phoneNumber },
           verificationStatus: 'approved',
           userType: isAdminEmail ? 'admin' : 'user',
+          accountType: formData.accountType || 'individual',
+          companyName: formData.companyName || undefined,
+          companyIndustry: formData.companyIndustry || undefined,
+          companyTaxId: formData.companyTaxId || undefined,
+          companyDescription: formData.companyDescription || undefined,
         };
         setUsers(prev => [...prev, newUser]);
         setCurrentUser(newUser);
@@ -557,6 +562,12 @@ const AppInner: React.FC = () => {
           phoneNumber: { code: formData.countryCode, number: formData.phoneNumber },
           verificationStatus: 'pending',
           userType: 'worker',
+          providerType: formData.providerType || 'individual',
+          companyName: formData.companyName || undefined,
+          companyIndustry: formData.companyIndustry || undefined,
+          companyTaxId: formData.companyTaxId || undefined,
+          companyDescription: formData.companyDescription || undefined,
+          companyEmployeeCount: formData.companyEmployeeCount || undefined,
         };
         setWorkers(prev => [...prev, newWorker]);
         
@@ -1630,6 +1641,7 @@ const AppInner: React.FC = () => {
           onSelectCategory={setSelectedCategory}
           onSelectWorker={(worker) => setView({ screen: 'WORKER_PROFILE', worker })}
           t={t}
+          currentUser={currentUser}
         />;
       case 'WORKER_PROFILE':
         return <WorkerProfile 

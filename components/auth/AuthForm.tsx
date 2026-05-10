@@ -24,11 +24,19 @@ const AuthForm: React.FC<AuthFormProps> = ({ userType, onLogin, onSignUp, onForg
     idNumber: '',
     countryCode: '+1',
     phoneNumber: '',
+    accountType: 'individual' as 'individual' | 'company',
+    providerType: 'individual' as 'individual' | 'company' | 'both',
+    companyName: '',
+    companyIndustry: '',
+    companyTaxId: '',
+    companyDescription: '',
+    companyEmployeeCount: '',
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
+  const [showCompanyFields, setShowCompanyFields] = useState(false);
 
 
   const config = {
@@ -46,9 +54,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ userType, onLogin, onSignUp, onForg
     }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     setError('');
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'accountType') setShowCompanyFields(value === 'company');
+    if (name === 'providerType') setShowCompanyFields(value === 'company' || value === 'both');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -196,6 +207,89 @@ const AuthForm: React.FC<AuthFormProps> = ({ userType, onLogin, onSignUp, onForg
                   </select>
                 </div>
             </div>
+
+            {/* Account type selector — User: individual vs company */}
+            {userType === 'user' && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">¿Buscás servicios como...?</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['individual', 'company'] as const).map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => { setFormData(prev => ({ ...prev, accountType: type })); setShowCompanyFields(type === 'company'); }}
+                      className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all text-sm font-bold ${
+                        formData.accountType === type
+                          ? 'border-purple-500 bg-purple-50 text-purple-700'
+                          : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-purple-200'
+                      }`}
+                    >
+                      <span className="text-xl">{type === 'individual' ? '👤' : '🏢'}</span>
+                      {type === 'individual' ? 'Particular' : 'Empresa'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Provider type selector — Worker: individual vs company vs both */}
+            {userType === 'worker' && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">¿Ofrecés servicios como...?</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {([
+                    { val: 'individual', icon: '👤', label: 'Particular' },
+                    { val: 'company',    icon: '🏢', label: 'Empresa' },
+                    { val: 'both',       icon: '👤🏢', label: 'Ambos' },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.val}
+                      type="button"
+                      onClick={() => { setFormData(prev => ({ ...prev, providerType: opt.val })); setShowCompanyFields(opt.val !== 'individual'); }}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all text-xs font-bold ${
+                        formData.providerType === opt.val
+                          ? 'border-purple-500 bg-purple-50 text-purple-700'
+                          : 'border-slate-200 bg-slate-50 text-slate-500 hover:border-purple-200'
+                      }`}
+                    >
+                      <span className="text-lg">{opt.icon}</span>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Company fields — shown when company or both is selected */}
+            {showCompanyFields && mode === 'signup' && (
+              <div className="space-y-3 bg-purple-50 border border-purple-100 rounded-xl p-4">
+                <p className="text-xs font-bold text-purple-700 uppercase">Datos de la empresa</p>
+                <input
+                  type="text" name="companyName"
+                  placeholder="Nombre de la empresa *"
+                  value={formData.companyName} onChange={handleChange}
+                  className={inputStyles}
+                />
+                <select name="companyIndustry" value={formData.companyIndustry} onChange={handleChange} className={inputStyles}>
+                  <option value="">Industria</option>
+                  {['Tecnología','Construcción','Gastronomía','Salud','Educación','Retail','Logística','Inmobiliaria','Turismo','Manufactura','Servicios Financieros','Otro'].map(i => (
+                    <option key={i} value={i}>{i}</option>
+                  ))}
+                </select>
+                <input
+                  type="text" name="companyTaxId"
+                  placeholder="CUIT / NIT (opcional)"
+                  value={formData.companyTaxId} onChange={handleChange}
+                  className={inputStyles}
+                />
+                {userType === 'worker' && (
+                  <select name="companyEmployeeCount" value={formData.companyEmployeeCount} onChange={handleChange} className={inputStyles}>
+                    <option value="">Cantidad de empleados (opcional)</option>
+                    {['1-10','11-50','51-200','201-500','500+'].map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                )}
+              </div>
+            )}
           </>
         )}
 
