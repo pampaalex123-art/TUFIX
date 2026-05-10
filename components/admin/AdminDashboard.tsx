@@ -3,6 +3,7 @@ import { User, Worker, JobRequest, ServiceCategory, Transaction, Dispute, AppNot
 import { SERVICE_CATEGORIES } from '../../constants';
 import AdminTransactionsScreen from './AdminTransactionsScreen';
 import AdminDisputesScreen from '../new/AdminDisputesScreen';
+import AppAnalyticsDashboard from './AppAnalyticsDashboard';
 import { useToast } from '../common/Toast';
 import { useDialog } from '../common/Dialog';
 import { formatDistanceToNow } from '../../utils/time';
@@ -58,7 +59,7 @@ const downloadCSV = (csvString: string, filename: string) => {
 type SortDirection = 'ascending' | 'descending';
 type ClientSortKey = 'name' | 'location' | 'jobsRequested' | 'signupDate';
 type WorkerSortKey = 'name' | 'service' | 'location' | 'rating' | 'jobsCompleted' | 'totalEarnings' | 'signupDate';
-type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings';
+type AdminTab = 'clients' | 'providers' | 'transactions' | 'disputes' | 'support' | 'verifications' | 'settings' | 'ai_analytics';
 
 interface ClientFilters {
     nameOrEmail: string;
@@ -490,6 +491,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                             <TabButton tabId="transactions">{t('transactions')}</TabButton>
                             <TabButton tabId="disputes" badgeCount={openDisputesCount}>{t('disputes')}</TabButton>
                             <TabButton tabId="support" badgeCount={openSupportChatsCount}>{t('support')}</TabButton>
+                            <TabButton tabId="ai_analytics">📊 Analytics</TabButton>
                             <TabButton tabId="settings">{t('settings')}</TabButton>
                         </nav>
                     </div>
@@ -837,6 +839,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
                             );
                         })()}
                     </div>
+                )}
+                {activeTab === 'ai_analytics' && (
+                    <AppAnalyticsDashboard
+                        users={users ?? []}
+                        workers={workers ?? []}
+                        allJobs={allJobs ?? []}
+                        transactions={transactions ?? []}
+                    />
                 )}
                 {activeTab === 'settings' && (
                     <div className="p-8 space-y-8">
