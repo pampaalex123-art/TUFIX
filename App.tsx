@@ -1379,13 +1379,28 @@ const AppInner: React.FC = () => {
   };
 
 
-  const handleMarkMessagesAsRead = (otherParticipantId: string) => {
+  const handleMarkMessagesAsRead = async (otherParticipantId: string) => {
+    // Update local state immediately for instant UI feedback
     setMessages(prev => prev.map(msg => {
-        if (msg.senderId === otherParticipantId && msg.receiverId === currentUser!.id && !msg.isRead) {
-            return { ...msg, isRead: true };
-        }
-        return msg;
+      if (msg.senderId === otherParticipantId && !msg.isRead) {
+        return { ...msg, isRead: true };
+      }
+      return msg;
     }));
+    // Persist each message update directly to Firestore
+    try {
+      const msgsToMark = messages.filter(
+        msg => msg.senderId === otherParticipantId && !msg.isRead
+      );
+      const batch = (await import('firebase/firestore')).writeBatch(db);
+      const { doc: firestoreDoc } = await import('firebase/firestore');
+      msgsToMark.forEach(msg => {
+        batch.update(firestoreDoc(db, 'messages', msg.id), { isRead: true });
+      });
+      if (msgsToMark.length > 0) await batch.commit();
+    } catch (err) {
+      console.error('Failed to mark messages as read in Firestore:', err);
+    }
   };
 
   const handleSaveTerms = (newContent: string) => {
