@@ -171,7 +171,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
             if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
                 console.log('Mercado Pago Holding Account linked successfully');
                 showToast('Mercado Pago vinculado correctamente', 'success');
-            // showToast handled by event listener context limitation — keep as-is
+            }
         };
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
