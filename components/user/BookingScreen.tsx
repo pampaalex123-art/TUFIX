@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Worker, User, DayOfWeek, JobRequest, Coordinates } from '../../types';
 import { formatTime12hr, generateTimeSlots } from '../../utils/time';
 import LocationPicker from '../shared/LocationPicker';
+import { useDialog } from '../common/Dialog';
 
 interface BookingScreenProps {
   worker: Worker;
@@ -29,6 +30,7 @@ const formatDateForInput = (date: Date): string => {
 
 
 const BookingScreen: React.FC<BookingScreenProps> = ({ worker, user, allJobRequests, onBack, onSubmit, t }) => {
+  const { showAlert } = useDialog();
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTime, setSelectedTime] = useState('');
@@ -89,7 +91,7 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ worker, user, allJobReque
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedDate || !selectedTime || !description.trim() || !coordinates) {
-      alert(t('please select a date time provide a description and choose a location'));
+      showAlert(t('please select a date time provide a description and choose a location'));
       return;
     }
     onSubmit({ 

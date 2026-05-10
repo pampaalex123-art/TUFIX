@@ -45,6 +45,8 @@ import ConfirmationPage from './components/shared/ConfirmationPage';
 import OnboardingTour from './components/shared/OnboardingTour';
 import MenuOnboardingTour from './components/shared/MenuOnboardingTour';
 import { addWorkerToSpreadsheet, updateSpreadsheetVerificationStatus } from './services/spreadsheetService';
+import { ToastProvider, useToast } from './components/common/Toast';
+import { DialogProvider, useDialog } from './components/common/Dialog';
 
 const DUMMY_USERS: User[] = [];
 
@@ -90,8 +92,10 @@ type View =
   | { screen: 'CONFIRMATION' }
   | { screen: 'ROLE_SELECTOR'; user: User };
 
-const App: React.FC = () => {
+const AppInner: React.FC = () => {
   const { language, setLanguage, t } = useTranslations();
+  const { showAlert, showConfirm, showPrompt } = useDialog();
+  const { showToast, showLoading, resolveToast } = useToast();
   const [currentUser, setCurrentUser] = useLocalStorage<User | Worker | null>('currentUser_v5', null);
   const [userType, setUserType] = useLocalStorage<UserType | null>('userType_v5', null);
   const [view, setView] = useState<View>({ screen: 'AUTH' });
@@ -595,7 +599,7 @@ const App: React.FC = () => {
         setRecoveryUser(foundUser);
         setRecoveryCode(code);
         // Simulate sending code via alert
-        setTimeout(() => alert(t('your tufix recovery code is', {code: code})), 100);
+        setTimeout(() => showAlert(t('your tufix recovery code is', {code: code}), 'Código de Recuperación'), 100);
         return true;
     } else {
         setRecoveryError(t('user not found'));
@@ -638,7 +642,7 @@ const App: React.FC = () => {
     // Clean up recovery state
     setRecoveryUser(null);
     setRecoveryCode(null);
-    alert(t('password reset success'));
+    showToast(t('password reset success'), 'success');
     // The useEffect will handle navigation to the dashboard
     return true;
   };
@@ -697,7 +701,7 @@ const App: React.FC = () => {
     }]);
     
     if (approvedWorkerForSpreadsheet) {
-        alert(t('account has been approved', {name: approvedWorkerForSpreadsheet.name}));
+        showToast(t('account has been approved', {name: approvedWorkerForSpreadsheet.name}), 'success');
         updateSpreadsheetVerificationStatus(approvedWorkerForSpreadsheet).catch(error => {
             console.error("Failed to update spreadsheet for approved worker:", error);
         });
@@ -740,7 +744,7 @@ const App: React.FC = () => {
     }]);
     
     if (declinedWorkerForSpreadsheet) {
-        alert(t('account has been declined', {name: declinedWorkerForSpreadsheet.name}));
+        showToast(t('account has been declined', {name: declinedWorkerForSpreadsheet.name}), 'warning');
         updateSpreadsheetVerificationStatus(declinedWorkerForSpreadsheet).catch(error => {
             console.error("Failed to update spreadsheet for declined worker:", error);
         });
@@ -754,7 +758,7 @@ const App: React.FC = () => {
     if (userType === 'user') {
       setView({ screen: 'BOOKING', worker });
     } else {
-      alert(t('please log in as a user to book a service'));
+      showAlert(t('please log in as a user to book a service'));
     }
   };
 
@@ -784,7 +788,7 @@ const App: React.FC = () => {
       relatedEntityId: newJob.id
     }]);
     setView({ screen: 'MY_JOBS' });
-    alert(t('booking request submitted successfully'));
+    showToast(t('booking request submitted successfully'), 'success');
   };
 
   const handleLeaveUserReview = (job: JobRequest) => {
@@ -953,14 +957,14 @@ const App: React.FC = () => {
     if (job.disputeId) {
         const dispute = disputes.find(d => d.id === job.disputeId);
         if (dispute && dispute.status !== 'resolved') {
-            alert(t('cannot release payment while dispute is active'));
+            showAlert(t('cannot release payment while dispute is active'));
             return;
         }
     }
 
     const invoice = invoices.find(inv => inv.id === job.invoiceId);
     if (!invoice || (invoice.status !== 'held' && invoice.status !== 'pending')) {
-        alert(t('error invoice is not in a payable state'));
+        showAlert(t('error invoice is not in a payable state'));
         return;
     }
 
@@ -984,10 +988,10 @@ const App: React.FC = () => {
           j.id === jobId ? { ...j, client_confirmed: true, clientConfirmedAt: now } : j
       ));
 
-      alert(t('job confirmed and payment release triggered'));
+      showToast(t('job confirmed and payment release triggered'), 'success');
     } catch (error: any) {
       console.error('Error confirming job:', error);
-      alert(t('error confirming job', { error: error.message }));
+      showToast(t('error confirming job', { error: error.message }), 'error');
     }
   };
 
@@ -995,14 +999,14 @@ const App: React.FC = () => {
     setWorkers(prev => prev.map(w => w.id === updatedWorker.id ? updatedWorker : w));
     setCurrentUser(updatedWorker);
     setView({ screen: 'WORKER_DASHBOARD' });
-    alert(t('profile updated successfully'));
+    showToast(t('profile updated successfully'), 'success');
   };
   
   const handleSaveUserProfile = (updatedUser: User) => {
     setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
     setCurrentUser(updatedUser);
     setView({ screen: 'USER_DASHBOARD' });
-    alert(t('profile updated successfully'));
+    showToast(t('profile updated successfully'), 'success');
   };
 
   const handleMarkAllAsRead = () => {
@@ -1182,7 +1186,7 @@ const App: React.FC = () => {
     } else {
         setView({ screen: 'WORKER_DASHBOARD' });
     }
-    alert(t('invoice sent you can now start the job'));
+    showToast(t('invoice sent you can now start the job'), 'success');
   };
   
   const handlePayInvoice = (invoiceId: string) => {
@@ -1227,7 +1231,7 @@ const App: React.FC = () => {
           relatedEntityId: paidInvoice!.jobId,
       }]);
     }
-    alert(t('payment successful funds held securely'));
+    showToast(t('payment successful funds held securely'), 'success');
   };
 
   const handleUpdateJobLocation = async (jobId: string, location: string, coordinates: Coordinates) => {
@@ -1269,7 +1273,7 @@ const App: React.FC = () => {
         relatedEntityId: newDispute.id
     }]);
     
-    alert(t('provide dispute reason alert'));
+    showAlert(t('provide dispute reason alert'));
     
     if (userType === 'user') setView({ screen: 'MY_JOBS' });
     else if (userType === 'worker') setView({ screen: 'WORKER_DASHBOARD' });
@@ -1317,7 +1321,7 @@ const App: React.FC = () => {
       const job = jobRequests.find(j => j.id === dispute?.jobId);
       const invoice = invoices.find(i => i.id === job?.invoiceId);
       if (!dispute || !job || !invoice) {
-          alert(t('error could not find all related records for this dispute'));
+          showAlert(t('error could not find all related records for this dispute'));
           return;
       }
       
@@ -1370,7 +1374,7 @@ const App: React.FC = () => {
         }]);
       });
       
-      alert(t('dispute has been resolved and funds have been processed'));
+      showToast(t('dispute has been resolved and funds have been processed'), 'success');
       setView({ screen: 'ADMIN_DASHBOARD' });
   };
 
@@ -1387,7 +1391,7 @@ const App: React.FC = () => {
   const handleSaveTerms = (newContent: string) => {
     setTermsContent(newContent);
     setView({ screen: 'ADMIN_DASHBOARD' });
-    alert(t('terms and services updated successfully'));
+    showToast(t('terms and services updated successfully'), 'success');
   };
 
   const handleRequestHumanSupport = (chatHistory: Content[]) => {
@@ -1423,7 +1427,7 @@ const App: React.FC = () => {
     }]);
 
     // Alert user and redirect to conversation
-    alert(t('you have been connected to a live support agent'));
+    showToast(t('you have been connected to a live support agent'), 'success');
     setView({ screen: 'MESSAGING', conversationId });
   };
 
@@ -1431,7 +1435,7 @@ const App: React.FC = () => {
 
   const handleDeleteUser = async (userToDelete: User) => {
     if (currentUser?.userType !== 'admin') {
-      alert(t('Permission Denied: Only admins can delete users.'));
+      showAlert(t('Permission Denied: Only admins can delete users.'));
       return;
     }
 
@@ -1462,16 +1466,16 @@ const App: React.FC = () => {
       // Also remove associated jobs from local state to keep UI in sync
       setJobRequests(prev => (prev || []).filter(j => j.user.id !== userToDelete.id));
       
-      alert(t('User Deleted Successfully'));
+      showToast(t('User Deleted Successfully'), 'success');
     } catch (error: any) {
       console.error('Delete User Error:', error);
-      alert(`${t('Error deleting user')}: ${error.message}`);
+      showToast(`${t('Error deleting user')}: ${error.message}`, 'error');
     }
   };
 
   const handleDeleteWorker = async (workerToDelete: Worker) => {
     if (currentUser?.userType !== 'admin') {
-      alert(t('Permission Denied: Only admins can delete workers.'));
+      showAlert(t('Permission Denied: Only admins can delete workers.'));
       return;
     }
 
@@ -1502,10 +1506,10 @@ const App: React.FC = () => {
       // Also remove associated jobs from local state
       setJobRequests(prev => (prev || []).filter(j => j.workerId !== workerToDelete.id));
       
-      alert(t('User Deleted Successfully'));
+      showToast(t('User Deleted Successfully'), 'success');
     } catch (error: any) {
       console.error('Delete Worker Error:', error);
-      alert(`${t('Error deleting worker')}: ${error.message}`);
+      showToast(`${t('Error deleting worker')}: ${error.message}`, 'error');
     }
   };
 
@@ -2005,5 +2009,13 @@ const App: React.FC = () => {
     </div>
   );
 };
+
+const App: React.FC = () => (
+  <ToastProvider>
+    <DialogProvider>
+      <AppInner />
+    </DialogProvider>
+  </ToastProvider>
+);
 
 export default App;

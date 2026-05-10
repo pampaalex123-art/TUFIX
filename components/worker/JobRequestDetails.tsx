@@ -3,6 +3,7 @@ import { JobRequest, Worker, User, Invoice } from '../../types';
 import StarRating from '../common/StarRating';
 import JobProgressSidebar from '../new/JobProgressSidebar';
 import WorkerLocationDisplay from './WorkerLocationDisplay';
+import { useDialog } from '../common/Dialog';
 
 interface JobRequestDetailsProps {
   job: JobRequest;
@@ -20,7 +21,7 @@ interface JobRequestDetailsProps {
 }
 
 const JobRequestDetails: React.FC<JobRequestDetailsProps> = ({ job, invoice, client, worker, onBack, onContactClient, onUpdateStatus, onCancelJob, onLeaveReview, onCreateInvoice, onViewClientProfile, t }) => {
-    
+    const { showPrompt } = useDialog();
     const isJobPaid = invoice && (invoice.status === 'held' || invoice.status === 'released');
 
     const renderActionButtons = () => {
@@ -85,7 +86,7 @@ const JobRequestDetails: React.FC<JobRequestDetailsProps> = ({ job, invoice, cli
                              {job.status === 'pending' && (
                                  <div className="flex space-x-2 pt-2">
                                      <button onClick={() => onUpdateStatus(job.id, 'accepted')} className="flex-1 bg-green-600 text-white font-bold py-2 rounded-lg">{t('accept_job')}</button>
-                                     <button onClick={() => {const reason = prompt(t('decline_reason_prompt')); if(reason) onUpdateStatus(job.id, 'declined')}} className="flex-1 bg-red-600 text-white font-bold py-2 rounded-lg">{t('decline')}</button>
+                                     <button onClick={async () => {const reason = await showPrompt(t('decline_reason_prompt'), { title: 'Declinar trabajo', placeholder: 'Motivo del rechazo…', confirmLabel: 'Declinar' }); if(reason) onUpdateStatus(job.id, 'declined')}} className="flex-1 bg-red-600 text-white font-bold py-2 rounded-lg">{t('decline')}</button>
                                  </div>
                              )}
                         </div>

@@ -3,6 +3,8 @@ import { User, Worker, JobRequest, ServiceCategory, Transaction, Dispute, AppNot
 import { SERVICE_CATEGORIES } from '../../constants';
 import AdminTransactionsScreen from './AdminTransactionsScreen';
 import AdminDisputesScreen from '../new/AdminDisputesScreen';
+import { useToast } from '../common/Toast';
+import { useDialog } from '../common/Dialog';
 import { formatDistanceToNow } from '../../utils/time';
 
 // --- HELPER FUNCTIONS for CSV Download ---
@@ -154,6 +156,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [starredConvos, setStarredConvos] = useState<Set<string>>(new Set());
+    const { showToast } = useToast();
+    const { showAlert } = useDialog();
     const [supportFilter, setSupportFilter] = useState<'all' | 'unread' | 'starred'>('all');
     const [workerToDelete, setWorkerToDelete] = useState<Worker | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
@@ -166,8 +170,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
             }
             if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
                 console.log('Mercado Pago Holding Account linked successfully');
-                alert('Mercado Pago Holding Account linked successfully');
-            }
+                showToast('Mercado Pago vinculado correctamente', 'success');
+            // showToast handled by event listener context limitation — keep as-is
         };
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
@@ -193,12 +197,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ users, workers, allJobs
             } else if (authWindow) {
                 authWindow.location.href = url;
             } else {
-                alert('Please allow popups for this site to connect the holding account.');
+                showAlert('Please allow popups for this site to connect the holding account.');
             }
         } catch (error) {
             console.error('OAuth error:', error);
             if (authWindow) authWindow.close();
-            alert('Failed to initiate Mercado Pago linking.');
+            showAlert('Failed to initiate Mercado Pago linking.');
         }
     };
 

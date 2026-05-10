@@ -6,6 +6,7 @@ import ConfirmAndPayModal from '../new/ConfirmAndPayModal';
 import JobProgressSidebar from '../new/JobProgressSidebar';
 import LocationDisplay from '../shared/LocationDisplay';
 import { Star } from 'lucide-react';
+import { useDialog } from '../common/Dialog';
 
 
 interface MyJobsScreenProps {
@@ -25,6 +26,7 @@ interface MyJobsScreenProps {
 }
 
 const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, workers = [], userCountry, onLeaveReview, onCancelJob, onBack, onPayInvoice, onConfirmAndReleasePayment, onRaiseDispute, onViewDispute, onUpdateJobLocation, t }) => {
+  const { showPrompt } = useDialog();
   const [isPaymentModalOpen, setPaymentModalOpen] = useState(false);
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -128,7 +130,7 @@ const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, work
                     {invoice && invoice.status === 'pending' && <button onClick={() => handlePay(invoice)} className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700">{t('pay invoice')}</button>}
                     {job.status === 'worker_completed' && <button onClick={() => handleConfirmCompletion(job)} className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg">{t('confirm completion')}</button>}
                     {job.status === 'completed' && !job.userReview && <button onClick={() => onLeaveReview(job)} className="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">{t('leave review')}</button>}
-                    {job.status === 'pending' && <button onClick={() => { const reason = prompt(t('cancellation reason prompt')); if(reason) onCancelJob(job.id, reason)}} className="text-red-500 font-semibold text-sm">{t('cancel request')}</button>}
+                    {job.status === 'pending' && <button onClick={async () => { const reason = await showPrompt(t('cancellation reason prompt'), { title: 'Cancelar solicitud', placeholder: 'Motivo de cancelación…', confirmLabel: 'Cancelar solicitud' }); if(reason) onCancelJob(job.id, reason)}} className="text-red-500 font-semibold text-sm">{t('cancel request')}</button>}
                     {job.disputeId ? <button onClick={() => onViewDispute(job.disputeId!)} className="text-yellow-600 font-semibold text-sm">{t('view dispute')}</button> : (job.status === 'completed' && <button onClick={() => onRaiseDispute(job)} className="text-red-500 font-semibold text-sm">{t('raise dispute')}</button>)}
                   </div>
                 </div>
