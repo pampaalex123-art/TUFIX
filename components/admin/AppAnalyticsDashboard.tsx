@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react'
 import { User, Worker, JobRequest, Transaction } from '../../types';
 
 type Period = 'daily' | 'weekly' | 'monthly' | 'annual';
-type FilterView = 'overview' | 'jobs' | 'reviews' | 'specialties' | 'users';
+type FilterView = 'overview' | 'jobs' | 'reviews' | 'specialties' | 'users' | 'companies' | 'countries';
 
 interface Props {
     users?: User[];
@@ -434,6 +434,62 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users: _u, workers: _w, allJob
         });
     }, [demandByService, supplyByService]);
 
+    // ── Company analytics ──────────────────────────────────────────────────
+    const companyStats = useMemo(() => {
+        const companyUsers = users.filter(u => (u as any).accountType === 'company');
+        const individualUsers = users.filter(u => (u as any).accountType !== 'company');
+        const companyWorkers = workers.filter(w => (w as any).providerType === 'company');
+        const bothWorkers = workers.filter(w => (w as any).providerType === 'both');
+        const individualWorkers = workers.filter(w => !['company','both'].includes((w as any).providerType || 'individual'));
+
+        // Company industries breakdown (users)
+        const userIndustries = new Map<string, number>();
+        companyUsers.forEach(u => { const ind = (u as any).companyIndustry || 'Sin especificar'; userIndustries.set(ind, (userIndustries.get(ind) || 0) + 1); });
+
+        // Company industries breakdown (workers)
+        const workerIndustries = new Map<string, number>();
+        [...companyWorkers, ...bothWorkers].forEach(w => { const ind = (w as any).companyIndustry || 'Sin especificar'; workerIndustries.set(ind, (workerIndustries.get(ind) || 0) + 1); });
+
+        // Company size breakdown
+        const companySizes = new Map<string, number>();
+        [...companyWorkers, ...bothWorkers].forEach(w => { const s = (w as any).companyEmployeeCount || 'Sin especificar'; companySizes.set(s, (companySizes.get(s) || 0) + 1); });
+
+        return {
+            companyUsers, individualUsers, companyWorkers, bothWorkers, individualWorkers,
+            userIndustries: Array.from(userIndustries.entries()).map(([l,v],i) => ({ label:l, value:v, color:COLORS[i%COLORS.length], pct: companyUsers.length>0?(v/companyUsers.length)*100:0 })).sort((a,b)=>b.value-a.value),
+            workerIndustries: Array.from(workerIndustries.entries()).map(([l,v],i) => ({ label:l, value:v, color:COLORS[i%COLORS.length], pct: (companyWorkers.length+bothWorkers.length)>0?(v/(companyWorkers.length+bothWorkers.length))*100:0 })).sort((a,b)=>b.value-a.value),
+            companySizes: Array.from(companySizes.entries()).map(([l,v],i) => ({ label:l, value:v, color:COLORS[i%COLORS.length] })).sort((a,b)=>b.value-a.value),
+        };
+    }, [users, workers]);
+
+    // ── Country analytics ──────────────────────────────────────────────────
+    const countryStats = useMemo(() => {
+        const countries = ['argentina', 'bolivia'];
+        return countries.map((country, ci) => {
+            const cLabel = country === 'argentina' ? '🇦🇷 Argentina' : '🇧🇴 Bolivia';
+            const cUsers = users.filter(u => (u as any).country === country);
+            const cWorkers = workers.filter(w => (w as any).country === country);
+            const cJobs = allJobs.filter(j => {
+                const u = users.find(u => u.id === j.user?.id);
+                return (u as any)?.country === country;
+            });
+            const cCompleted = cJobs.filter(j => j.status === 'completed').length;
+            const cRevenue = transactions.filter(tx => {
+                const j = allJobs.find(j2 => j2.id === tx.jobId);
+                const u = j ? users.find(u => u.id === j.user?.id) : null;
+                return (u as any)?.country === country;
+            }).reduce((s, tx) => s + (tx.platformFee || 0), 0);
+
+            // Services demanded per country
+            const services = new Map<string, number>();
+            cJobs.forEach(j => services.set(j.service, (services.get(j.service) || 0) + 1));
+            const topServices = Array.from(services.entries()).map(([l,v],i) => ({ label:l, value:v, color:COLORS[i%COLORS.length] })).sort((a,b)=>b.value-a.value).slice(0,5);
+
+            const color = ci === 0 ? '#6366f1' : '#f59e0b';
+            return { country, label: cLabel, color, users: cUsers.length, workers: cWorkers.length, jobs: cJobs.length, completed: cCompleted, revenue: cRevenue, topServices, completionRate: cJobs.length>0?(cCompleted/cJobs.length)*100:0 };
+        });
+    }, [users, workers, allJobs, transactions]);
+
     // ── Drill-down handlers ────────────────────────────────────────────────
     const openUserSignups = (point: { label: string; key?: string }) => {
         if (!point.key) return;
@@ -485,7 +541,7 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users: _u, workers: _w, allJob
         }
     };
 
-    const activeSpecialties = specialtyFilter==='demand'?demandByService:specialtyFilter==='supply'?supplyByService:completedByService;
+    const activeSpecialties = (specialtyFilter==='demand'?demandByService:specialtyFilter==='supply'?supplyByService:completedByService) ?? [];
     const periodLabel = { daily:'Diario', weekly:'Semanal', monthly:'Mensual', annual:'Anual' }[period];
 
     return (
@@ -516,7 +572,7 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users: _u, workers: _w, allJob
                     </div>
                 </div>
                 <div className="flex gap-1 mt-3 overflow-x-auto pb-1">
-                    {([{id:'overview',label:'General',icon:'📊'},{id:'users',label:'Usuarios',icon:'👥'},{id:'jobs',label:'Trabajos',icon:'📋'},{id:'specialties',label:'Especialidades',icon:'🔧'},{id:'reviews',label:'Reseñas',icon:'⭐'}] as {id:FilterView;label:string;icon:string}[]).map(n => (
+                    {([{id:'overview',label:'General',icon:'📊'},{id:'users',label:'Usuarios',icon:'👥'},{id:'jobs',label:'Trabajos',icon:'📋'},{id:'specialties',label:'Especialidades',icon:'🔧'},{id:'companies',label:'Empresas',icon:'🏢'},{id:'countries',label:'Países',icon:'🌎'},{id:'reviews',label:'Reseñas',icon:'⭐'}] as {id:FilterView;label:string;icon:string}[]).map(n => (
                         <button key={n.id} onClick={()=>setView(n.id)} className={`flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex-shrink-0 ${view===n.id?'bg-indigo-600 text-white shadow':'text-gray-500 hover:bg-gray-100'}`}>
                             {n.icon} {n.label}
                         </button>
@@ -726,6 +782,146 @@ const AppAnalyticsDashboard: React.FC<Props> = ({ users: _u, workers: _w, allJob
                             {!allJobs.filter(j=>j.userReview).length && <p className="text-gray-400 text-sm text-center py-6">Sin reseñas aún</p>}
                         </div>
                     </Section>
+                </>)}
+
+                {/* ── COMPANIES VIEW ──────────────────────────────────────── */}
+                {view==='companies' && (<>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <KpiCard icon="🏢" label="Clientes Empresa" value={fmt(companyStats.companyUsers.length)} sub={`${users.length>0?((companyStats.companyUsers.length/users.length)*100).toFixed(1):0}% del total`} color="#6366f1" onClick={() => setDrillModal({ title:'🏢 Clientes Empresa', subtitle:'Usuarios registrados como empresa', items: companyStats.companyUsers.map(u=>({id:u.id,name:(u as any).companyName||u.name,email:u.email,type:'user' as const,signupDate:u.signupDate,lastLoginDate:u.lastLoginDate,rating:u.rating,verificationStatus:u.verificationStatus})) })} />
+                        <KpiCard icon="👤" label="Clientes Particulares" value={fmt(companyStats.individualUsers.length)} sub={`${users.length>0?((companyStats.individualUsers.length/users.length)*100).toFixed(1):0}% del total`} color="#3b82f6" onClick={() => setDrillModal({ title:'👤 Clientes Particulares', subtitle:'Usuarios registrados como particular', items: companyStats.individualUsers.map(u=>({id:u.id,name:u.name,email:u.email,type:'user' as const,signupDate:u.signupDate,lastLoginDate:u.lastLoginDate,rating:u.rating,verificationStatus:u.verificationStatus})) })} />
+                        <KpiCard icon="🏢" label="Proveedores Empresa" value={fmt(companyStats.companyWorkers.length)} sub="Solo empresa" color="#f59e0b" onClick={() => setDrillModal({ title:'🏢 Proveedores Empresa', subtitle:'Trabajadores que ofrecen como empresa', items: companyStats.companyWorkers.map(w=>({id:w.id,name:(w as any).companyName||w.name,email:w.email,type:'worker' as const,signupDate:w.signupDate,lastLoginDate:w.lastLoginDate,rating:w.rating,service:w.service,verificationStatus:w.verificationStatus})) })} />
+                        <KpiCard icon="👤🏢" label="Proveedores Ambos" value={fmt(companyStats.bothWorkers.length)} sub="Particular + Empresa" color="#10b981" onClick={() => setDrillModal({ title:'👤🏢 Proveedores Ambos', subtitle:'Trabajadores que ofrecen como particular y empresa', items: companyStats.bothWorkers.map(w=>({id:w.id,name:w.name,email:w.email,type:'worker' as const,signupDate:w.signupDate,lastLoginDate:w.lastLoginDate,rating:w.rating,service:w.service,verificationStatus:w.verificationStatus})) })} />
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Section title="📊 Distribución de Clientes" subtitle="Empresa vs Particular">
+                            <div className="flex gap-6 items-center">
+                                <div className="w-36 flex-shrink-0">
+                                    <DonutChart data={[{label:'Empresa',value:companyStats.companyUsers.length,color:'#6366f1'},{label:'Particular',value:companyStats.individualUsers.length,color:'#e0e7ff'}]} />
+                                </div>
+                                <div className="flex-1 space-y-3">
+                                    {[{label:'Empresa',value:companyStats.companyUsers.length,color:'#6366f1'},{label:'Particular',value:companyStats.individualUsers.length,color:'#e0e7ff'}].map((d,i)=>(
+                                        <RankedBar key={i} rank={i+1} label={d.label} value={d.value} max={Math.max(users.length,1)} color={d.color} pct={users.length>0?(d.value/users.length)*100:0} />
+                                    ))}
+                                </div>
+                            </div>
+                        </Section>
+                        <Section title="📊 Distribución de Proveedores" subtitle="Tipo de proveedor">
+                            <div className="flex gap-6 items-center">
+                                <div className="w-36 flex-shrink-0">
+                                    <DonutChart data={[{label:'Empresa',value:companyStats.companyWorkers.length,color:'#f59e0b'},{label:'Ambos',value:companyStats.bothWorkers.length,color:'#10b981'},{label:'Particular',value:companyStats.individualWorkers.length,color:'#e0e7ff'}]} />
+                                </div>
+                                <div className="flex-1 space-y-3">
+                                    {[{label:'Particular',value:companyStats.individualWorkers.length,color:'#6366f1'},{label:'Empresa',value:companyStats.companyWorkers.length,color:'#f59e0b'},{label:'Ambos',value:companyStats.bothWorkers.length,color:'#10b981'}].map((d,i)=>(
+                                        <RankedBar key={i} rank={i+1} label={d.label} value={d.value} max={Math.max(workers.length,1)} color={d.color} pct={workers.length>0?(d.value/workers.length)*100:0} />
+                                    ))}
+                                </div>
+                            </div>
+                        </Section>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <Section title="🏭 Industrias — Clientes Empresa" subtitle="Por sector de actividad">
+                            <div className="space-y-3">
+                                {companyStats.userIndustries.length > 0 ? companyStats.userIndustries.map((d,i)=>(
+                                    <RankedBar key={i} rank={i+1} label={d.label} value={d.value} max={companyStats.userIndustries[0]?.value||1} color={d.color} pct={d.pct} />
+                                )) : <p className="text-gray-400 text-sm text-center py-6">Sin clientes empresa aún</p>}
+                            </div>
+                        </Section>
+                        <Section title="🏭 Industrias — Proveedores Empresa" subtitle="Por sector de actividad">
+                            <div className="space-y-3">
+                                {companyStats.workerIndustries.length > 0 ? companyStats.workerIndustries.map((d,i)=>(
+                                    <RankedBar key={i} rank={i+1} label={d.label} value={d.value} max={companyStats.workerIndustries[0]?.value||1} color={d.color} pct={d.pct} />
+                                )) : <p className="text-gray-400 text-sm text-center py-6">Sin proveedores empresa aún</p>}
+                            </div>
+                        </Section>
+                    </div>
+
+                    {companyStats.companySizes.length > 0 && (
+                        <Section title="👥 Tamaño de Empresas Proveedoras" subtitle="Por cantidad de empleados">
+                            <InteractiveBarChart data={companyStats.companySizes.map(d=>({label:d.label,value:d.value,color:d.color}))} height={120} label="empresas" />
+                        </Section>
+                    )}
+                </>)}
+
+                {/* ── COUNTRIES VIEW ─────────────────────────────────────── */}
+                {view==='countries' && (<>
+                    {/* Country KPI comparison */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {countryStats.map((c, ci) => (
+                            <div key={ci} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                                <div className="p-5 border-b border-gray-50 flex items-center gap-3">
+                                    <span className="text-2xl">{c.label.split(' ')[0]}</span>
+                                    <div>
+                                        <h3 className="text-base font-black text-gray-900">{c.label}</h3>
+                                        <p className="text-xs text-gray-400">Métricas del país</p>
+                                    </div>
+                                </div>
+                                <div className="p-5 grid grid-cols-2 gap-3">
+                                    <div className="bg-gray-50 rounded-xl p-3 text-center">
+                                        <p className="text-xl font-black text-gray-900">{fmt(c.users)}</p>
+                                        <p className="text-xs text-gray-500 font-semibold">Usuarios</p>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-xl p-3 text-center">
+                                        <p className="text-xl font-black text-gray-900">{fmt(c.workers)}</p>
+                                        <p className="text-xs text-gray-500 font-semibold">Trabajadores</p>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-xl p-3 text-center">
+                                        <p className="text-xl font-black text-gray-900">{fmt(c.jobs)}</p>
+                                        <p className="text-xs text-gray-500 font-semibold">Trabajos</p>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-xl p-3 text-center">
+                                        <p className="text-xl font-black text-gray-900">{c.completionRate.toFixed(0)}%</p>
+                                        <p className="text-xs text-gray-500 font-semibold">Completados</p>
+                                    </div>
+                                    <div className="bg-gray-50 rounded-xl p-3 text-center col-span-2">
+                                        <p className="text-xl font-black" style={{color:c.color}}>${fmt(Math.round(c.revenue))}</p>
+                                        <p className="text-xs text-gray-500 font-semibold">Ingresos plataforma</p>
+                                    </div>
+                                </div>
+                                {c.topServices.length > 0 && (
+                                    <div className="px-5 pb-5">
+                                        <p className="text-xs font-bold text-gray-500 uppercase mb-2">Top Servicios</p>
+                                        <div className="space-y-2">
+                                            {c.topServices.map((s,i)=>(
+                                                <RankedBar key={i} rank={i+1} label={s.label} value={s.value} max={c.topServices[0]?.value||1} color={c.color} />
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Head-to-head bar charts */}
+                    <Section title="📊 Comparativa entre Países" subtitle="Vista lado a lado">
+                        <div className="grid grid-cols-2 gap-8">
+                            {[
+                                {label:'Usuarios',key:'users'},{label:'Trabajadores',key:'workers'},
+                                {label:'Trabajos',key:'jobs'},{label:'Completados',key:'completed'},
+                            ].map((metric,i)=>(
+                                <div key={i}>
+                                    <p className="text-sm font-bold text-gray-600 mb-2">{metric.label}</p>
+                                    <InteractiveBarChart
+                                        data={countryStats.map(c=>({label:c.label,value:(c as any)[metric.key],color:c.color}))}
+                                        height={80} label={metric.label.toLowerCase()}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </Section>
+
+                    {/* Country growth over time */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {countryStats.map((c, ci) => {
+                            const cUserGrowth = growthData.map(d => ({ label:d.label, value: users.filter(u=>(u as any).country===c.country && u.signupDate && getBucketKey(u.signupDate,period)===d.key).length, key:d.key }));
+                            return (
+                                <Section key={ci} title={`📈 Nuevos Usuarios — ${c.label}`} subtitle={`Vista ${periodLabel.toLowerCase()}`}>
+                                    <InteractiveLineChart data={cUserGrowth} color={c.color} />
+                                </Section>
+                            );
+                        })}
+                    </div>
                 </>)}
 
                 <div className="flex items-center justify-center gap-2 pb-4">
