@@ -54,15 +54,23 @@ const Header: React.FC<HeaderProps> = ({ user, userType, onLogout, notifications
             <button onClick={() => onNavigate('dashboard')} className="flex-shrink-0 flex items-center space-x-2">
               <svg className="h-8 w-8" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <defs>
-                  <linearGradient id="tfGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#FBBF24"/>
-                    <stop offset="30%" stopColor="#EC4899"/>
-                    <stop offset="70%" stopColor="#DB2777"/>
-                    <stop offset="100%" stopColor="#7C3AED"/>
+                  <linearGradient id="tfBg" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%"   stopColor="#FFB800"/>
+                    <stop offset="30%"  stopColor="#FF5A20"/>
+                    <stop offset="58%"  stopColor="#FF2D78"/>
+                    <stop offset="82%"  stopColor="#CC00AA"/>
+                    <stop offset="100%" stopColor="#7B00C8"/>
                   </linearGradient>
                 </defs>
-                <rect width="100" height="100" rx="22" fill="url(#tfGrad)"/>
-                <text x="50" y="62" fill="white" textAnchor="middle" fontFamily="Arial Black, sans-serif" fontSize="52" fontWeight="900">TF</text>
+                {/* Gradient background */}
+                <rect width="100" height="100" rx="22" fill="url(#tfBg)"/>
+                {/* White T — left side */}
+                <rect x="10" y="18" width="40" height="10" fill="white" rx="1"/>
+                <rect x="25" y="18" width="10" height="62" fill="white" rx="1"/>
+                {/* White F — right side */}
+                <rect x="52" y="18" width="38" height="10" fill="white" rx="1"/>
+                <rect x="52" y="18" width="10" height="64" fill="white" rx="1"/>
+                <rect x="52" y="46" width="28" height="10" fill="white" rx="1"/>
               </svg>
               <span className="font-bold text-xl text-black">TUFIX</span>
             </button>
