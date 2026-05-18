@@ -48,8 +48,9 @@ const MyJobsScreen: React.FC<MyJobsScreenProps> = ({ jobRequests, invoices, work
   const [pastJobsCount, setPastJobsCount] = React.useState(5);
 
   const allSorted = [...jobRequests].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-  const activeJobs = allSorted.filter(j => j.status !== 'completed' && j.status !== 'cancelled' && j.status !== 'canceled');
-  const pastJobs = allSorted.filter(j => j.status === 'completed' || j.status === 'cancelled' || j.status === 'canceled');
+  const finalStatuses = ['completed', 'cancelled', 'canceled', 'declined'];
+  const activeJobs = allSorted.filter(j => !finalStatuses.includes(j.status));
+  const pastJobs   = allSorted.filter(j =>  finalStatuses.includes(j.status));
   const sortedJobs = showPastJobs ? pastJobs.slice(0, pastJobsCount) : activeJobs;
 
   return (

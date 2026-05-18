@@ -35,8 +35,9 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ worker, jobRequests, 
     (a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime()
   );
 
-  const activeJobs = allSorted.filter(j => j.status !== 'completed' && j.status !== 'cancelled' && j.status !== 'canceled');
-  const pastJobs = allSorted.filter(j => j.status === 'completed' || j.status === 'cancelled' || j.status === 'canceled');
+  const finalStatuses = ['completed', 'cancelled', 'canceled', 'declined'];
+  const activeJobs = allSorted.filter(j => !finalStatuses.includes(j.status));
+  const pastJobs   = allSorted.filter(j =>  finalStatuses.includes(j.status));
 
   const jobsToShow = showPastJobs ? pastJobs.slice(0, pastJobsCount) : activeJobs;
   // --- END NEW ---
