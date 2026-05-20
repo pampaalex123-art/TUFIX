@@ -1,4 +1,4 @@
-const CACHE_NAME = 'tufix-v2';
+const CACHE_NAME = 'tufix-v3';
 const ASSETS = [
   '/',
   '/index.html',
@@ -22,11 +22,15 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Never cache JS, CSS bundles — always fetch fresh from network
+  // Never cache JS, CSS bundles, or media files — always fetch fresh from network
   if (
     event.request.url.includes('/assets/') ||
     event.request.url.endsWith('.js') ||
-    event.request.url.endsWith('.css')
+    event.request.url.endsWith('.css') ||
+    event.request.url.endsWith('.mp4') ||
+    event.request.url.endsWith('.webm') ||
+    event.request.url.endsWith('.mp3') ||
+    event.request.url.endsWith('.wav')
   ) {
     event.respondWith(fetch(event.request));
     return;

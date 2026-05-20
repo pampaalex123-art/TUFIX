@@ -23,32 +23,26 @@ const VideoSplash: React.FC<VideoSplashProps> = ({ onComplete }) => {
     window.addEventListener('offline', goOffline);
     window.addEventListener('online',  goOnline);
 
-    // Hard fallback — always move to app after 12s no matter what
-    const fallback = setTimeout(() => finish(), 12000);
+    const hardFallback = setTimeout(() => finish(), 12000);
 
     const video = videoRef.current;
-    if (!video) { clearTimeout(fallback); finish(); return; }
+    if (!video) { clearTimeout(hardFallback); finish(); return; }
 
-    // Try to play as soon as possible
     const tryPlay = () => {
-      video.play().catch(() => {
-        // Autoplay blocked or error — just go to app
-        clearTimeout(fallback);
-        finish();
-      });
+      video.play().catch(() => { clearTimeout(hardFallback); finish(); });
     };
 
     video.addEventListener('canplay', tryPlay, { once: true });
-    video.addEventListener('ended',   () => { clearTimeout(fallback); finish(); }, { once: true });
-    video.addEventListener('error',   () => { clearTimeout(fallback); finish(); }, { once: true });
+    video.addEventListener('ended',   () => { clearTimeout(hardFallback); finish(); }, { once: true });
+    video.addEventListener('error',   () => { clearTimeout(hardFallback); finish(); }, { once: true });
 
-    // If video hasn't started within 5s, just proceed
+    // If video hasn't started within 5s, just proceed to app
     const quickFallback = setTimeout(() => {
       if (!video.currentTime || video.paused) finish();
     }, 5000);
 
     return () => {
-      clearTimeout(fallback);
+      clearTimeout(hardFallback);
       clearTimeout(quickFallback);
       window.removeEventListener('offline', goOffline);
       window.removeEventListener('online',  goOnline);
@@ -62,7 +56,7 @@ const VideoSplash: React.FC<VideoSplashProps> = ({ onComplete }) => {
       transition: 'opacity 0.6s ease',
       overflow: 'hidden',
     }}>
-      {/* Offline banner — only shows if device has no internet */}
+      {/* Only show offline banner when device truly has no internet */}
       {offline && (
         <div style={{
           position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
