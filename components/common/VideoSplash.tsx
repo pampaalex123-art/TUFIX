@@ -6,90 +6,72 @@ interface VideoSplashProps {
 
 const VideoSplash: React.FC<VideoSplashProps> = ({ onComplete }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [offline, setOffline] = useState(!navigator.onLine);
-  const [videoError, setVideoError] = useState(false);
+  const [offline, setOffline] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
-  // How many seconds to wait before assuming the video is stalled on slow network
-  const LOAD_TIMEOUT_MS = 8000;
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const doneRef = useRef(false);
 
   const finish = () => {
-    if (fadeOut) return;
+    if (doneRef.current) return;
+    doneRef.current = true;
     setFadeOut(true);
-    setTimeout(() => onComplete(), 650);
+    setTimeout(() => onComplete(), 600);
   };
 
   useEffect(() => {
-    // Online / offline listeners
     const goOffline = () => setOffline(true);
     const goOnline  = () => setOffline(false);
     window.addEventListener('offline', goOffline);
     window.addEventListener('online',  goOnline);
 
-    // Stall / slow-network timeout
-    timeoutRef.current = setTimeout(() => {
-      // If the video hasn't started playing after LOAD_TIMEOUT_MS, show offline banner
-      if (videoRef.current && videoRef.current.readyState < 3) {
-        setVideoError(true);
-        // Give 3 more seconds with the banner, then proceed to app
-        setTimeout(() => finish(), 3000);
-      }
-    }, LOAD_TIMEOUT_MS);
+    // Hard fallback — always move to app after 12s no matter what
+    const fallback = setTimeout(() => finish(), 12000);
+
+    const video = videoRef.current;
+    if (!video) { clearTimeout(fallback); finish(); return; }
+
+    // Try to play as soon as possible
+    const tryPlay = () => {
+      video.play().catch(() => {
+        // Autoplay blocked or error — just go to app
+        clearTimeout(fallback);
+        finish();
+      });
+    };
+
+    video.addEventListener('canplay', tryPlay, { once: true });
+    video.addEventListener('ended',   () => { clearTimeout(fallback); finish(); }, { once: true });
+    video.addEventListener('error',   () => { clearTimeout(fallback); finish(); }, { once: true });
+
+    // If video hasn't started within 5s, just proceed
+    const quickFallback = setTimeout(() => {
+      if (!video.currentTime || video.paused) finish();
+    }, 5000);
 
     return () => {
+      clearTimeout(fallback);
+      clearTimeout(quickFallback);
       window.removeEventListener('offline', goOffline);
       window.removeEventListener('online',  goOnline);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
 
-  const handleEnded = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    finish();
-  };
-
-  const handleError = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setVideoError(true);
-    setTimeout(() => finish(), 3000);
-  };
-
-  const handleCanPlay = () => {
-    // Video is ready — clear the slow-network timeout
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-  };
-
   return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 9999,
-        background: '#000',
-        opacity: fadeOut ? 0 : 1,
-        transition: 'opacity 0.6s ease',
-        overflow: 'hidden',
-      }}
-    >
-      {/* ── Offline / slow-network banner ─────────────────────────── */}
-      {(offline || videoError) && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 10,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '12px 20px',
-            background: 'rgba(239,68,68,0.95)',
-            backdropFilter: 'blur(8px)',
-            animation: 'slideDown 0.35s ease',
-          }}
-        >
-          {/* Wifi-off icon */}
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 9999, background: '#000',
+      opacity: fadeOut ? 0 : 1,
+      transition: 'opacity 0.6s ease',
+      overflow: 'hidden',
+    }}>
+      {/* Offline banner — only shows if device has no internet */}
+      {offline && (
+        <div style={{
+          position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10,
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '12px 20px',
+          background: 'rgba(220,38,38,0.95)',
+          animation: 'slideDown 0.35s ease',
+          fontFamily: 'Inter, sans-serif',
+        }}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <line x1="1" y1="1" x2="23" y2="23"/>
             <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
@@ -100,43 +82,26 @@ const VideoSplash: React.FC<VideoSplashProps> = ({ onComplete }) => {
             <line x1="12" y1="20" x2="12.01" y2="20"/>
           </svg>
           <div>
-            <p style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: 0, fontFamily: 'Inter, sans-serif' }}>
-              Sin conexión a internet
-            </p>
-            <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, margin: 0, fontFamily: 'Inter, sans-serif' }}>
-              Tu red no está activa. Por favor volvé cuando tengas conexión.
-            </p>
+            <p style={{ color: '#fff', fontSize: 13, fontWeight: 700, margin: 0 }}>Sin conexión a internet</p>
+            <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, margin: 0 }}>Tu red no está activa. Por favor volvé cuando tengas conexión.</p>
           </div>
         </div>
       )}
 
-      {/* ── Video ───────────────────────────────────────────────────── */}
       <video
         ref={videoRef}
         src="/tufix-intro.mp4"
-        autoPlay
         playsInline
         muted
         controls={false}
-        onCanPlayThrough={() => {
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          videoRef.current?.play().catch(() => finish());
-        }}
-        onEnded={handleEnded}
-        onError={handleError}
-        onCanPlay={handleCanPlay}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          display: 'block',
-        }}
+        preload="auto"
+        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
       />
 
       <style>{`
         @keyframes slideDown {
-          from { transform: translateY(-100%); opacity: 0; }
-          to   { transform: translateY(0);     opacity: 1; }
+          from { transform: translateY(-100%); }
+          to   { transform: translateY(0); }
         }
       `}</style>
     </div>
