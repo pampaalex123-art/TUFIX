@@ -28,6 +28,7 @@ self.addEventListener('fetch', (event) => {
     event.request.url.endsWith('.js') ||
     event.request.url.endsWith('.css') ||
     event.request.url.endsWith('.mp4') ||
+    event.request.url.includes('WhatsApp') ||
     event.request.url.endsWith('.webm') ||
     event.request.url.endsWith('.mp3') ||
     event.request.url.endsWith('.wav')

@@ -84,7 +84,7 @@ const VideoSplash: React.FC<VideoSplashProps> = ({ onComplete }) => {
 
       <video
         ref={videoRef}
-        src="/tufix-intro.mp4"
+        src="/WhatsApp%20Video%202026-05-16%20at%209.30.00%20PM.mp4"
         playsInline
         muted
         controls={false}
