@@ -101,13 +101,14 @@ const AppInner: React.FC = () => {
   // Show video splash only when there is no active logged-in session.
   // sessionStorage flag means: if the tab is still open, don't replay.
   const [showVideo, setShowVideo] = useState<boolean>(() => {
-    // If user already has an active session (stored in localStorage), skip video
     try {
-      const hasSession = !!localStorage.getItem('currentUser_v5');
+      const stored = localStorage.getItem('currentUser_v5');
+      // Only skip if there is a real non-null session stored
+      const hasRealSession = !!stored && stored !== 'null' && stored !== 'undefined' && stored.length > 10;
       const alreadyPlayed = !!sessionStorage.getItem('tufix_video_played');
-      return !hasSession && !alreadyPlayed;
+      return !hasRealSession && !alreadyPlayed;
     } catch {
-      return false;
+      return true;
     }
   });
 
