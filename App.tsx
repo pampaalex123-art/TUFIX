@@ -696,7 +696,7 @@ const AppInner: React.FC = () => {
       id: `notif-approved-${Date.now()}`,
       userId: workerId,
       type: 'status_update',
-      message: 'Congratulations! Your TUFIX account has been approved. You can now log in.',
+      message: '¡Felicitaciones! Tu cuenta TUFIX fue aprobada. Ya podés iniciar sesión.',
       isRead: false,
       timestamp: new Date().toISOString(),
       relatedEntityId: workerId,
@@ -784,7 +784,7 @@ const AppInner: React.FC = () => {
       id: `notif-${Date.now()}`,
       userId: details.worker.id,
       type: 'new_job',
-      message: `You have a new job request from ${currentUser!.name} for ${details.worker.service}.`,
+      message: `Tenés una nueva solicitud de trabajo de ${currentUser!.name} para ${t(details.worker.service)}.`,
       isRead: false,
       timestamp: new Date().toISOString(),
       relatedEntityId: newJob.id
@@ -865,7 +865,7 @@ const AppInner: React.FC = () => {
         id: `notif-cancel-${Date.now()}`,
         userId: recipientId,
         type: 'status_update',
-        message: `Your ${job.service} request for ${new Date(job.date + 'T00:00:00').toLocaleDateString()} has been cancelled.`,
+        message: `Tu solicitud de ${t(job.service)} del ${new Date(job.date + 'T00:00:00').toLocaleDateString()} fue cancelada.`,
         isRead: false,
         timestamp: new Date().toISOString(),
         relatedEntityId: job.id
@@ -913,14 +913,16 @@ const AppInner: React.FC = () => {
 
     switch (status) {
       case 'accepted':
+        notificationMessage = `Tu solicitud de ${t(job.service)} fue aceptada.`;
+        break;
       case 'declined':
-        notificationMessage = `Your ${job.service} request has been ${status}.`;
+        notificationMessage = `Tu solicitud de ${t(job.service)} fue rechazada.`;
         break;
       case 'in_progress':
-        notificationMessage = `${currentUser!.name} has started working on your ${job.service} job.`;
+        notificationMessage = `${currentUser!.name} comenzó a trabajar en tu solicitud de ${t(job.service)}.`;
         break;
       case 'worker_completed':
-        notificationMessage = `${currentUser!.name} has marked the ${job.service} job as complete. Please confirm to proceed.`;
+        notificationMessage = `${currentUser!.name} marcó el trabajo de ${t(job.service)} como finalizado. Confirmá para liberar el pago.`;
         break;
     }
 
@@ -1145,7 +1147,7 @@ const AppInner: React.FC = () => {
       id: `notif-msg-${Date.now()}`,
       userId: receiverId,
       type: 'new_message',
-      message: `You have a new message from ${currentUser!.name}.`,
+      message: `Tenés un nuevo mensaje de ${currentUser!.name}.`,
       isRead: false,
       timestamp: new Date().toISOString(),
       relatedEntityId: conversationId,
@@ -1183,7 +1185,7 @@ const AppInner: React.FC = () => {
         id: `notif-inv-${Date.now()}`,
         userId: job.user.id,
         type: 'status_update',
-        message: `${worker.name} has sent an invoice for ${newInvoice.total.toFixed(2)} ${newInvoice.currency}.`,
+        message: `${worker.name} envió una factura por ${newInvoice.total.toFixed(2)} ${newInvoice.currency}.`,
         isRead: false,
         timestamp: new Date().toISOString(),
         relatedEntityId: job.id
@@ -1233,7 +1235,7 @@ const AppInner: React.FC = () => {
           id: `notif-paid-${Date.now()}`,
           userId: paidInvoice!.workerId,
           type: 'status_update',
-          message: `Payment for invoice #${paidInvoice!.id.slice(-6)} has been secured. Awaiting client approval to release funds.`,
+          message: `El pago de la factura #${paidInvoice!.id.slice(-6)} fue asegurado. Esperando confirmación del cliente para liberar los fondos.`,
           isRead: false,
           timestamp: new Date().toISOString(),
           relatedEntityId: paidInvoice!.jobId,
@@ -1275,7 +1277,7 @@ const AppInner: React.FC = () => {
         id: `notif-disp-${Date.now()}`,
         userId: ADMIN_ID,
         type: 'new_dispute',
-        message: `A new dispute has been raised by ${currentUser!.name} for job #${jobId.slice(-6)}.`,
+        message: `${currentUser!.name} abrió una disputa para el trabajo #${jobId.slice(-6)}.`,
         isRead: false,
         timestamp: new Date().toISOString(),
         relatedEntityId: newDispute.id
@@ -1310,7 +1312,7 @@ const AppInner: React.FC = () => {
                 id: `notif-disp-upd-${userId}-${Date.now()}`,
                 userId: userId,
                 type: 'dispute_update',
-                message: `An admin has sent a message regarding your dispute for job #${job.id.slice(-6)}.`,
+                message: `Un administrador envió un mensaje sobre tu disputa del trabajo #${job.id.slice(-6)}.`,
                 isRead: false,
                 timestamp: new Date().toISOString(),
                 relatedEntityId: disputeId,
@@ -1375,7 +1377,7 @@ const AppInner: React.FC = () => {
             id: `notif-disp-res-${userId}-${Date.now()}`,
             userId: userId,
             type: 'dispute_update',
-            message: `Your dispute for job #${job.id.slice(-6)} has been resolved.`,
+            message: `Tu disputa para el trabajo #${job.id.slice(-6)} fue resuelta.`,
             isRead: false,
             timestamp: now,
             relatedEntityId: disputeId,
