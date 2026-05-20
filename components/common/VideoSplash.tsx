@@ -116,8 +116,12 @@ const VideoSplash: React.FC<VideoSplashProps> = ({ onComplete }) => {
         src="/tufix-intro.mp4"
         autoPlay
         playsInline
-        muted={false}
+        muted
         controls={false}
+        onCanPlayThrough={() => {
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          videoRef.current?.play().catch(() => finish());
+        }}
         onEnded={handleEnded}
         onError={handleError}
         onCanPlay={handleCanPlay}
