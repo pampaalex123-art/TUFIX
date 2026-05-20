@@ -903,8 +903,14 @@ const AppInner: React.FC = () => {
       }
       await updateDoc(jobRef, updateData);
 
-      // If worker marks complete, also notify the user — actual completion
-      // happens when the USER confirms (handleConfirmAndReleasePayment)
+      // If worker completed, trigger the backend confirmation logic
+      if (status === 'worker_completed') {
+        await fetch(`/api/jobs/${jobId}/confirm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: 'worker' })
+        });
+      }
     } catch (error) {
       console.error("Error updating job status:", error);
     }
@@ -968,10 +974,10 @@ const AppInner: React.FC = () => {
     const loadingId = showLoading('Confirmando trabajo...');
 
     try {
-      const jobRef  = doc(db, 'jobRequests', jobId);
-      const invRef  = doc(db, 'invoices', invoice.id);
+      const jobRef = doc(db, 'jobRequests', jobId);
+      const invRef = doc(db, 'invoices', invoice.id);
 
-      // Mark job as completed and client confirmed
+      // Mark job as completed and invoice as released directly in Firestore
       await updateDoc(jobRef, {
         status: 'completed',
         client_confirmed: true,
@@ -979,13 +985,12 @@ const AppInner: React.FC = () => {
         finalPrice: invoice.totalAmount,
       });
 
-      // Mark invoice as released
       await updateDoc(invRef, {
         status: 'released',
         paidAt: now,
       });
 
-      // Optimistic UI update — job moves to history immediately
+      // Optimistic UI update so job moves to history immediately
       setJobRequests(prev => prev.map(j =>
         j.id === jobId
           ? { ...j, status: 'completed', client_confirmed: true, clientConfirmedAt: now, finalPrice: invoice.totalAmount }
@@ -995,22 +1000,10 @@ const AppInner: React.FC = () => {
         inv.id === invoice.id ? { ...inv, status: 'released', paidAt: now } : inv
       ));
 
-      // Notify the worker that payment is released
-      const workerNotif = {
-        id: `notif-paid-${Date.now()}`,
-        userId: job.workerId || '',
-        type: 'status_update' as const,
-        message: `El cliente confirmó el trabajo de ${job.service}. El pago ha sido liberado.`,
-        isRead: false,
-        timestamp: now,
-        relatedEntityId: jobId,
-      };
-      setNotifications(prev => [...prev, workerNotif]);
-
-      resolveToast(loadingId, true, 'Trabajo completado y pago liberado');
+      resolveToast(loadingId, true, t('job confirmed and payment release triggered'));
     } catch (error: any) {
       console.error('Error confirming job:', error);
-      resolveToast(loadingId, false, 'Error al confirmar el trabajo');
+      resolveToast(loadingId, false, t('error confirming job', { error: error.message }));
     }
   };
 

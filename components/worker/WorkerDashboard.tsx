@@ -27,10 +27,14 @@ const formatDate = (dateString: string): string => {
 const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ worker, jobRequests, invoices, onContactClient, onEditProfile, onSelectJob, onRaiseDispute, onViewDispute, t }) => {
   const invoiceMap = new Map<string, Invoice>((invoices ?? []).map(inv => [inv.jobId, inv]));
 
-  // --- NEW: Split jobs into active and past ---
   const [showPastJobs, setShowPastJobs] = React.useState(false);
   const [pastJobsCount, setPastJobsCount] = React.useState(5);
+  const [showFilter, setShowFilter] = React.useState(false);
+  const [filterName, setFilterName] = React.useState('');
+  const [filterDate, setFilterDate] = React.useState('');
+  const [filterLocation, setFilterLocation] = React.useState('');
 
+  // Newest first
   const allSorted = [...jobRequests].sort(
     (a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime()
   );
@@ -39,8 +43,18 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ worker, jobRequests, 
   const activeJobs = allSorted.filter(j => !finalStatuses.includes(j.status));
   const pastJobs   = allSorted.filter(j =>  finalStatuses.includes(j.status));
 
-  const jobsToShow = showPastJobs ? pastJobs.slice(0, pastJobsCount) : activeJobs;
-  // --- END NEW ---
+  const hasFilters = filterName.trim() || filterDate || filterLocation.trim();
+
+  const applyFilters = (jobs: JobRequest[]) => jobs.filter(j => {
+    if (filterName.trim() && !(j.user?.name || '').toLowerCase().includes(filterName.toLowerCase())) return false;
+    if (filterDate && j.date !== filterDate) return false;
+    if (filterLocation.trim() && !(j.location || j.user?.location || '').toLowerCase().includes(filterLocation.toLowerCase())) return false;
+    return true;
+  });
+
+  const filteredActive = applyFilters(activeJobs);
+  const filteredPast   = applyFilters(pastJobs);
+  const jobsToShow = showPastJobs ? filteredPast.slice(0, pastJobsCount) : filteredActive;
 
   return (
     <div className="container mx-auto max-w-5xl space-y-8">
@@ -55,29 +69,74 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ worker, jobRequests, 
         <h2 className="text-2xl font-bold text-black mb-4">{t('incoming_jobs')}</h2>
 
         {/* --- NEW: Tab buttons --- */}
-        <div className="flex space-x-2 mb-6">
+        {/* Tabs + Filter */}
+        <div className="flex items-center gap-2 mb-3">
           <button
             onClick={() => setShowPastJobs(false)}
-            className={`flex-1 py-2 rounded-lg font-semibold text-sm transition ${
-              !showPastJobs
-                ? 'bg-purple-600 text-white shadow'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
+            className={`flex-1 py-2 rounded-lg font-semibold text-sm transition ${!showPastJobs ? 'bg-purple-600 text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
           >
-            Trabajos Activos ({activeJobs.length})
+            Trabajos Activos ({filteredActive.length})
           </button>
           <button
             onClick={() => setShowPastJobs(true)}
-            className={`flex-1 py-2 rounded-lg font-semibold text-sm transition ${
-              showPastJobs
-                ? 'bg-purple-600 text-white shadow'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            className={`flex-1 py-2 rounded-lg font-semibold text-sm transition ${showPastJobs ? 'bg-purple-600 text-white shadow' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+          >
+            Historial ({filteredPast.length})
+          </button>
+          <button
+            onClick={() => setShowFilter(f => !f)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-semibold text-sm border transition flex-shrink-0 ${
+              showFilter || hasFilters ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-600 border-slate-200 hover:border-purple-300'
             }`}
           >
-            Historial ({pastJobs.length})
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+            </svg>
+            {hasFilters ? 'Filtros activos' : 'Filtrar'}
           </button>
         </div>
-        {/* --- END NEW --- */}
+
+        {/* Filter panel */}
+        {showFilter && (
+          <div className="mb-4 p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Nombre del cliente</label>
+                <input
+                  type="text" value={filterName}
+                  onChange={e => setFilterName(e.target.value)}
+                  placeholder="Buscar por nombre..."
+                  className="w-full p-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Fecha del trabajo</label>
+                <input
+                  type="date" value={filterDate}
+                  onChange={e => setFilterDate(e.target.value)}
+                  className="w-full p-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Ubicación</label>
+                <input
+                  type="text" value={filterLocation}
+                  onChange={e => setFilterLocation(e.target.value)}
+                  placeholder="Buscar por ubicación..."
+                  className="w-full p-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-purple-400 focus:outline-none"
+                />
+              </div>
+            </div>
+            {hasFilters && (
+              <button
+                onClick={() => { setFilterName(''); setFilterDate(''); setFilterLocation(''); }}
+                className="text-xs font-semibold text-red-500 hover:text-red-700"
+              >
+                ✕ Limpiar filtros
+              </button>
+            )}
+          </div>
+        )}
 
         {jobsToShow.length === 0 ? (
            <div className="bg-slate-50 border border-slate-200 rounded-xl shadow-sm p-12 text-center">
@@ -146,13 +205,13 @@ const WorkerDashboard: React.FC<WorkerDashboardProps> = ({ worker, jobRequests, 
         )}
 
         {/* --- NEW: Load More button for past jobs --- */}
-        {showPastJobs && pastJobs.length > pastJobsCount && (
+        {showPastJobs && filteredPast.length > pastJobsCount && (
           <div className="text-center pt-4">
             <button
               onClick={() => setPastJobsCount(c => c + 5)}
               className="text-sm font-semibold text-purple-600 hover:text-purple-800 hover:underline"
             >
-              Cargar más trabajos ({pastJobs.length - pastJobsCount} restantes)
+              Cargar más trabajos ({filteredPast.length - pastJobsCount} restantes)
             </button>
           </div>
         )}
