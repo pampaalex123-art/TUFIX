@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/common/Header';
+import VideoSplash from './components/common/VideoSplash';
 import NotificationsScreen from './components/shared/NotificationsScreen';
 import BottomNavigation from './components/common/BottomNavigation';
 import UserDashboard from './components/user/UserDashboard';
@@ -96,6 +97,24 @@ const AppInner: React.FC = () => {
   const { language, setLanguage, t } = useTranslations();
   const { showAlert, showConfirm, showPrompt } = useDialog();
   const { showToast, showLoading, resolveToast } = useToast();
+
+  // Show video splash only when there is no active logged-in session.
+  // sessionStorage flag means: if the tab is still open, don't replay.
+  const [showVideo, setShowVideo] = useState<boolean>(() => {
+    // If user already has an active session (stored in localStorage), skip video
+    try {
+      const hasSession = !!localStorage.getItem('currentUser_v5');
+      const alreadyPlayed = !!sessionStorage.getItem('tufix_video_played');
+      return !hasSession && !alreadyPlayed;
+    } catch {
+      return false;
+    }
+  });
+
+  const handleVideoComplete = () => {
+    try { sessionStorage.setItem('tufix_video_played', '1'); } catch {}
+    setShowVideo(false);
+  };
   const [currentUser, setCurrentUser] = useLocalStorage<User | Worker | null>('currentUser_v5', null);
   const [userType, setUserType] = useLocalStorage<UserType | null>('userType_v5', null);
   const [view, setView] = useState<View>({ screen: 'AUTH' });
@@ -1966,6 +1985,7 @@ const AppInner: React.FC = () => {
 
   return (
     <div className="min-h-screen font-sans bg-white text-black">
+      {showVideo && <VideoSplash onComplete={handleVideoComplete} />}
       <OnboardingTour 
         currentUser={currentUser} 
         userType={userType} 
