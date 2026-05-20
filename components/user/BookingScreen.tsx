@@ -1,8 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, Component } from 'react';
 import { Worker, User, DayOfWeek, JobRequest, Coordinates } from '../../types';
 import { formatTime12hr, generateTimeSlots } from '../../utils/time';
 import LocationPicker from '../shared/LocationPicker';
 import { useDialog } from '../common/Dialog';
+
+// Error boundary to catch react-leaflet crashes without white-screening
+class MapErrorBoundary extends Component<
+  { children: React.ReactNode; fallback: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: any) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() { return this.state.hasError ? this.props.fallback : this.props.children; }
+}
 
 interface BookingScreenProps {
   worker: Worker;
@@ -184,15 +194,28 @@ const BookingScreen: React.FC<BookingScreenProps> = ({ worker, user, allJobReque
 
         <div>
           <label className="block text-lg font-medium mb-2 text-black">{t('job_location')}</label>
-          <LocationPicker 
-            initialAddress={location}
-            initialCoordinates={coordinates}
-            onLocationSelect={(addr, coords) => {
-              setLocation(addr);
-              setCoordinates(coords);
-            }}
-            t={t}
-          />
+          <MapErrorBoundary fallback={
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={location}
+                onChange={e => setLocation(e.target.value)}
+                placeholder="Ingresá tu dirección..."
+                className="w-full p-3 bg-slate-100 rounded-lg focus:ring-2 focus:ring-purple-500 focus:outline-none text-sm text-slate-900"
+              />
+              <p className="text-xs text-slate-400 italic">El mapa no pudo cargar. Podés ingresar la dirección manualmente.</p>
+            </div>
+          }>
+            <LocationPicker
+              initialAddress={location}
+              initialCoordinates={coordinates}
+              onLocationSelect={(addr, coords) => {
+                setLocation(addr);
+                setCoordinates(coords);
+              }}
+              t={t}
+            />
+          </MapErrorBoundary>
         </div>
         
         <div className="pt-5 flex justify-end space-x-3">
