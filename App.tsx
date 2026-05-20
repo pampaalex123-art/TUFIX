@@ -903,14 +903,7 @@ const AppInner: React.FC = () => {
       }
       await updateDoc(jobRef, updateData);
 
-      // If worker completed, trigger the backend confirmation logic
-      if (status === 'worker_completed') {
-        await fetch(`/api/jobs/${jobId}/confirm`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: 'worker' })
-        });
-      }
+      // No backend API needed — worker_completed is handled purely in Firestore
     } catch (error) {
       console.error("Error updating job status:", error);
     }
@@ -954,7 +947,7 @@ const AppInner: React.FC = () => {
 
   const handleConfirmAndReleasePayment = async (jobId: string) => {
     const job = jobRequests.find(j => j.id === jobId);
-    if (!job || !job.invoiceId) return;
+    if (!job) return;
 
     if (job.disputeId) {
         const dispute = disputes.find(d => d.id === job.disputeId);
@@ -964,7 +957,11 @@ const AppInner: React.FC = () => {
         }
     }
 
-    const invoice = invoices.find(inv => inv.id === job.invoiceId);
+    // Find invoice by invoiceId OR by jobId as fallback
+    const invoice = invoices.find(inv =>
+      (job.invoiceId && inv.id === job.invoiceId) || inv.jobId === jobId
+    );
+
     if (!invoice || (invoice.status !== 'held' && invoice.status !== 'pending')) {
         showAlert(t('error invoice is not in a payable state'));
         return;
@@ -977,12 +974,11 @@ const AppInner: React.FC = () => {
       const jobRef = doc(db, 'jobRequests', jobId);
       const invRef = doc(db, 'invoices', invoice.id);
 
-      // Mark job as completed and invoice as released directly in Firestore
       await updateDoc(jobRef, {
         status: 'completed',
         client_confirmed: true,
         clientConfirmedAt: now,
-        finalPrice: invoice.totalAmount,
+        finalPrice: invoice.total,
       });
 
       await updateDoc(invRef, {
@@ -993,7 +989,7 @@ const AppInner: React.FC = () => {
       // Optimistic UI update so job moves to history immediately
       setJobRequests(prev => prev.map(j =>
         j.id === jobId
-          ? { ...j, status: 'completed', client_confirmed: true, clientConfirmedAt: now, finalPrice: invoice.totalAmount }
+          ? { ...j, status: 'completed', client_confirmed: true, clientConfirmedAt: now, finalPrice: invoice.total }
           : j
       ));
       setInvoices(prev => prev.map(inv =>
