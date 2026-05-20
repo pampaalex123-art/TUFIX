@@ -51,10 +51,14 @@ const VideoSplash: React.FC<VideoSplashProps> = ({ onComplete }) => {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, zIndex: 9999, background: '#000',
+      position: 'fixed', inset: 0, zIndex: 9999,
+      background: '#ffffff',
       opacity: fadeOut ? 0 : 1,
       transition: 'opacity 0.6s ease',
       overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
     }}>
       {/* Only show offline banner when device truly has no internet */}
       {offline && (
@@ -89,7 +93,14 @@ const VideoSplash: React.FC<VideoSplashProps> = ({ onComplete }) => {
         muted
         controls={false}
         preload="auto"
-        style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+        style={{
+          maxWidth: '100%',
+          maxHeight: '100%',
+          width: 'auto',
+          height: 'auto',
+          borderRadius: 16,
+          boxShadow: '0 4px 32px rgba(0,0,0,0.12)',
+        }}
       />
 
       <style>{`
