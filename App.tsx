@@ -1221,13 +1221,14 @@ const AppInner: React.FC = () => {
   
   const handlePayInvoice = (invoiceId: string) => {
     let paidInvoice: Invoice | undefined;
+    const now = new Date().toISOString();
     
     setInvoices(prev => prev.map(inv => {
       if (inv.id === invoiceId) {
         paidInvoice = {
           ...inv,
           status: 'held',
-          paidAt: new Date().toISOString(),
+          paidAt: now,
           transactionId: `txn_${Date.now()}`
         };
         return paidInvoice;
@@ -1236,6 +1237,15 @@ const AppInner: React.FC = () => {
     }));
 
     if (paidInvoice) {
+      // Update the job status to 'in_progress' now that payment is held,
+      // so the progress sidebar advances past "Pago Realizado" correctly.
+      setJobRequests(prev => prev.map(j => {
+        if (j.id === paidInvoice!.jobId && j.status === 'accepted') {
+          return { ...j, status: 'in_progress' as const };
+        }
+        return j;
+      }));
+
       const newTransaction: Transaction = {
         id: paidInvoice.transactionId!,
         invoiceId: paidInvoice.id,
@@ -1257,7 +1267,7 @@ const AppInner: React.FC = () => {
           type: 'status_update',
           message: `El pago de la factura #${paidInvoice!.id.slice(-6)} fue asegurado. Esperando confirmación del cliente para liberar los fondos.`,
           isRead: false,
-          timestamp: new Date().toISOString(),
+          timestamp: now,
           relatedEntityId: paidInvoice!.jobId,
       }]);
     }
@@ -1884,11 +1894,17 @@ const AppInner: React.FC = () => {
           t={t}
           language={language}
         />
-      case 'MY_JOBS':
+      case 'MY_JOBS': {
+        const phoneCode = (currentUser as any)?.phoneNumber?.code || '';
+        const userCountry: 'bolivia' | 'argentina' | undefined =
+          phoneCode === '+591' ? 'bolivia' :
+          phoneCode === '+54'  ? 'argentina' :
+          undefined;
         return <MyJobsScreen
           jobRequests={(jobRequests || []).filter(j => j.user.id === currentUser?.id)}
           invoices={invoices}
           workers={workers}
+          userCountry={userCountry}
           onLeaveReview={handleLeaveUserReview}
           onCancelJob={handleCancelJob}
           onBack={() => setView({ screen: 'USER_DASHBOARD' })}
@@ -1899,6 +1915,7 @@ const AppInner: React.FC = () => {
           onViewDispute={(disputeId) => setView({ screen: 'DISPUTE_DETAILS', disputeId })}
           t={t}
         />
+      }
       case 'CREATE_INVOICE':
         return <CreateJobInvoice
           job={view.job}

@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { User, Worker, Message, Invoice, JobRequest, Coordinates } from '../../types';
 import { formatDistanceToNow } from '../../utils/time';
 import PaymentModal from './PaymentModal';
+import BoliviaPaymentModal from './BoliviaPaymentModal';
 import ReceiptModal from './ReceiptModal';
 import InvoiceCard from './InvoiceCard';
 
@@ -217,10 +218,26 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
         </div>
       </div>
       
-      {isPaymentModalOpen && selectedInvoice && (
-        <PaymentModal
+      {isPaymentModalOpen && selectedInvoice && (() => {
+        const job = (jobRequests ?? []).find(j => j.id === selectedInvoice.jobId);
+        const worker = isCurrentUserWorker ? currentUser as Worker : otherParticipant as Worker;
+        const phoneCode = (currentUser as any)?.phoneNumber?.code || '';
+        if (phoneCode === '+591') {
+          return (
+            <BoliviaPaymentModal
+              invoice={selectedInvoice}
+              worker={worker}
+              job={job}
+              onClose={() => { setPaymentModalOpen(false); setSelectedInvoice(null); }}
+              onConfirm={handleConfirmPayment}
+              t={t}
+            />
+          );
+        }
+        return (
+          <PaymentModal
             invoice={selectedInvoice}
-            job={(jobRequests ?? []).find(j => j.id === selectedInvoice.jobId)}
+            job={job}
             onClose={() => { setPaymentModalOpen(false); setSelectedInvoice(null); }}
             onConfirm={handleConfirmPayment}
             onUpdateLocation={async (location, coordinates) => {
@@ -230,8 +247,9 @@ const MessagingScreen: React.FC<MessagingScreenProps> = ({ currentUser, otherPar
             }}
 // FIX: The 't' prop was missing and is required by the PaymentModal component.
             t={t}
-        />
-      )}
+          />
+        );
+      })()}
       
       {isReceiptModalOpen && selectedInvoice && (
         <ReceiptModal
