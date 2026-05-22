@@ -1174,7 +1174,7 @@ const AppInner: React.FC = () => {
     }]);
   };
 
-  const handleCreateAndSendInvoice = (jobId: string, invoiceData: { items: InvoiceLineItem[], subtotal: number, platformFee: number, total: number }) => {
+  const handleCreateAndSendInvoice = async (jobId: string, invoiceData: { items: InvoiceLineItem[], subtotal: number, platformFee: number, total: number }) => {
     const job = jobRequests.find(j => j.id === jobId);
     const worker = currentUser as Worker;
     if (!job || !worker) return;
@@ -1190,9 +1190,27 @@ const AppInner: React.FC = () => {
         createdAt: new Date().toISOString(),
     };
     
-    let updatedJob: JobRequest | undefined;
-    setInvoices(prev => [...prev, newInvoice]);
+    // Write invoice directly to Firestore so the client can read it regardless
+    // of ownership checks in the collection hook.
+    try {
+      await setDoc(doc(db, 'invoices', newInvoice.id), newInvoice);
+    } catch (err) {
+      console.error('Failed to write invoice to Firestore:', err);
+    }
 
+    // Also update the jobRequest in Firestore with the invoiceId.
+    let updatedJob: JobRequest | undefined;
+    try {
+      await updateDoc(doc(db, 'jobRequests', jobId), {
+        invoiceId: newInvoice.id,
+        finalPrice: invoiceData.subtotal,
+      });
+    } catch (err) {
+      console.error('Failed to update jobRequest with invoiceId:', err);
+    }
+
+    // Update local state
+    setInvoices(prev => [...prev, newInvoice]);
     setJobRequests(prev => prev.map(j => {
         if (j.id === jobId) {
             updatedJob = { ...j, invoiceId: newInvoice.id, finalPrice: invoiceData.subtotal };
@@ -1219,9 +1237,10 @@ const AppInner: React.FC = () => {
     showToast(t('invoice sent you can now start the job'), 'success');
   };
   
-  const handlePayInvoice = (invoiceId: string) => {
+  const handlePayInvoice = async (invoiceId: string) => {
     let paidInvoice: Invoice | undefined;
     const now = new Date().toISOString();
+    const transactionId = `txn_${Date.now()}`;
     
     setInvoices(prev => prev.map(inv => {
       if (inv.id === invoiceId) {
@@ -1229,7 +1248,7 @@ const AppInner: React.FC = () => {
           ...inv,
           status: 'held',
           paidAt: now,
-          transactionId: `txn_${Date.now()}`
+          transactionId,
         };
         return paidInvoice;
       }
@@ -1237,17 +1256,35 @@ const AppInner: React.FC = () => {
     }));
 
     if (paidInvoice) {
-      // Update the job status to 'in_progress' now that payment is held,
-      // so the progress sidebar advances past "Pago Realizado" correctly.
+      // Write paid status directly to Firestore so both parties see it.
+      try {
+        await updateDoc(doc(db, 'invoices', invoiceId), {
+          status: 'held',
+          paidAt: now,
+          transactionId,
+        });
+      } catch (err) {
+        console.error('Failed to update invoice in Firestore:', err);
+      }
+
+      // Update the job status to 'in_progress' now that payment is held.
       setJobRequests(prev => prev.map(j => {
         if (j.id === paidInvoice!.jobId && j.status === 'accepted') {
           return { ...j, status: 'in_progress' as const };
         }
         return j;
       }));
+      try {
+        const jobToUpdate = jobRequests.find(j => j.id === paidInvoice!.jobId);
+        if (jobToUpdate && jobToUpdate.status === 'accepted') {
+          await updateDoc(doc(db, 'jobRequests', paidInvoice.jobId), { status: 'in_progress' });
+        }
+      } catch (err) {
+        console.error('Failed to update job status in Firestore:', err);
+      }
 
       const newTransaction: Transaction = {
-        id: paidInvoice.transactionId!,
+        id: transactionId,
         invoiceId: paidInvoice.id,
         jobId: paidInvoice.jobId,
         clientId: paidInvoice.userId,
@@ -1257,7 +1294,7 @@ const AppInner: React.FC = () => {
         total: paidInvoice.total,
         currency: paidInvoice.currency,
         status: 'held',
-        paidAt: paidInvoice.paidAt!,
+        paidAt: now,
       };
       setTransactions(prev => [...prev, newTransaction]);
 
